@@ -4,7 +4,7 @@
 
 ## Current Status
 
-- [ ] Specification approved by user
+- [x] Specification approved by user
 - [ ] Phase 0 foundation complete
 - [ ] Phase 1 audit complete
 - [ ] Integration evaluation passed
@@ -12,56 +12,63 @@
 
 ## Phase 0A: Repository and Native Foundation
 
-- [ ] **TASK-0.1 — Scaffold the Tauri 2 workspace**
+- [x] **TASK-0.1 — Scaffold the Tauri 2 workspace**
   - *Refs*: REQ-1, REQ-9; Design §Proposed Repository Structure
   - *Files*: create `package.json`, lockfiles, TypeScript/Vite config, `src/main.tsx`, `src-tauri/**`
   - *Pre-check*: verify the repository contains only approved documentation and load current official Tauri 2 project/security guidance
   - *Verify*: strict TypeScript configuration resolves; Rust project metadata is valid; lint/type/Rust-check scripts exist and run without a release build
   - *Commit*: `feat(desktop-workspace/0.1): scaffold Tauri workspace`
+  - *Evidence*: scaffolded via `create-tauri-app` (Tauri 2, React 19, strict TypeScript, Vite 7). `pnpm typecheck`, `pnpm lint`, and `pnpm build` pass. `cargo check --manifest-path src-tauri/Cargo.toml` and `cargo fmt --check` pass (required installing `libgtk-3-dev`, `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` in the sandbox — Tauri's Linux backend needs these for `cargo check` to compile at all; they are not part of the Windows-only v1 product target). No release/bundle build was run, per the Windows packaging gate in `AGENTS.md` and `SPEC_CONTRACT.md`. Demo `greet` command and default template UI were removed to avoid presenting placeholder functionality as real (design.md: "avoid empty architecture theatre"). Bundle targets in `tauri.conf.json` are restricted to `nsis`/`msi` (Windows-only, REQ non-goal).
 
-- [ ] **TASK-0.2 — Configure frontend quality and test tooling**
+- [x] **TASK-0.2 — Configure frontend quality and test tooling**
   - *Refs*: REQ-1, REQ-9, A11Y-1
   - *Files*: create lint/format/test configs, `src/tests/**`, shared test setup
   - *Pre-check*: inspect TASK-0.1 scripts and avoid overlapping formatter/linter ownership
   - *Verify*: formatting check, lint, TypeScript check, and one smoke unit/component test pass
   - *Commit*: `chore(desktop-workspace/0.2): add quality gates`
+  - *Evidence*: added Prettier (`.prettierrc.json`, `.prettierignore` — spec docs under `docs/` excluded from automated formatting), `eslint-config-prettier` to avoid stylistic conflicts with TASK-0.1's ESLint config, and `eslint-plugin-jsx-a11y` recommended rules for A11Y-1. Added Vitest + Testing Library (`src/tests/setup.ts`, `src/tests/App.test.tsx`) via a `test` block in `vite.config.ts`, no separate config to avoid duplicate tool ownership. `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` (1 passing smoke test) all pass; `pnpm build` and `pnpm rust:check` re-verified unaffected.
 
-- [ ] **TASK-0.3 — Implement validated runtime configuration**
+- [x] **TASK-0.3 — Implement validated runtime configuration**
   - *Refs*: REQ-3, SEC-4, OPS-1
   - *Files*: create `.env.example`, `src/app/config/**`, configuration tests, updater configuration placeholder
   - *Pre-check*: confirm no secrets or production endpoint are present in Git history/worktree
   - *Verify*: valid environments load; missing/invalid values fail closed; tests prove secrets cannot be part of public config
   - *Commit*: `feat(desktop-workspace/0.3): validate runtime configuration`
+  - *Evidence*: `src/app/config/schema.ts` defines a strict Zod schema (environment, HTTPS API base URL with a localhost-only http exception, allowed origins, feature flags defaulting risky/incomplete modules off, telemetry + redaction mode, an updater channel/public-key placeholder, and request timeout/retry bounds). `src/app/config/load-config.ts` builds the config candidate from an explicit VITE_-prefixed allowlist — no `...env` spread — so unrelated values (including anything secret-shaped) in the same `.env` file can never reach the parsed config, and throws a `ConfigError` listing every issue when required values are missing or invalid (fail closed). `src/tests/config.test.ts` (7 tests) proves valid-load, default-off feature flags, fail-closed on missing/invalid/non-https-production values, and that secret-shaped extra env keys never appear in the output. Config is not yet imported by `main.tsx`/`App.tsx` — wiring it into the running shell belongs to the tasks that actually consume it (API transport, auth, desktop shell), consistent with design.md's "avoid empty architecture theatre." Pre-check: `grep` across `src/`, `.env.example`, and Tauri config for credential/production-endpoint patterns found none. Verified: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (8 passing), `pnpm build`, and `pnpm rust:check` all pass.
 
-- [ ] **TASK-0.4 — Establish least-privilege native security commands**
+- [x] **TASK-0.4 — Establish least-privilege native security commands**
   - *Refs*: REQ-4, SEC-1, SEC-2, SEC-4
   - *Files*: create `src-tauri/capabilities/**`, `src-tauri/src/security/**`, `src-tauri/src/commands/**`, security ADR
   - *Pre-check*: load current official Tauri 2 capabilities, secure-storage, CSP, and updater documentation
   - *Verify*: capability audit shows default deny, no generic shell permission, scoped filesystem access, typed command input validation, and secret redaction tests
   - *Commit*: `feat(desktop-workspace/0.4): add native security boundary`
+  - *Evidence*: `docs/architecture/security.md` records the full ADR. `capabilities/default.json` grants only `core:default` (audited against the pinned tauri 2.11.5 source: no fs/shell/SQL/HTTP reach) plus five explicit `allow-*` permissions for our own commands (auto-generated by `tauri-build`'s `AppManifest::commands(...)` in `build.rs`); the TASK-0.1 scaffold's `tauri-plugin-opener` (unscoped `http(s)://*` + reveal-in-dir) was removed as a SEC-1 violation with nothing yet using it. `security::secret_store` (`SecretStore` trait, `OsKeychain` via the `keyring` crate v4 — Windows Credential Manager/macOS Keychain/pure-Rust Linux Secret Service, no `libdbus` needed — and a test-only `InMemorySecretStore`) backs `session_store`/`session_load`/`session_clear` over a closed `SessionKey` enum. `security::encryption` (AES-256-GCM) backs `encrypt_value`/`decrypt_value` for future local-cache payloads (TASK-0.5). All commands validate key/value length before touching storage and return `SecurityError`, which never carries secret material (tested). `tauri.conf.json`'s CSP moved from `null` to a `script-src 'self'` policy forbidding remote script sources. **Pre-check note**: `v2.tauri.app` is blocked by this sandbox's egress policy (403); used the pinned `tauri`/`tauri-build`/`tauri-utils` crate source under `~/.cargo/registry` instead, which for a lockfile-pinned implementation is the more exact source anyway. Verified: `cargo check`, `cargo fmt --check`, and `cargo test` (9 passing, including secret-redaction and tamper-rejection cases) all pass; `pnpm format:check`/`lint`/`typecheck`/`test`/`build` re-verified unaffected.
 
 ## Phase 0B: Data, API, Sync, and Shell
 
-- [ ] **TASK-0.5 — Add local SQLite migrations and repositories**
+- [x] **TASK-0.5 — Add local SQLite migrations and repositories**
   - *Refs*: REQ-6, REL-1, PRIV-1; Design §Local SQLite Design
   - *Files*: create `src/db/**`, `src/services/storage/**`, migration fixtures/tests, local-data ADR
   - *Pre-check*: confirm every proposed table is local infrastructure rather than a duplicate parent domain owner
   - *Verify*: migrations apply to empty and prior-version fixtures; parameterized repository tests pass; auth secrets cannot be persisted
   - *Commit*: `feat(desktop-workspace/0.5): add local cache database`
+  - *Evidence*: `docs/architecture/local-data.md` records the full ADR, including the pre-check table-by-table against design.md's Canonical Ownership table. `src-tauri/migrations/{0001_init,0002_add_lookup_indexes}.sql` define all six local tables via `tauri-plugin-sql` (no hand-rolled `schema_migrations` ledger -- the plugin already tracks applied migrations, documented as a deliberate deviation). `src-tauri/src/db/mod.rs` tests apply the same SQL directly via `rusqlite` (dev-only) against a real in-memory database: empty-apply, upgrade-from-0001-only fixture without data loss, and the `sync_operations` CHECK/UNIQUE constraints (13 Rust tests total). `src/db/executor.ts`'s `SqlExecutor` interface plus a recording fake let `src/tests/db-repositories.test.ts` assert repositories (`cache_entries`, `local_preferences`, `sync_operations`) bind values as parameters rather than string-interpolating them. `src/services/storage/cache.ts` routes `sensitive` payloads through TASK-0.4's `encrypt_value`/`decrypt_value` before they ever reach a SQL parameter; `src/tests/storage-cache.test.ts` asserts a raw secret string never appears in the recorded SQL call. `recent_records`, `local_file_references`, and `sync_conflicts` get schema + migration only, no repository yet -- their query functions arrive with the task that first consumes them (documented in the ADR). Also removed the unused `@tauri-apps/plugin-opener`/`tauri-plugin-opener` leftover from the TASK-0.4 capability removal. Verified: `cargo check`, `cargo fmt --check`, `cargo test` (13 passing); `pnpm format:check`/`lint`/`typecheck`/`test` (21 passing)/`build` all pass.
 
-- [ ] **TASK-0.6 — Implement the offline operation state machine**
+- [x] **TASK-0.6 — Implement the offline operation state machine**
   - *Refs*: REQ-7, REL-1, REL-2
   - *Files*: create `src/services/sync/**`, state-machine tests, sync ADR
   - *Pre-check*: confirm database tables and transaction APIs from TASK-0.5 match the design
   - *Verify*: tests cover pending, retry, complete, conflict, failure, cancellation, dependency ordering, and no-silent-overwrite rules
   - *Commit*: `feat(desktop-workspace/0.6): define conflict-safe sync queue`
+  - *Evidence*: `docs/architecture/sync.md` records the ADR. Pre-check confirmed `sync_operations`/`sync_conflicts` carry every needed field and that the `status` CHECK constraint already enumerates exactly design.md's six states; also confirmed `tauri-plugin-sql` exposes no transaction API across IPC, so this module is written as pure transition functions persisted via single-statement UPDATEs rather than faking multi-statement atomicity (documented, with a note that a future task needing real multi-table atomicity requires a native Rust command). `src/services/sync/state-machine.ts` implements `startSync`/`resolveAttempt`/`cancel`/`resolveConflict` as pure functions throwing `InvalidTransitionError` on any edge the diagram disallows, with bounded capped-exponential backoff; `ordering.ts` topologically orders by `depends_on` (oldest-first for independents), holds back dependents of failed/cancelled/missing dependencies rather than running them out of order, and raises `DependencyCycleError` on cycles; `conflicts.ts` persists both versions with no overwrite path, guards re-resolution of an already-decided conflict, and flags `proposal`/`pricing` as human-resolution-only. 28 new tests (49 total) cover all six states, both retry-exhaustion and terminal-error paths, cancellation from every legal/illegal state, all dependency-ordering cases, and the no-silent-overwrite rules. No runner/scheduler is built yet -- driving operations through these transitions needs TASK-0.7's transport to exist first, so this task delivers decision logic plus tests only. Verified: `pnpm format:check`/`lint`/`typecheck`/`test` (49 passing)/`build` all pass; Rust side untouched and re-verified.
 
-- [ ] **TASK-0.7 — Implement the typed API transport foundation**
+- [x] **TASK-0.7 — Implement the typed API transport foundation**
   - *Refs*: REQ-5, INT-2, INT-6, PERF-3
   - *Files*: create `src/services/api/**`, transport fixtures/tests, API ADR
   - *Pre-check*: compare the parent response envelope, `src/lib/api-client.ts`, audited OpenAPI metadata, and representative route responses
   - *Verify*: tests cover validation, cancellation, timeout, safe retry, envelope variants, 401/403, rate limit, offline, malformed response, and redacted error handling
   - *Commit*: `feat(desktop-workspace/0.7): add validated API transport`
+  - *Evidence*: `docs/architecture/api.md` records the ADR; the OpenAPI document is pinned at `docs/audits/tenders-sa-developer-api-v2.1.0-openapi.json`. **Pre-check only partly satisfied, deliberately and explicitly**: the envelope and representative responses were verified against the live Tenders-SA Developer API (`https://api.tenders-sa.org`, v2.1.0) via non-mutating GETs, but the parent repository's `src/lib/api-client.ts` and internal routes were NOT inspected — that repo is unreachable from this session (cross-owner `add_repo` unsupported). This API is also *not* the parent-internal API requirements.md scopes: it is read-only public data with no auth-session, workspace, or mutation routes, so everything about the parent-internal contract stays `UNCONFIRMED` for TASK-1.3/1.4. Verification found design.md's `ApiEnvelope` sketch is wrong in two ways — `error` is always a plain string with `code` as a *sibling* (not `string | {code, message}`), and there is no `meta` block (pagination is `?limit`/`?cursor`) — so the implemented schema follows the verified contract, with the divergence documented at the point of definition. Also found severe OpenAPI drift per INT-6: exactly 1 of 98 endpoints documents a `200` content schema, and the `Unauthorized`/`NotFound` component responses are referenced by no endpoint; `apiSuccessEnvelope(dataSchema)` structurally forces every call site to hand-author its expected shape. 16 new tests (65 total) cover all ten enumerated cases: envelope unwrapping, malformed 2xx, unparseable non-2xx, 401/403 distinction, rate-limit retry, 5xx retry-then-give-up, retry-never policy, no-retry on 4xx, offline, timeout, caller cancellation (including pre-aborted signal), and API-key non-leakage into messages/log fields. No endpoint adapters or TanStack Query wiring yet — those belong to the feature tasks that consume specific endpoints. CSP `connect-src` is deliberately not yet widened, since nothing calls the API at runtime. Verified: `pnpm format:check`/`lint`/`typecheck`/`test` (65 passing)/`build` all pass.
 
 - [ ] **TASK-0.8 — Establish the dark design system and token foundation**
   - *Refs*: REQ-17, A11Y-1; Design §Design System and Theming

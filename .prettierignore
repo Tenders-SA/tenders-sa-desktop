@@ -1,0 +1,11 @@
+dist
+pnpm-lock.yaml
+src-tauri/target
+src-tauri/gen
+coverage
+
+# Hand-authored governance/spec docs: out of scope for automated
+# formatting, to avoid unrelated diffs against approved spec content.
+docs/
+AGENTS.md
+README.md

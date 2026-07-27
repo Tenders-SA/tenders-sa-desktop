@@ -1,7 +1,8 @@
 # SPEC CONTRACT — Tenders-SA Desktop Procurement Workspace
 
 # Generated: 2026-07-27
-# Status: PENDING APPROVAL
+# Status: APPROVED
+# Approved by: mobiusndou@gmail.com on 2026-07-27
 
 ## CODER INSTRUCTIONS
 
@@ -37,13 +38,13 @@ Create the production-oriented foundation for a Tauri 2 procurement desktop clie
 
 ## TASK CHECKLIST
 
-- [ ] TASK-0.1 — Scaffold the Tauri 2 workspace
-- [ ] TASK-0.2 — Configure frontend quality and test tooling
-- [ ] TASK-0.3 — Implement validated runtime configuration
-- [ ] TASK-0.4 — Establish least-privilege native security commands
-- [ ] TASK-0.5 — Add local SQLite migrations and repositories
-- [ ] TASK-0.6 — Implement the offline operation state machine
-- [ ] TASK-0.7 — Implement the typed API transport foundation
+- [x] TASK-0.1 — Scaffold the Tauri 2 workspace
+- [x] TASK-0.2 — Configure frontend quality and test tooling
+- [x] TASK-0.3 — Implement validated runtime configuration
+- [x] TASK-0.4 — Establish least-privilege native security commands
+- [x] TASK-0.5 — Add local SQLite migrations and repositories
+- [x] TASK-0.6 — Implement the offline operation state machine
+- [x] TASK-0.7 — Implement the typed API transport foundation (pre-check partly satisfied; parent-internal contract remains UNCONFIRMED — see tasks.md evidence)
 - [ ] TASK-0.8 — Establish the dark design system and token foundation
 - [ ] TASK-0.9 — Build the authentication interface shell
 - [ ] TASK-0.10 — Build the accessible desktop application shell
