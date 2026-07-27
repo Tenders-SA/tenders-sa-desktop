@@ -1,0 +1,161 @@
+# Tenders-SA Desktop Procurement Workspace — Implementation Tasks
+
+> **READ BEFORE STARTING**: Read all five specification files. Do not implement while `SPEC_CONTRACT.md` is `PENDING APPROVAL`. Do not skip, reorder, or combine tasks. Complete each pre-check and verification before marking a task complete. Mirror every checkbox change in `SPEC_CONTRACT.md`.
+
+## Current Status
+
+- [ ] Specification approved by user
+- [ ] Phase 0 foundation complete
+- [ ] Phase 1 audit complete
+- [ ] Integration evaluation passed
+- [ ] All Phase 0–1 success criteria verified
+
+## Phase 0A: Repository and Native Foundation
+
+- [ ] **TASK-0.1 — Scaffold the Tauri 2 workspace**
+  - *Refs*: REQ-1, REQ-9; Design §Proposed Repository Structure
+  - *Files*: create `package.json`, lockfiles, TypeScript/Vite config, `src/main.tsx`, `src-tauri/**`
+  - *Pre-check*: verify the repository contains only approved documentation and load current official Tauri 2 project/security guidance
+  - *Verify*: strict TypeScript configuration resolves; Rust project metadata is valid; lint/type/Rust-check scripts exist and run without a release build
+  - *Commit*: `feat(desktop-workspace/0.1): scaffold Tauri workspace`
+
+- [ ] **TASK-0.2 — Configure frontend quality and test tooling**
+  - *Refs*: REQ-1, REQ-9, A11Y-1
+  - *Files*: create lint/format/test configs, `src/tests/**`, shared test setup
+  - *Pre-check*: inspect TASK-0.1 scripts and avoid overlapping formatter/linter ownership
+  - *Verify*: formatting check, lint, TypeScript check, and one smoke unit/component test pass
+  - *Commit*: `chore(desktop-workspace/0.2): add quality gates`
+
+- [ ] **TASK-0.3 — Implement validated runtime configuration**
+  - *Refs*: REQ-3, SEC-4, OPS-1
+  - *Files*: create `.env.example`, `src/app/config/**`, configuration tests, updater configuration placeholder
+  - *Pre-check*: confirm no secrets or production endpoint are present in Git history/worktree
+  - *Verify*: valid environments load; missing/invalid values fail closed; tests prove secrets cannot be part of public config
+  - *Commit*: `feat(desktop-workspace/0.3): validate runtime configuration`
+
+- [ ] **TASK-0.4 — Establish least-privilege native security commands**
+  - *Refs*: REQ-4, SEC-1, SEC-2, SEC-4
+  - *Files*: create `src-tauri/capabilities/**`, `src-tauri/src/security/**`, `src-tauri/src/commands/**`, security ADR
+  - *Pre-check*: load current official Tauri 2 capabilities, secure-storage, CSP, and updater documentation
+  - *Verify*: capability audit shows default deny, no generic shell permission, scoped filesystem access, typed command input validation, and secret redaction tests
+  - *Commit*: `feat(desktop-workspace/0.4): add native security boundary`
+
+## Phase 0B: Data, API, Sync, and Shell
+
+- [ ] **TASK-0.5 — Add local SQLite migrations and repositories**
+  - *Refs*: REQ-6, REL-1, PRIV-1; Design §Local SQLite Design
+  - *Files*: create `src/db/**`, `src/services/storage/**`, migration fixtures/tests, local-data ADR
+  - *Pre-check*: confirm every proposed table is local infrastructure rather than a duplicate parent domain owner
+  - *Verify*: migrations apply to empty and prior-version fixtures; parameterized repository tests pass; auth secrets cannot be persisted
+  - *Commit*: `feat(desktop-workspace/0.5): add local cache database`
+
+- [ ] **TASK-0.6 — Implement the offline operation state machine**
+  - *Refs*: REQ-7, REL-1, REL-2
+  - *Files*: create `src/services/sync/**`, state-machine tests, sync ADR
+  - *Pre-check*: confirm database tables and transaction APIs from TASK-0.5 match the design
+  - *Verify*: tests cover pending, retry, complete, conflict, failure, cancellation, dependency ordering, and no-silent-overwrite rules
+  - *Commit*: `feat(desktop-workspace/0.6): define conflict-safe sync queue`
+
+- [ ] **TASK-0.7 — Implement the typed API transport foundation**
+  - *Refs*: REQ-5, INT-2, INT-6, PERF-3
+  - *Files*: create `src/services/api/**`, transport fixtures/tests, API ADR
+  - *Pre-check*: compare the parent response envelope, `src/lib/api-client.ts`, audited OpenAPI metadata, and representative route responses
+  - *Verify*: tests cover validation, cancellation, timeout, safe retry, envelope variants, 401/403, rate limit, offline, malformed response, and redacted error handling
+  - *Commit*: `feat(desktop-workspace/0.7): add validated API transport`
+
+- [ ] **TASK-0.8 — Build the authentication interface shell**
+  - *Refs*: REQ-4, REQ-13, INT-1, INT-5
+  - *Files*: create `src/features/auth/**`, `src/services/auth/**`, auth adapter tests, feature flag
+  - *Pre-check*: confirm production auth is disabled and review the current parent login/me/logout route behavior without changing it
+  - *Verify*: login/session/logout ports are testable; secrets never enter persistent webview state; production authentication remains gated pending TASK-1.3
+  - *Commit*: `feat(desktop-workspace/0.8): add gated auth shell`
+
+- [ ] **TASK-0.9 — Build the accessible desktop application shell**
+  - *Refs*: REQ-2, A11Y-1, PERF-1, PERF-2
+  - *Files*: create router/providers/layouts, navigation, command palette, Command Centre placeholder, error and sync-status components/tests
+  - *Pre-check*: verify brief navigation labels and ensure no later-phase feature is represented as functional
+  - *Verify*: protected-route, keyboard, focus, empty/loading/error, responsive layout, and sync/connectivity tests pass; performance measurement harness exists
+  - *Commit*: `feat(desktop-workspace/0.9): add accessible desktop shell`
+
+- [ ] **TASK-0.10 — Add structured logging and redaction**
+  - *Refs*: REQ-8, OPS-1, PRIV-1
+  - *Files*: create `src/services/observability/**`, Rust log bridge, redaction tests, observability ADR
+  - *Pre-check*: inventory all Phase 0 error boundaries and native command failure paths
+  - *Verify*: tests prove credentials, pricing, document content, and personal values are redacted; user-visible errors remain generic and actionable
+  - *Commit*: `feat(desktop-workspace/0.10): add redacted observability`
+
+- [ ] **TASK-0.11 — Configure CI and contributor documentation**
+  - *Refs*: REQ-9, REQ-16, SEC-4
+  - *Files*: create `.github/workflows/ci.yml`, update `README.md`, create development/release docs
+  - *Pre-check*: confirm agent build restrictions and decide which Windows package check requires human/approved-CI execution
+  - *Verify*: CI syntax is valid; required non-build checks are represented; signing secrets are referenced only by secret names; contributor setup is reproducible
+  - *Commit*: `chore(desktop-workspace/0.11): document and automate checks`
+
+### Phase 0 Evaluation Gate
+
+- [ ] **TASK-0.12 — Evaluate Phase 0 foundation**
+  - *Refs*: REQ-1 through REQ-9, REQ-16; Design §Testing and Validation Plan
+  - *Files*: update `INTEGRATION_EVAL.md`, `tasks.md`, `SPEC_CONTRACT.md`
+  - *Pre-check*: read every Phase 0 requirement and collect command/test evidence
+  - *Verify*: all Phase 0 checks pass; human/approved Windows packaging evidence is attached or the task remains incomplete
+  - *Commit*: `docs(desktop-workspace/0.12): record phase zero evaluation`
+
+## Phase 1: Parent Data and API Audit
+
+- [ ] **TASK-1.1 — Pin and document the parent audit baseline**
+  - *Refs*: REQ-10, REQ-11, INT-7
+  - *Files*: create `docs/audits/parent-baseline.md`
+  - *Pre-check*: confirm parent remote, branch, commit SHA, working-tree state, and frozen registry version
+  - *Verify*: another contributor can check out the exact audited parent state; unrelated worktree drift is disclosed separately
+  - *Commit*: `docs(desktop-workspace/1.1): pin parent audit baseline`
+
+- [ ] **TASK-1.2 — Inventory canonical parent data models**
+  - *Refs*: REQ-10, REQ-12, INT-3
+  - *Files*: create `docs/audits/model-inventory.md` and optional generated inventory JSON
+  - *Pre-check*: enumerate domain schemas and generated schema, treating domain files as canonical and backups as non-authoritative
+  - *Verify*: all required desktop entities map to a canonical model, local projection, confirmed gap, or explicit deferred status with path evidence
+  - *Commit*: `docs(desktop-workspace/1.2): inventory parent models`
+
+- [ ] **TASK-1.3 — Audit authentication and subscription contracts**
+  - *Refs*: REQ-4, REQ-13, INT-1, INT-5
+  - *Files*: create `docs/audits/auth-subscription-contract.md`, approved auth ADR update, contract fixtures
+  - *Pre-check*: inspect login/me/logout, JWT request verification behavior, CSRF, middleware, feature-access, and subscription routes/tests at the pinned SHA
+  - *Verify*: document token/cookie transport, expiry/renewal, CSRF, logout/revocation, device/account switching, entitlement checks, error cases, and a production enable/blocked decision
+  - *Commit*: `docs(desktop-workspace/1.3): decide native auth contract`
+
+- [ ] **TASK-1.4 — Inventory relevant parent endpoints and OpenAPI drift**
+  - *Refs*: REQ-11, INT-2, INT-6
+  - *Files*: create `docs/audits/endpoint-inventory.md` and optional generated inventory JSON
+  - *Pre-check*: enumerate route handlers and compare them with both parent OpenAPI documents and representative tests
+  - *Verify*: every Phase 2 dependency records route, method, auth, schemas, pagination, idempotency/CSRF, evidence path, stability, and missing capability; undocumented assumptions are labelled
+  - *Commit*: `docs(desktop-workspace/1.4): inventory parent endpoints`
+
+- [ ] **TASK-1.5 — Produce cross-domain desktop mappings**
+  - *Refs*: REQ-12, INT-3, INT-4, INT-8
+  - *Files*: create `docs/audits/domain-mappings.md`
+  - *Pre-check*: load model and endpoint inventories and the canonical parent tender-document architecture before mapping document flows
+  - *Verify*: company/vault, tender/matching, supplier, buyer, award, workspace, document, subscription, and notification needs each map to source, endpoint, local projection, provenance, and access rule
+  - *Commit*: `docs(desktop-workspace/1.5): map desktop domains`
+
+- [ ] **TASK-1.6 — Create the capability gap report**
+  - *Refs*: REQ-14, INT-7
+  - *Files*: create `docs/audits/workspace-gap-report.md`
+  - *Pre-check*: search parent routes, services, components, specs, and TODOs for every apparent gap
+  - *Verify*: each gap is classified client-only, enhance endpoint, new endpoint, additive model, deferred, or rejected duplication, with evidence, risk, owner, and approval boundary
+  - *Commit*: `docs(desktop-workspace/1.6): classify capability gaps`
+
+- [ ] **TASK-1.7 — Define the Phase 2 vertical slice**
+  - *Refs*: REQ-15, all Phase 0–1 outputs
+  - *Files*: create `docs/audits/phase-2-plan.md`; create a new Phase 2 spec only after user direction
+  - *Pre-check*: confirm Phase 0 evaluation and all Phase 1 audits are complete and internally consistent
+  - *Verify*: plan contains scope/non-goals, dependencies, feature flags, parent proposals, file impact, acceptance criteria, tests, rollout, rollback, and human approval gates
+  - *Commit*: `docs(desktop-workspace/1.7): plan phase two slice`
+
+### Final Evaluation Gate
+
+- [ ] **TASK-1.8 — Complete final integration evaluation**
+  - *Refs*: all requirements and success criteria
+  - *Files*: update `requirements.md`, `tasks.md`, `SPEC_CONTRACT.md`, `INTEGRATION_EVAL.md`
+  - *Pre-check*: audit task/contract parity and trace every requirement to evidence
+  - *Verify*: all checks pass, no parent file was modified, commit history is task-scoped, and the contract records PASS or a precise blocker
+  - *Commit*: `docs(desktop-workspace/1.8): complete integration evaluation`
