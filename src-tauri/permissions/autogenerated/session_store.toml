@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-session-store"
+description = "Enables the session_store command without any pre-configured scope."
+commands.allow = ["session_store"]
+
+[[permission]]
+identifier = "deny-session-store"
+description = "Denies the session_store command without any pre-configured scope."
+commands.deny = ["session_store"]
