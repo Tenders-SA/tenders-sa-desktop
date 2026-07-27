@@ -38,6 +38,7 @@
 - [ ] Local schema contains no duplicate server authority and no auth tokens
 - [ ] Sync queue covers retry, dependency, conflict, failure, cancellation, and idempotency
 - [ ] API transport covers runtime validation, cancellation, timeout, envelope/error variants, and safe retries
+- [ ] Dark design-system tokens are complete, single-theme only, brand-aligned, and pass automated WCAG 2.2 AA contrast checks on every surface/interactive-state pairing
 - [ ] Production authentication remains gated until its contract is approved
 - [ ] Shell navigation, protected routing, keyboard/focus, errors, and sync status pass tests
 - [ ] Logs redact credentials, pricing, document content, and personal data

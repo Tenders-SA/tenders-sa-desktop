@@ -63,42 +63,49 @@
   - *Verify*: tests cover validation, cancellation, timeout, safe retry, envelope variants, 401/403, rate limit, offline, malformed response, and redacted error handling
   - *Commit*: `feat(desktop-workspace/0.7): add validated API transport`
 
-- [ ] **TASK-0.8 — Build the authentication interface shell**
+- [ ] **TASK-0.8 — Establish the dark design system and token foundation**
+  - *Refs*: REQ-17, A11Y-1; Design §Design System and Theming
+  - *Files*: create `src/styles/tokens.css`, extend `tailwind.config.ts`, create `docs/architecture/design-system.md`
+  - *Pre-check*: confirm the parent web platform's brand tokens in `src/app/globals.css` (`--primary`, `--accent`, `--info`, success/warning/error/destructive) as the source hues; confirm shadcn/ui theming conventions
+  - *Verify*: every token pair (background/foreground, card, popover, sidebar, primary, secondary, muted, accent, destructive, success/warning/error/info, border, input, ring, chart-1..5) is defined for the single dark theme only; automated contrast checks pass WCAG 2.2 AA on every defined surface/interactive-state pairing; no light-theme tokens, `.dark` class, or `prefers-color-scheme` branching is introduced
+  - *Commit*: `feat(desktop-workspace/0.8): add dark design system tokens`
+
+- [ ] **TASK-0.9 — Build the authentication interface shell**
   - *Refs*: REQ-4, REQ-13, INT-1, INT-5
   - *Files*: create `src/features/auth/**`, `src/services/auth/**`, auth adapter tests, feature flag
-  - *Pre-check*: confirm production auth is disabled and review the current parent login/me/logout route behavior without changing it
-  - *Verify*: login/session/logout ports are testable; secrets never enter persistent webview state; production authentication remains gated pending TASK-1.3
-  - *Commit*: `feat(desktop-workspace/0.8): add gated auth shell`
+  - *Pre-check*: confirm production auth is disabled, confirm TASK-0.8 design tokens are available, and review the current parent login/me/logout route behavior without changing it
+  - *Verify*: login/session/logout ports are testable; secrets never enter persistent webview state; production authentication remains gated pending TASK-1.3; the login shell renders using design-system tokens only
+  - *Commit*: `feat(desktop-workspace/0.9): add gated auth shell`
 
-- [ ] **TASK-0.9 — Build the accessible desktop application shell**
+- [ ] **TASK-0.10 — Build the accessible desktop application shell**
   - *Refs*: REQ-2, A11Y-1, PERF-1, PERF-2
   - *Files*: create router/providers/layouts, navigation, command palette, Command Centre placeholder, error and sync-status components/tests
-  - *Pre-check*: verify brief navigation labels and ensure no later-phase feature is represented as functional
-  - *Verify*: protected-route, keyboard, focus, empty/loading/error, responsive layout, and sync/connectivity tests pass; performance measurement harness exists
-  - *Commit*: `feat(desktop-workspace/0.9): add accessible desktop shell`
+  - *Pre-check*: verify brief navigation labels, confirm TASK-0.8 design tokens are available, and ensure no later-phase feature is represented as functional
+  - *Verify*: protected-route, keyboard, focus, empty/loading/error, responsive layout, and sync/connectivity tests pass; performance measurement harness exists; shell renders using design-system tokens only
+  - *Commit*: `feat(desktop-workspace/0.10): add accessible desktop shell`
 
-- [ ] **TASK-0.10 — Add structured logging and redaction**
+- [ ] **TASK-0.11 — Add structured logging and redaction**
   - *Refs*: REQ-8, OPS-1, PRIV-1
   - *Files*: create `src/services/observability/**`, Rust log bridge, redaction tests, observability ADR
   - *Pre-check*: inventory all Phase 0 error boundaries and native command failure paths
   - *Verify*: tests prove credentials, pricing, document content, and personal values are redacted; user-visible errors remain generic and actionable
-  - *Commit*: `feat(desktop-workspace/0.10): add redacted observability`
+  - *Commit*: `feat(desktop-workspace/0.11): add redacted observability`
 
-- [ ] **TASK-0.11 — Configure CI and contributor documentation**
+- [ ] **TASK-0.12 — Configure CI and contributor documentation**
   - *Refs*: REQ-9, REQ-16, SEC-4
   - *Files*: create `.github/workflows/ci.yml`, update `README.md`, create development/release docs
   - *Pre-check*: confirm agent build restrictions and decide which Windows package check requires human/approved-CI execution
   - *Verify*: CI syntax is valid; required non-build checks are represented; signing secrets are referenced only by secret names; contributor setup is reproducible
-  - *Commit*: `chore(desktop-workspace/0.11): document and automate checks`
+  - *Commit*: `chore(desktop-workspace/0.12): document and automate checks`
 
 ### Phase 0 Evaluation Gate
 
-- [ ] **TASK-0.12 — Evaluate Phase 0 foundation**
-  - *Refs*: REQ-1 through REQ-9, REQ-16; Design §Testing and Validation Plan
+- [ ] **TASK-0.13 — Evaluate Phase 0 foundation**
+  - *Refs*: REQ-1 through REQ-9, REQ-16, REQ-17; Design §Testing and Validation Plan
   - *Files*: update `INTEGRATION_EVAL.md`, `tasks.md`, `SPEC_CONTRACT.md`
   - *Pre-check*: read every Phase 0 requirement and collect command/test evidence
-  - *Verify*: all Phase 0 checks pass; human/approved Windows packaging evidence is attached or the task remains incomplete
-  - *Commit*: `docs(desktop-workspace/0.12): record phase zero evaluation`
+  - *Verify*: all Phase 0 checks pass, including dark design-token contrast evidence; human/approved Windows packaging evidence is attached or the task remains incomplete
+  - *Commit*: `docs(desktop-workspace/0.13): record phase zero evaluation`
 
 ## Phase 1: Parent Data and API Audit
 

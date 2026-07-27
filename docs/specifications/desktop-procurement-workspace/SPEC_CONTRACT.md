@@ -24,6 +24,7 @@ Create the production-oriented foundation for a Tauri 2 procurement desktop clie
 - No automatic submission, pricing approval, partner commitment, or compliance override.
 - Original product prompt remains verbatim under `docs/prompts/`.
 - A Windows release package/build is verified by a human or approved CI gate under repository rules.
+- The desktop application ships a single dark theme only, no light-theme variant. Colors derive from the existing web platform's brand hues (emerald primary, gold accent, blue info) re-tuned for dark-surface WCAG 2.2 AA contrast.
 
 ## INTEGRATION WARNINGS
 
@@ -43,11 +44,12 @@ Create the production-oriented foundation for a Tauri 2 procurement desktop clie
 - [ ] TASK-0.5 — Add local SQLite migrations and repositories
 - [ ] TASK-0.6 — Implement the offline operation state machine
 - [ ] TASK-0.7 — Implement the typed API transport foundation
-- [ ] TASK-0.8 — Build the authentication interface shell
-- [ ] TASK-0.9 — Build the accessible desktop application shell
-- [ ] TASK-0.10 — Add structured logging and redaction
-- [ ] TASK-0.11 — Configure CI and contributor documentation
-- [ ] TASK-0.12 — Evaluate Phase 0 foundation
+- [ ] TASK-0.8 — Establish the dark design system and token foundation
+- [ ] TASK-0.9 — Build the authentication interface shell
+- [ ] TASK-0.10 — Build the accessible desktop application shell
+- [ ] TASK-0.11 — Add structured logging and redaction
+- [ ] TASK-0.12 — Configure CI and contributor documentation
+- [ ] TASK-0.13 — Evaluate Phase 0 foundation
 - [ ] TASK-1.1 — Pin and document the parent audit baseline
 - [ ] TASK-1.2 — Inventory canonical parent data models
 - [ ] TASK-1.3 — Audit authentication and subscription contracts
