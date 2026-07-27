@@ -20,12 +20,13 @@
   - *Commit*: `feat(desktop-workspace/0.1): scaffold Tauri workspace`
   - *Evidence*: scaffolded via `create-tauri-app` (Tauri 2, React 19, strict TypeScript, Vite 7). `pnpm typecheck`, `pnpm lint`, and `pnpm build` pass. `cargo check --manifest-path src-tauri/Cargo.toml` and `cargo fmt --check` pass (required installing `libgtk-3-dev`, `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` in the sandbox — Tauri's Linux backend needs these for `cargo check` to compile at all; they are not part of the Windows-only v1 product target). No release/bundle build was run, per the Windows packaging gate in `AGENTS.md` and `SPEC_CONTRACT.md`. Demo `greet` command and default template UI were removed to avoid presenting placeholder functionality as real (design.md: "avoid empty architecture theatre"). Bundle targets in `tauri.conf.json` are restricted to `nsis`/`msi` (Windows-only, REQ non-goal).
 
-- [ ] **TASK-0.2 — Configure frontend quality and test tooling**
+- [x] **TASK-0.2 — Configure frontend quality and test tooling**
   - *Refs*: REQ-1, REQ-9, A11Y-1
   - *Files*: create lint/format/test configs, `src/tests/**`, shared test setup
   - *Pre-check*: inspect TASK-0.1 scripts and avoid overlapping formatter/linter ownership
   - *Verify*: formatting check, lint, TypeScript check, and one smoke unit/component test pass
   - *Commit*: `chore(desktop-workspace/0.2): add quality gates`
+  - *Evidence*: added Prettier (`.prettierrc.json`, `.prettierignore` — spec docs under `docs/` excluded from automated formatting), `eslint-config-prettier` to avoid stylistic conflicts with TASK-0.1's ESLint config, and `eslint-plugin-jsx-a11y` recommended rules for A11Y-1. Added Vitest + Testing Library (`src/tests/setup.ts`, `src/tests/App.test.tsx`) via a `test` block in `vite.config.ts`, no separate config to avoid duplicate tool ownership. `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` (1 passing smoke test) all pass; `pnpm build` and `pnpm rust:check` re-verified unaffected.
 
 - [ ] **TASK-0.3 — Implement validated runtime configuration**
   - *Refs*: REQ-3, SEC-4, OPS-1
