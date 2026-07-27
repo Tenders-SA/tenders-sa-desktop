@@ -40,7 +40,7 @@ Create the production-oriented foundation for a Tauri 2 procurement desktop clie
 
 - [x] TASK-0.1 — Scaffold the Tauri 2 workspace
 - [x] TASK-0.2 — Configure frontend quality and test tooling
-- [ ] TASK-0.3 — Implement validated runtime configuration
+- [x] TASK-0.3 — Implement validated runtime configuration
 - [ ] TASK-0.4 — Establish least-privilege native security commands
 - [ ] TASK-0.5 — Add local SQLite migrations and repositories
 - [ ] TASK-0.6 — Implement the offline operation state machine

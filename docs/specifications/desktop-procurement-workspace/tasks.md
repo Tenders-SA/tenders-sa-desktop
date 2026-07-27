@@ -28,12 +28,13 @@
   - *Commit*: `chore(desktop-workspace/0.2): add quality gates`
   - *Evidence*: added Prettier (`.prettierrc.json`, `.prettierignore` — spec docs under `docs/` excluded from automated formatting), `eslint-config-prettier` to avoid stylistic conflicts with TASK-0.1's ESLint config, and `eslint-plugin-jsx-a11y` recommended rules for A11Y-1. Added Vitest + Testing Library (`src/tests/setup.ts`, `src/tests/App.test.tsx`) via a `test` block in `vite.config.ts`, no separate config to avoid duplicate tool ownership. `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, and `pnpm test` (1 passing smoke test) all pass; `pnpm build` and `pnpm rust:check` re-verified unaffected.
 
-- [ ] **TASK-0.3 — Implement validated runtime configuration**
+- [x] **TASK-0.3 — Implement validated runtime configuration**
   - *Refs*: REQ-3, SEC-4, OPS-1
   - *Files*: create `.env.example`, `src/app/config/**`, configuration tests, updater configuration placeholder
   - *Pre-check*: confirm no secrets or production endpoint are present in Git history/worktree
   - *Verify*: valid environments load; missing/invalid values fail closed; tests prove secrets cannot be part of public config
   - *Commit*: `feat(desktop-workspace/0.3): validate runtime configuration`
+  - *Evidence*: `src/app/config/schema.ts` defines a strict Zod schema (environment, HTTPS API base URL with a localhost-only http exception, allowed origins, feature flags defaulting risky/incomplete modules off, telemetry + redaction mode, an updater channel/public-key placeholder, and request timeout/retry bounds). `src/app/config/load-config.ts` builds the config candidate from an explicit VITE_-prefixed allowlist — no `...env` spread — so unrelated values (including anything secret-shaped) in the same `.env` file can never reach the parsed config, and throws a `ConfigError` listing every issue when required values are missing or invalid (fail closed). `src/tests/config.test.ts` (7 tests) proves valid-load, default-off feature flags, fail-closed on missing/invalid/non-https-production values, and that secret-shaped extra env keys never appear in the output. Config is not yet imported by `main.tsx`/`App.tsx` — wiring it into the running shell belongs to the tasks that actually consume it (API transport, auth, desktop shell), consistent with design.md's "avoid empty architecture theatre." Pre-check: `grep` across `src/`, `.env.example`, and Tauri config for credential/production-endpoint patterns found none. Verified: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` (8 passing), `pnpm build`, and `pnpm rust:check` all pass.
 
 - [ ] **TASK-0.4 — Establish least-privilege native security commands**
   - *Refs*: REQ-4, SEC-1, SEC-2, SEC-4
