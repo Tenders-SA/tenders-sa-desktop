@@ -6,6 +6,7 @@ fn main() {
             "session_clear",
             "encrypt_value",
             "decrypt_value",
+            "log_event",
         ]),
     ))
     .expect("failed to run tauri-build");

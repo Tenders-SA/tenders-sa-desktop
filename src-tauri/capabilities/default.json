@@ -10,6 +10,7 @@
     "allow-session-clear",
     "allow-encrypt-value",
     "allow-decrypt-value",
+    "allow-log-event",
     "sql:default",
     "sql:allow-execute"
   ]

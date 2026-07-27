@@ -1,5 +1,6 @@
 mod commands;
 mod db;
+mod observability;
 mod security;
 
 use security::{OsKeychain, SecretStore};
@@ -19,6 +20,7 @@ pub fn run() {
             commands::session::session_clear,
             commands::vault::encrypt_value,
             commands::vault::decrypt_value,
+            commands::log::log_event,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

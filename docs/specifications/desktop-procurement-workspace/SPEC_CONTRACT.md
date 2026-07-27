@@ -46,10 +46,10 @@ Create the production-oriented foundation for a Tauri 2 procurement desktop clie
 - [x] TASK-0.6 — Implement the offline operation state machine
 - [x] TASK-0.7 — Implement the typed API transport foundation (pre-check partly satisfied; parent-internal contract remains UNCONFIRMED — see tasks.md evidence)
 - [x] TASK-0.8 — Establish the dark design system and token foundation
-- [ ] TASK-0.9 — Build the authentication interface shell
-- [ ] TASK-0.10 — Build the accessible desktop application shell
-- [ ] TASK-0.11 — Add structured logging and redaction
-- [ ] TASK-0.12 — Configure CI and contributor documentation
+- [x] TASK-0.9 — Build the authentication interface shell (pre-check partly blocked; parent auth contract UNCONFIRMED — see tasks.md evidence)
+- [x] TASK-0.10 — Build the accessible desktop application shell
+- [x] TASK-0.11 — Add structured logging and redaction
+- [x] TASK-0.12 — Configure CI and contributor documentation
 - [ ] TASK-0.13 — Evaluate Phase 0 foundation
 - [ ] TASK-1.1 — Pin and document the parent audit baseline
 - [ ] TASK-1.2 — Inventory canonical parent data models
