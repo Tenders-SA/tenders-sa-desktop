@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "Tenders-SA Desktop procurement workspace (Tauri 2 + React)",
   "type": "module",
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
