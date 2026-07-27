@@ -45,6 +45,7 @@
 - No automatic bid submission, pricing approval, partner commitment, or compliance override.
 - No Electron fallback unless a documented and approved Tauri blocker is proven.
 - No production credentials, production write operations, or mock endpoint presented as a production contract.
+- No macOS or Linux build, packaging, or signing target in this contract. Windows is the only supported platform for v1; cross-platform support is a later, separately approved specification.
 
 ## Functional Requirements
 
