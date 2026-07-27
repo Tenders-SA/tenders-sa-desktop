@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Least-privilege capability for the main window: core app/window basics plus the explicit native security commands it needs. No shell, filesystem, SQL, or URL-opening access is granted; those are added only by the task that needs them, scoped to what it needs.",
+  "description": "Least-privilege capability for the main window: core app/window basics, the explicit native security commands, and SQL access to the single local application database. No shell, filesystem, or URL-opening access is granted; those are added only by the task that needs them, scoped to what it needs.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -9,6 +9,8 @@
     "allow-session-load",
     "allow-session-clear",
     "allow-encrypt-value",
-    "allow-decrypt-value"
+    "allow-decrypt-value",
+    "sql:default",
+    "sql:allow-execute"
   ]
 }

@@ -46,12 +46,13 @@
 
 ## Phase 0B: Data, API, Sync, and Shell
 
-- [ ] **TASK-0.5 — Add local SQLite migrations and repositories**
+- [x] **TASK-0.5 — Add local SQLite migrations and repositories**
   - *Refs*: REQ-6, REL-1, PRIV-1; Design §Local SQLite Design
   - *Files*: create `src/db/**`, `src/services/storage/**`, migration fixtures/tests, local-data ADR
   - *Pre-check*: confirm every proposed table is local infrastructure rather than a duplicate parent domain owner
   - *Verify*: migrations apply to empty and prior-version fixtures; parameterized repository tests pass; auth secrets cannot be persisted
   - *Commit*: `feat(desktop-workspace/0.5): add local cache database`
+  - *Evidence*: `docs/architecture/local-data.md` records the full ADR, including the pre-check table-by-table against design.md's Canonical Ownership table. `src-tauri/migrations/{0001_init,0002_add_lookup_indexes}.sql` define all six local tables via `tauri-plugin-sql` (no hand-rolled `schema_migrations` ledger -- the plugin already tracks applied migrations, documented as a deliberate deviation). `src-tauri/src/db/mod.rs` tests apply the same SQL directly via `rusqlite` (dev-only) against a real in-memory database: empty-apply, upgrade-from-0001-only fixture without data loss, and the `sync_operations` CHECK/UNIQUE constraints (13 Rust tests total). `src/db/executor.ts`'s `SqlExecutor` interface plus a recording fake let `src/tests/db-repositories.test.ts` assert repositories (`cache_entries`, `local_preferences`, `sync_operations`) bind values as parameters rather than string-interpolating them. `src/services/storage/cache.ts` routes `sensitive` payloads through TASK-0.4's `encrypt_value`/`decrypt_value` before they ever reach a SQL parameter; `src/tests/storage-cache.test.ts` asserts a raw secret string never appears in the recorded SQL call. `recent_records`, `local_file_references`, and `sync_conflicts` get schema + migration only, no repository yet -- their query functions arrive with the task that first consumes them (documented in the ADR). Also removed the unused `@tauri-apps/plugin-opener`/`tauri-plugin-opener` leftover from the TASK-0.4 capability removal. Verified: `cargo check`, `cargo fmt --check`, `cargo test` (13 passing); `pnpm format:check`/`lint`/`typecheck`/`test` (21 passing)/`build` all pass.
 
 - [ ] **TASK-0.6 — Implement the offline operation state machine**
   - *Refs*: REQ-7, REL-1, REL-2
