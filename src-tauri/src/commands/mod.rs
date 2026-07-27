@@ -2,5 +2,6 @@
 //! arguments and returns a redacted [`crate::security::SecurityError`]
 //! on failure; nothing here trusts webview input implicitly.
 
+pub mod log;
 pub mod session;
 pub mod vault;

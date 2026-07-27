@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "../../components/common/ErrorBoundary";
+import { logger } from "../../services/observability";
 
 function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -22,7 +23,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createQueryClient);
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary
+      onError={(error) =>
+        // The redactor reduces the Error to its class name; the
+        // message is dropped because it can quote payload content.
+        logger.error("shell.render.crashed", { error })
+      }
+    >
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </ErrorBoundary>
   );
