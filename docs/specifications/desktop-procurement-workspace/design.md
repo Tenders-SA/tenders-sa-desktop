@@ -40,6 +40,65 @@ Application services
 
 The webview never receives signing keys or persistent raw credentials. Rust commands expose narrow operations such as `session_store`, `session_load`, `session_clear`, and encrypted-value operations. If the audited parent contract requires a bearer token for fetch, the design review must decide whether requests run in Rust or whether a short-lived token may be returned to memory; persistent storage in JavaScript remains prohibited.
 
+## Design System and Theming
+
+- **Decision**: single dark-only theme. No light-theme token set is built or maintained. This is a deliberate departure from the parent web platform, which is light-only; the desktop client is a distinct, dense, professional operations tool rather than a marketing surface.
+- **Brand alignment**: hue values are inherited from the parent web palette (`src/app/globals.css`: `--primary: 160 84% 30%` emerald, `--accent: 48 96% 53%` gold, `--info: 221 83% 53%` blue, plus existing success/warning/error/destructive semantics) so the desktop client still reads as Tenders-SA. Lightness/saturation are re-tuned for dark-surface contrast rather than copied verbatim — the web platform's values were tuned for a white background and do not meet AA contrast on dark surfaces unchanged.
+- **Surface philosophy**: cool graphite/slate, not pure black and not navy. A neutral dark base keeps status colors (success/warning/error, match scores, readiness scores) legible and avoids a "consumer app" or branded-blue chrome feel, consistent with Design Brief §25 ("professional procurement operations platform," "avoid excessive marketing content").
+- **Density**: this is a data-dense tool (tables, comparison views, pricing schedules, kanban). Default spacing/radius are tightened relative to the web platform to read as a serious operations tool rather than a consumer product.
+
+### Color tokens (CSS custom properties, dark-only — no `.dark` class needed since it is the only theme)
+
+| Token | Value (HSL) | Purpose |
+|---|---|---|
+| `--background` | `220 18% 7%` | App base surface (graphite, not pure black) |
+| `--foreground` | `210 20% 92%` | Primary text |
+| `--card` | `220 16% 10%` | Elevated surface: cards, panels |
+| `--card-foreground` | `210 20% 92%` | Text on cards |
+| `--popover` | `220 16% 12%` | Dropdowns, command palette, tooltips |
+| `--popover-foreground` | `210 20% 94%` | Text on popovers |
+| `--sidebar-background` | `220 20% 6%` | Primary navigation rail (marginally darker than base) |
+| `--sidebar-foreground` | `215 15% 75%` | Sidebar labels (inactive) |
+| `--sidebar-primary` | `160 70% 45%` | Active sidebar item |
+| `--sidebar-primary-foreground` | `220 20% 6%` | Text on active sidebar item |
+| `--sidebar-border` | `220 15% 16%` | Sidebar divider |
+| `--primary` | `160 70% 42%` | Brand emerald, re-tuned lighter than web's 30% for dark-surface AA contrast |
+| `--primary-foreground` | `220 20% 6%` | Text/icons on primary-filled controls (dark-on-emerald reads cleaner than white-on-emerald at this lightness) |
+| `--secondary` | `220 14% 15%` | Secondary buttons, chips |
+| `--secondary-foreground` | `210 20% 92%` | Text on secondary controls |
+| `--muted` | `220 14% 13%` | Muted backgrounds (disabled rows, subtle panels) |
+| `--muted-foreground` | `215 12% 58%` | Secondary/help text |
+| `--accent` | `45 90% 58%` | Gold — used sparingly for highlights, awards, key metrics |
+| `--accent-foreground` | `220 20% 6%` | Text on gold-filled elements |
+| `--destructive` | `0 72% 58%` | Errors, blocking validation issues |
+| `--destructive-foreground` | `0 0% 98%` | Text on destructive controls |
+| `--success` | `160 65% 48%` | Requirement met, approved, passed checks |
+| `--warning` | `45 85% 58%` | Partially met, expiring documents, warnings |
+| `--error` | `0 72% 58%` | Missing/blocking, alias of destructive |
+| `--info` | `221 75% 62%` | Informational, notifications, links |
+| `--border` | `220 15% 17%` | Default hairline borders |
+| `--input` | `220 15% 19%` | Form control borders |
+| `--ring` | `160 70% 45%` | Focus ring — must remain visible on every surface for A11Y-1 |
+| `--overlay` | `220 30% 3% / 0.7` | Modal/dialog scrim |
+| `--chart-1` … `--chart-5` | `160 65% 48%`, `221 75% 62%`, `45 85% 58%`, `0 72% 58%`, `270 55% 68%` | Match score, buyer trend, and analytics visualisations |
+
+- All pairs above require an automated contrast check (text-on-surface ≥ 4.5:1 body / 3:1 large text, per A11Y-1) as part of TASK-0.8 verification, run against the actual rendered token values, not the table above by inspection alone.
+- Status colors (success/warning/error/info) must remain distinguishable without relying on hue alone — pair with icon/label, not color-only signaling, for readiness scores, compliance status, and validation results.
+
+### Typography and density
+
+- UI typeface: an accessible sans-serif suitable for dense tabular UI (system font stack or Inter-class font); avoid decorative or marketing-oriented type.
+- Tabular/numeric contexts (pricing schedules, match scores, reference numbers, currency, dates) use a monospace or tabular-figure variant so columns of numbers align.
+- Base radius is tightened relative to the web platform's `--radius: 0.625rem` — target `--radius: 0.375rem` for a precise, operations-tool feel rather than a soft consumer aesthetic. Component-level radius may vary (e.g. pills for status chips) but the default should not read as "rounded and friendly."
+- Elevation is communicated primarily through the `background` → `card` → `popover` lightness steps above plus a 1px border, not heavy drop shadows, which read poorly on dark surfaces.
+
+### Implementation approach
+
+- Tokens live in one CSS file consumed globally; there is no theme-switch mechanism, no `prefers-color-scheme` branching, and no stored theme preference, since dark is the only theme.
+- shadcn/ui components are generated/configured against these tokens directly (no separate light-mode token map to maintain).
+- Component-level Tailwind usage should reference semantic tokens (`bg-card`, `text-muted-foreground`, `border-border`) rather than raw color utilities, matching the parent web platform's existing convention.
+- Record the palette rationale, source hues, and contrast evidence in `docs/architecture/design-system.md` as the accepted ADR for TASK-0.8.
+
 ## Proposed Repository Structure
 
 ```text
@@ -67,6 +126,8 @@ src/
 │   ├── migrations/
 │   ├── repositories/
 │   └── schema/
+├── styles/
+│   └── tokens.css
 ├── hooks/
 ├── lib/
 ├── tests/
@@ -94,6 +155,8 @@ Only Phase 0 features are initially scaffolded. Later feature folders are create
 |---|---|---|
 | `package.json`, `vite.config.ts`, `tsconfig*.json` | Tooling | Strict TypeScript/Vite scripts and aliases |
 | `src/main.tsx`, `src/app/**` | UI foundation | Providers, routing, protected shell, errors |
+| `src/styles/tokens.css`, `tailwind.config.ts` (theme extension) | Design system | Single dark-only color/typography/spacing/elevation tokens |
+| `docs/architecture/design-system.md` | ADR | Palette source, dark-surface contrast tuning, contrast evidence |
 | `src/components/navigation/**` | UI | Sidebar and command-palette foundation |
 | `src/features/auth/**` | Feature | Disabled-by-default audited auth interface shell |
 | `src/features/command-centre/**` | Feature | Non-production placeholder default route |

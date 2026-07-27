@@ -28,6 +28,7 @@
 
 - Tauri 2, React, strict TypeScript, Rust, and Vite project foundation.
 - Accessible desktop shell and authentication interface shell.
+- Single dark-only design system and token foundation, brand-aligned to the existing Tenders-SA web palette.
 - Typed, validated API-client foundation with test adapters.
 - Secure runtime configuration and credential-storage abstractions.
 - SQLite cache/migration foundation and offline-operation schema boundaries.
@@ -44,6 +45,7 @@
 - No automatic bid submission, pricing approval, partner commitment, or compliance override.
 - No Electron fallback unless a documented and approved Tauri blocker is proven.
 - No production credentials, production write operations, or mock endpoint presented as a production contract.
+- No macOS or Linux build, packaging, or signing target in this contract. Windows is the only supported platform for v1; cross-platform support is a later, separately approved specification.
 
 ## Functional Requirements
 
@@ -63,6 +65,7 @@
 - [ ] **REQ-14 — Gap report**: Phase 1 shall classify each missing desktop capability as client-only, existing-endpoint enhancement, new parent endpoint, additive parent data model, deferred, or rejected duplication, with risk and proposed owner.
 - [ ] **REQ-15 — Phase 2 handoff**: the deliverable shall include an ordered Phase 2 plan for secure authentication and desktop shell integration, with acceptance criteria, parent dependencies, feature flags, and separate approval gates for any backend or frozen-module work.
 - [ ] **REQ-16 — Brief traceability**: the original prompt shall remain verbatim under `docs/prompts/`, and every Phase 0–1 task shall trace to these requirements without claiming later roadmap phases are implemented.
+- [ ] **REQ-17 — Design system and theming**: the repository shall define a single dark-only design system (color tokens, typography, spacing, elevation, and component theming) derived from the existing Tenders-SA web brand palette (emerald primary, gold accent, blue info, and existing success/warning/error semantics in `src/app/globals.css` of the parent repository), implemented as CSS custom properties consumed by Tailwind CSS and the shadcn/ui component layer, and documented in an accepted architecture decision record before TASK-0.9 (auth interface shell) or TASK-0.10 (desktop application shell) consumes it. No light-theme token set is introduced.
 
 ## Non-Functional Requirements
 
@@ -136,3 +139,4 @@
 - [ ] The model and endpoint inventories cover every Phase 2 dependency and identify provenance, auth, pagination, and stability.
 - [ ] The gap report contains no duplicate backend proposal where a suitable parent capability already exists.
 - [ ] Phase 2 has a reviewable vertical-slice plan and explicit parent-repository approval boundaries.
+- [ ] The dark design-system tokens are complete, single-theme only, and pass automated WCAG 2.2 AA contrast checks on every defined surface and interactive state.
