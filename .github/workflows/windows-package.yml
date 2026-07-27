@@ -1,0 +1,67 @@
+name: Windows package
+
+# MANUAL TRIGGER ONLY, deliberately.
+#
+# AGENTS.md and SPEC_CONTRACT.md both make a Windows release
+# package/build a human- or approved-CI gate. Running it automatically
+# on every push would defeat that gate, so this workflow only ever runs
+# when a person starts it, and it records who did.
+#
+# Signing is opt-in per run and reads secrets BY NAME ONLY (SEC-4).
+# No key material appears in this file, and none may be committed:
+# the private key lives solely in repository secrets.
+on:
+  workflow_dispatch:
+    inputs:
+      sign:
+        description: "Sign the updater artifacts (requires signing secrets to be configured)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build and package (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Record who requested this run
+        shell: bash
+        run: echo "Packaging requested by @${{ github.actor }} for ${{ github.ref }}"
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and bundle
+        run: pnpm run tauri build
+        env:
+          # Referenced by secret name only. When `sign` is false these
+          # resolve to empty and Tauri produces unsigned artifacts,
+          # which is the correct default for a test package.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: tenders-sa-desktop-windows
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
