@@ -1,0 +1,84 @@
+/**
+ * Tenders-SA Desktop design tokens (REQ-17).
+ *
+ * SINGLE DARK THEME ONLY. There is deliberately no light-theme token
+ * set, no `.dark` class, no `prefers-color-scheme` branching, and no
+ * stored theme preference -- dark is the only theme. Anything that
+ * reintroduces a second theme is a spec change, not an enhancement.
+ *
+ * Hues derive from the Tenders-SA web palette recorded in
+ * design.md (emerald primary, gold accent, blue info); lightness and
+ * saturation are re-tuned for dark-surface WCAG 2.2 AA contrast rather
+ * than copied, because the web values were tuned for a white
+ * background.
+ *
+ * Every pairing below is verified by an automated contrast check --
+ * see src/tests/design-tokens.test.ts, which parses THIS FILE rather
+ * than a duplicated copy of the values. Six of design.md's originally
+ * proposed values failed AA and were corrected; see
+ * docs/architecture/design-system.md for the evidence and rationale.
+ */
+
+:root {
+  /* Surfaces */
+  --background: 220 18% 7%;
+  --foreground: 210 20% 92%;
+  --card: 220 16% 10%;
+  --card-foreground: 210 20% 92%;
+  --popover: 220 16% 12%;
+  --popover-foreground: 210 20% 94%;
+
+  /* Navigation rail */
+  --sidebar-background: 220 20% 6%;
+  --sidebar-foreground: 215 15% 75%;
+  --sidebar-primary: 160 70% 45%;
+  --sidebar-primary-foreground: 220 20% 6%;
+  --sidebar-border: 220 15% 16%;
+
+  /* Brand */
+  --primary: 160 70% 42%;
+  --primary-foreground: 220 20% 6%;
+  --secondary: 220 14% 15%;
+  --secondary-foreground: 210 20% 92%;
+  --muted: 220 14% 13%;
+  --muted-foreground: 215 12% 58%;
+  --accent: 45 90% 58%;
+  --accent-foreground: 220 20% 6%;
+
+  /* Status.
+   * --destructive/--error are L 59% (not design.md's 58%): at 58% the
+   * colour fails AA as text on --card (4.39:1), and its foreground
+   * pairing failed at 3.87:1. --destructive-foreground is dark, not
+   * near-white: white-on-red only reaches AA if the red is darkened to
+   * ~35%, which is too dim to read as an alert on a dark surface. */
+  --destructive: 0 72% 59%;
+  --destructive-foreground: 220 20% 6%;
+  --success: 160 65% 48%;
+  --warning: 45 85% 58%;
+  --error: 0 72% 59%;
+  --info: 221 75% 62%;
+
+  /* Lines.
+   * --border is DECORATIVE ONLY (dividers, card edges). It is
+   * intentionally low-contrast and is exempt from WCAG 1.4.11, which
+   * covers information required to identify controls and their states.
+   * --input is the boundary of an actual form control, so it is a real
+   * 1.4.11 obligation and meets 3:1 against both --background and
+   * --card. Never use --border as the sole visual affordance of an
+   * interactive control; use --input. */
+  --border: 220 15% 17%;
+  --input: 220 15% 42%;
+  --ring: 160 70% 45%;
+  --overlay: 220 30% 3% / 0.7;
+
+  /* Data visualisation */
+  --chart-1: 160 65% 48%;
+  --chart-2: 221 75% 62%;
+  --chart-3: 45 85% 58%;
+  --chart-4: 0 72% 59%;
+  --chart-5: 270 55% 68%;
+
+  /* Density: tighter than the web platform's 0.625rem, for an
+   * operations tool rather than a consumer product. */
+  --radius: 0.375rem;
+}
