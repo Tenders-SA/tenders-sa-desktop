@@ -1,7 +1,9 @@
 node_modules/
 dist/
+dist-ssr/
 target/
 src-tauri/target/
+src-tauri/gen/schemas/
 .env
 .env.*
 !.env.example
@@ -12,3 +14,7 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 *.db
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.local

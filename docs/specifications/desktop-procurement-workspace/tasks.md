@@ -12,12 +12,13 @@
 
 ## Phase 0A: Repository and Native Foundation
 
-- [ ] **TASK-0.1 — Scaffold the Tauri 2 workspace**
+- [x] **TASK-0.1 — Scaffold the Tauri 2 workspace**
   - *Refs*: REQ-1, REQ-9; Design §Proposed Repository Structure
   - *Files*: create `package.json`, lockfiles, TypeScript/Vite config, `src/main.tsx`, `src-tauri/**`
   - *Pre-check*: verify the repository contains only approved documentation and load current official Tauri 2 project/security guidance
   - *Verify*: strict TypeScript configuration resolves; Rust project metadata is valid; lint/type/Rust-check scripts exist and run without a release build
   - *Commit*: `feat(desktop-workspace/0.1): scaffold Tauri workspace`
+  - *Evidence*: scaffolded via `create-tauri-app` (Tauri 2, React 19, strict TypeScript, Vite 7). `pnpm typecheck`, `pnpm lint`, and `pnpm build` pass. `cargo check --manifest-path src-tauri/Cargo.toml` and `cargo fmt --check` pass (required installing `libgtk-3-dev`, `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` in the sandbox — Tauri's Linux backend needs these for `cargo check` to compile at all; they are not part of the Windows-only v1 product target). No release/bundle build was run, per the Windows packaging gate in `AGENTS.md` and `SPEC_CONTRACT.md`. Demo `greet` command and default template UI were removed to avoid presenting placeholder functionality as real (design.md: "avoid empty architecture theatre"). Bundle targets in `tauri.conf.json` are restricted to `nsis`/`msi` (Windows-only, REQ non-goal).
 
 - [ ] **TASK-0.2 — Configure frontend quality and test tooling**
   - *Refs*: REQ-1, REQ-9, A11Y-1
