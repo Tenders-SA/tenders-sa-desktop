@@ -5,7 +5,7 @@
 ## Current Status
 
 - [x] Specification approved by user
-- [ ] Phase 0 foundation complete — all automated gates and Windows packaging pass; **blocked on application-launch confirmation and PERF-1 measurements** (see TASK-0.13 evidence)
+- [x] Phase 0 foundation complete
 - [ ] Phase 1 audit complete
 - [ ] Integration evaluation passed
 - [ ] All Phase 0–1 success criteria verified
@@ -112,13 +112,14 @@
 
 ### Phase 0 Evaluation Gate
 
-- [ ] **TASK-0.13 — Evaluate Phase 0 foundation**
+- [x] **TASK-0.13 — Evaluate Phase 0 foundation**
   - *Refs*: REQ-1 through REQ-9, REQ-16, REQ-17; Design §Testing and Validation Plan
   - *Files*: update `INTEGRATION_EVAL.md`, `tasks.md`, `SPEC_CONTRACT.md`
   - *Pre-check*: read every Phase 0 requirement and collect command/test evidence
   - *Verify*: all Phase 0 checks pass, including dark design-token contrast evidence; human/approved Windows packaging evidence is attached or the task remains incomplete
   - *Commit*: `docs(desktop-workspace/0.13): record phase zero evaluation`
   - *Evidence*: `INTEGRATION_EVAL.md` records the full Phase 0 evaluation at commit `ea02e08`. **All automated gates pass**: `pnpm format:check`/`lint`/`typecheck`/`test` (161 tests, 13 files)/`build`, and `cargo fmt --check`/`clippy -D warnings`/`test` (26 tests) — 187 tests total — plus CI run 30334729707 green on both jobs. **Windows packaging evidence exists**: two human-triggered `workflow_dispatch` runs by @freelancing-solutions succeeded — 30313966903 (`e0cd4c9`, 7.8 MB) and 30335441194 (`ea02e08`, 399 MB, NSIS + MSI). That satisfies the human/approved-CI packaging gate. **The task nonetheless remains incomplete, by its own rule.** Two things are not evidenced: (1) *launch* — the installer builds and packages, but nobody has installed and started the application; a green build proves compilation and bundling, not that the window opens; (2) *PERF-1* — no cold/warm start measurements exist for the agreed Windows 11 reference device, and figures from CI or a developer machine would not satisfy a target defined against that device. Additionally, three Phase 0 pre-checks were deferred into Phase 1 because `freelancing-solutions/tendersa` cannot be added to this session (cross-owner adds unsupported): the parent auth contract (TASK-0.9), the parent API envelope and `src/lib/api-client.ts` (TASK-0.7), and the parent brand hues in `src/app/globals.css` (TASK-0.8). Also recorded: the packaging runs measured the offline WebView2 installer's real cost at +391 MB rather than the ~127 MB estimated when it was approved, because NSIS and MSI each embed a copy — documentation corrected in commit `6cc3807`.
+  - *Update 2026-07-28 (resolved)*: **launch confirmed and PERF-1 met.** The user installed the packaged build, ran it, and confirmed cold start **under 3 seconds** against the 3-second target. An initial first-run launch measured ~5s; that figure carried one-time costs a steady-state cold start does not — WebView2 first-run initialisation and the initial SQLite migration — and is recorded because it will mislead anyone who re-measures on a fresh install. No threshold change was needed. TASK-0.13 and Phase 0 are complete.
 
 ## Phase 1: Parent Data and API Audit
 
