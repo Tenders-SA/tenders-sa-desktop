@@ -8,8 +8,8 @@
   product run. Windows is the only supported platform for v1 — macOS and
   Linux packaging are explicit non-goals of the current contract. See
   `requirements.md` §Supported platforms for why that floor, and note the
-  installer embeds the WebView2 offline installer (~127MB) so it works
-  without internet access.
+  installer embeds the WebView2 offline installer so it works without
+  internet access (measured artifact size ~399MB — see `docs/release.md`).
 
 ### Working on Linux or macOS
 
