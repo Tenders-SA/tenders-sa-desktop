@@ -2,7 +2,7 @@
 
 > Update this file during implementation. No implementation is complete until every applicable item passes and evidence is recorded.
 >
-> **Current status: Phase 0 evaluated with two named gaps.** Every automated gate passes and human-triggered Windows packaging evidence exists, but nobody has launched the installed application and no PERF-1 measurements have been taken on the reference device. Those two items are unchecked below, deliberately.
+> **Current status: Phase 0 evaluated with one open gap.** Every automated gate passes, human-triggered Windows packaging evidence exists, and the application has been confirmed to launch. The remaining gap is PERF-1: cold start measured at ~5s against a 3s target, warm start unmeasured. That deviation is recorded below rather than waived.
 
 ## Specification Validation
 
@@ -45,7 +45,7 @@
 - [x] Shell navigation, protected routing, keyboard/focus, errors, and sync status pass tests — 23 tests
 - [x] Logs redact credentials, pricing, document content, and personal data — allowlist-based redaction, re-applied independently on the Rust side; 35 tests
 - [x] CI and contributor documentation are reproducible — `docs/development.md` lists the exact commands CI runs
-- [ ] **Human or approved Windows CI evidence confirms package/build/launch success** — **PARTIAL. Build and package: confirmed. Launch: NOT confirmed.** Two human-triggered `workflow_dispatch` runs succeeded (below), but nobody has installed and started the application. A green build proves the code compiles and bundles; it does not prove the window opens.
+- [x] **Human or approved Windows CI evidence confirms package/build/launch success** — build and package via two human-triggered `workflow_dispatch` runs (below); **launch confirmed by the user on 2026-07-28**, who installed the package and reported the application opening in approximately 5 seconds.
 
 ## Phase 1 Evaluation
 
@@ -91,18 +91,18 @@ All commands run at commit `ea02e08`.
 | CI (automated) | [Actions run 30334729707](https://github.com/Tenders-SA/tenders-sa-desktop/actions/runs/30334729707) | PASS — both jobs | 2026-07-28 / `c7b763f` |
 | Windows package/build | [Actions run 30335441194](https://github.com/Tenders-SA/tenders-sa-desktop/actions/runs/30335441194), `workflow_dispatch` by @freelancing-solutions | PASS — NSIS + MSI produced, 399 MB artifact | 2026-07-28 / `ea02e08` |
 | Windows package (pre-offline-installer) | [Actions run 30313966903](https://github.com/Tenders-SA/tenders-sa-desktop/actions/runs/30313966903) | PASS — 7.8 MB artifact | 2026-07-27 / `e0cd4c9` |
-| **Windows launch** | Human install + start | **NOT DONE** | — |
-| **PERF-1 cold/warm start** | Windows 11 reference device | **NOT MEASURED** | — |
+| Windows launch | Human install + start, reported by user | PASS — application opens | 2026-07-28 / `ea02e08` |
+| **PERF-1 cold start** | Human observation on user's Windows machine | **~5s vs 3s target — DEVIATION** | 2026-07-28 / `ea02e08` |
+| **PERF-1 warm start** | Windows 11 reference device | **NOT MEASURED** | — |
 
 Test totals: **187** (161 TypeScript + 26 Rust).
 
 ## Result
 
-- **Status**: PHASE 0 EVALUATED — TWO GAPS OPEN
-- **Passing**: every automated gate, and human-triggered Windows packaging.
+- **Status**: PHASE 0 EVALUATED — ONE GAP OPEN (PERF-1)
+- **Passing**: every automated gate, human-triggered Windows packaging, and confirmed application launch.
 - **Remaining issues**:
-  1. **Application launch is unverified.** The installer builds; nobody has run it. Install the artifact from run 30335441194 and confirm the window opens.
-  2. **PERF-1 is unmeasured.** Cold-start ≤3s and warm-start ≤1.5s are defined against the agreed Windows 11 reference device. The harness (`src/lib/performance.ts`) records `tsa:time-to-interactive`; it deliberately asserts no threshold, because a figure from CI or a developer machine would be evidence of nothing.
-  3. **Three Phase 0 pre-checks were deferred to Phase 1** — the parent auth contract (TASK-0.9), the parent API envelope and `src/lib/api-client.ts` (TASK-0.7), and the parent brand hues in `src/app/globals.css` (TASK-0.8). All require a session started with `freelancing-solutions/tendersa` as its initial source.
+  1. **PERF-1 cold start misses its target.** Measured at approximately 5 seconds against a 3-second target. PERF-1 states that deviations "require recorded evidence and an approved threshold change", so this is recorded rather than waived. Two caveats on the measurement, both of which could move it: it was taken on the user's own machine rather than the agreed Windows 11 reference device, and a *first* launch includes one-time costs that a steady-state cold start does not — WebView2 first-run initialisation and the initial SQLite migration apply. **Warm start (1.5s target) has not been measured at all**, and is the figure users experience most often. Resolving this needs either a repeat measurement on the reference device, investigation to reach 3s, or an approved threshold change.
+  2. **Three Phase 0 pre-checks were deferred to Phase 1** — the parent auth contract (TASK-0.9), the parent API envelope and `src/lib/api-client.ts` (TASK-0.7), and the parent brand hues in `src/app/globals.css` (TASK-0.8). All require a session started with `freelancing-solutions/tendersa` as its initial source.
 - **Not a blocker but worth revisiting**: the offline WebView2 installer costs +391 MB, roughly three times the estimate it was approved on, because NSIS and MSI each embed a copy. Dropping one installer format would remove one copy.
 - **Approved by**: pending user review of this evaluation.
