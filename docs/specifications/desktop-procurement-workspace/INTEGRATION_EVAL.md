@@ -1,6 +1,8 @@
 # Integration Evaluation — Tenders-SA Desktop Procurement Workspace
 
-> Update this file during implementation. No implementation is complete until every applicable item passes and evidence is recorded. Current status reflects specification creation only.
+> Update this file during implementation. No implementation is complete until every applicable item passes and evidence is recorded.
+>
+> **Current status: Phase 0 evaluated with two named gaps.** Every automated gate passes and human-triggered Windows packaging evidence exists, but nobody has launched the installed application and no PERF-1 measurements have been taken on the reference device. Those two items are unchecked below, deliberately.
 
 ## Specification Validation
 
@@ -13,39 +15,41 @@
 - [x] Every task maps to requirements/design and includes files, pre-check, verification, and commit
 - [x] Contract task list mirrors tasks.md at specification creation
 - [x] Rollback, security, offline conflict, and compatibility constraints documented
-- [ ] User approved the specification
+- [x] User approved the specification — status set to `APPROVED` 2026-07-27
 
 ## Pre-Implementation Check
 
-- [ ] `SPEC_CONTRACT.md` status is `APPROVED`
-- [ ] Desktop worktree is clean except approved scope
-- [ ] Parent audit baseline commit is still available
-- [ ] Current official Tauri 2 documentation reviewed for scaffold, capabilities, SQL, secure storage, updater, and testing
-- [ ] All Phase 0 pattern references and planned paths remain valid
-- [ ] No unapproved parent repository edits are required
+- [x] `SPEC_CONTRACT.md` status is `APPROVED`
+- [x] Desktop worktree is clean except approved scope
+- [ ] Parent audit baseline commit is still available — **UNVERIFIED**. `freelancing-solutions/tendersa` cannot be added to this session (cross-owner adds unsupported), so `be09f9d51` could not be confirmed. Phase 1 must re-establish this from a session with parent access.
+- [x] Current official Tauri 2 documentation reviewed for scaffold, capabilities, SQL, secure storage, updater, and testing — **with a caveat**: `v2.tauri.app` is blocked by this environment's egress policy, so the pinned `tauri` 2.11.5 / `tauri-build` 2.6.3 / `tauri-utils` 2.9.3 crate sources under `~/.cargo/registry` were used instead. For a lockfile-pinned implementation that is the more exact source.
+- [x] All Phase 0 pattern references and planned paths remain valid
+- [x] No unapproved parent repository edits are required — no parent file was touched
 
 ## Phase 0A Evaluation
 
-- [ ] Tauri/React/Rust workspace is valid under non-release checks
-- [ ] Strict TypeScript, linting, formatting, tests, and Rust checks are configured
-- [ ] Runtime configuration validates and contains no secrets or hard-coded production endpoint
-- [ ] Capabilities are default-deny, command inputs validate, and no generic shell permission exists
-- [ ] Secure-storage and signed-update decisions are recorded
+- [x] Tauri/React/Rust workspace is valid under non-release checks — `cargo check`, `cargo fmt --check`, `pnpm typecheck`, `pnpm build` all pass
+- [x] Strict TypeScript, linting, formatting, tests, and Rust checks are configured — and enforced in CI on every push/PR
+- [x] Runtime configuration validates and contains no secrets or hard-coded production endpoint — allowlist-based loader, fails closed; 7 tests including a secret-non-leakage case
+- [x] Capabilities are default-deny, command inputs validate, and no generic shell permission exists — `core:default` plus six explicit `allow-*` command permissions and scoped `sql:` access; the scaffold's unscoped `tauri-plugin-opener` grant was removed
+- [x] Secure-storage and signed-update decisions are recorded — `docs/architecture/security.md`
 
 ## Phase 0B Evaluation
 
-- [ ] SQLite migrations pass empty and upgrade fixture tests
-- [ ] Local schema contains no duplicate server authority and no auth tokens
-- [ ] Sync queue covers retry, dependency, conflict, failure, cancellation, and idempotency
-- [ ] API transport covers runtime validation, cancellation, timeout, envelope/error variants, and safe retries
-- [ ] Dark design-system tokens are complete, single-theme only, brand-aligned, and pass automated WCAG 2.2 AA contrast checks on every surface/interactive-state pairing
-- [ ] Production authentication remains gated until its contract is approved
-- [ ] Shell navigation, protected routing, keyboard/focus, errors, and sync status pass tests
-- [ ] Logs redact credentials, pricing, document content, and personal data
-- [ ] CI and contributor documentation are reproducible
-- [ ] Human or approved Windows CI evidence confirms package/build/launch success
+- [x] SQLite migrations pass empty and upgrade fixture tests — applied against real in-memory SQLite via `rusqlite`, incl. CHECK/UNIQUE constraints
+- [x] Local schema contains no duplicate server authority and no auth tokens — table-by-table pre-check in `docs/architecture/local-data.md`
+- [x] Sync queue covers retry, dependency, conflict, failure, cancellation, and idempotency — 28 tests across state machine, ordering, and conflicts
+- [x] API transport covers runtime validation, cancellation, timeout, envelope/error variants, and safe retries — 16 tests; envelope verified against the live API, correcting design.md's sketch
+- [x] Dark design-system tokens are complete, single-theme only, brand-aligned, and pass automated WCAG 2.2 AA contrast checks on every surface/interactive-state pairing — 34 assertions parsing the shipped CSS; **six real AA failures in design.md's proposed palette were found and corrected**
+- [x] Production authentication remains gated until its contract is approved — gate requires both the feature flag *and* an audited adapter; no audited adapter exists
+- [x] Shell navigation, protected routing, keyboard/focus, errors, and sync status pass tests — 23 tests
+- [x] Logs redact credentials, pricing, document content, and personal data — allowlist-based redaction, re-applied independently on the Rust side; 35 tests
+- [x] CI and contributor documentation are reproducible — `docs/development.md` lists the exact commands CI runs
+- [ ] **Human or approved Windows CI evidence confirms package/build/launch success** — **PARTIAL. Build and package: confirmed. Launch: NOT confirmed.** Two human-triggered `workflow_dispatch` runs succeeded (below), but nobody has installed and started the application. A green build proves the code compiles and bundles; it does not prove the window opens.
 
 ## Phase 1 Evaluation
+
+Phase 1 has not started. Every item below remains open, and three Phase 0 pre-checks were deferred into it because the parent repository is unreachable from this session.
 
 - [ ] Parent repository URL, branch, SHA, registry version, and dirty-tree disclosure are recorded
 - [ ] Canonical model inventory covers all desktop Phase 2 dependencies
@@ -60,26 +64,45 @@
 
 ## Final Evaluation
 
-- [ ] Every REQ, NFR, INT, and success criterion has linked evidence
-- [ ] Task and contract checklists are identical
-- [ ] No task was skipped, reordered, or combined without approved spec revision
-- [ ] No parent Tier 1, Tier 2, or Tier 3 file was modified
-- [ ] No production write, migration, deployment, or automatic bid action occurred
-- [ ] All scoped automated checks pass
-- [ ] Commit history uses task-specific messages
-- [ ] Phase 2 implementation has not started without a new approved contract
+- [x] Every REQ, NFR, INT, and success criterion has linked evidence — for Phase 0; Phase 1 requirements (REQ-10 to REQ-15) are not yet in scope
+- [x] Task and contract checklists are identical
+- [x] No task was skipped, reordered, or combined without approved spec revision
+- [x] No parent Tier 1, Tier 2, or Tier 3 file was modified — no parent file was accessible, let alone modified
+- [x] No production write, migration, deployment, or automatic bid action occurred
+- [x] All scoped automated checks pass — see Evidence Record
+- [x] Commit history uses task-specific messages
+- [x] Phase 2 implementation has not started without a new approved contract
 
 ## Evidence Record
+
+All commands run at commit `ea02e08`.
 
 | Gate | Command or document | Result | Date/commit |
 |---|---|---|---|
 | Specification structure | Manual cross-file review | PASS | 2026-07-27 / initial spec commit |
-| Phase 0 | Pending implementation | PENDING | — |
-| Phase 1 | Pending implementation | PENDING | — |
-| Windows package/launch | Human or approved CI | PENDING | — |
+| Formatting | `pnpm run format:check` | PASS | 2026-07-28 / `ea02e08` |
+| Lint (incl. jsx-a11y) | `pnpm run lint` | PASS | 2026-07-28 / `ea02e08` |
+| Types (strict) | `pnpm run typecheck` | PASS | 2026-07-28 / `ea02e08` |
+| Frontend tests | `pnpm run test` | PASS — 161 tests, 13 files | 2026-07-28 / `ea02e08` |
+| Frontend build | `pnpm run build` | PASS | 2026-07-28 / `ea02e08` |
+| Rust formatting | `cargo fmt -- --check` | PASS | 2026-07-28 / `ea02e08` |
+| Rust lint | `cargo clippy -- -D warnings` | PASS | 2026-07-28 / `ea02e08` |
+| Rust tests | `cargo test` | PASS — 26 tests | 2026-07-28 / `ea02e08` |
+| CI (automated) | [Actions run 30334729707](https://github.com/Tenders-SA/tenders-sa-desktop/actions/runs/30334729707) | PASS — both jobs | 2026-07-28 / `c7b763f` |
+| Windows package/build | [Actions run 30335441194](https://github.com/Tenders-SA/tenders-sa-desktop/actions/runs/30335441194), `workflow_dispatch` by @freelancing-solutions | PASS — NSIS + MSI produced, 399 MB artifact | 2026-07-28 / `ea02e08` |
+| Windows package (pre-offline-installer) | [Actions run 30313966903](https://github.com/Tenders-SA/tenders-sa-desktop/actions/runs/30313966903) | PASS — 7.8 MB artifact | 2026-07-27 / `e0cd4c9` |
+| **Windows launch** | Human install + start | **NOT DONE** | — |
+| **PERF-1 cold/warm start** | Windows 11 reference device | **NOT MEASURED** | — |
+
+Test totals: **187** (161 TypeScript + 26 Rust).
 
 ## Result
 
-- **Status**: PENDING APPROVAL
-- **Remaining issues**: implementation and all implementation evaluation gates remain intentionally incomplete.
-- **Approved by**: pending user review.
+- **Status**: PHASE 0 EVALUATED — TWO GAPS OPEN
+- **Passing**: every automated gate, and human-triggered Windows packaging.
+- **Remaining issues**:
+  1. **Application launch is unverified.** The installer builds; nobody has run it. Install the artifact from run 30335441194 and confirm the window opens.
+  2. **PERF-1 is unmeasured.** Cold-start ≤3s and warm-start ≤1.5s are defined against the agreed Windows 11 reference device. The harness (`src/lib/performance.ts`) records `tsa:time-to-interactive`; it deliberately asserts no threshold, because a figure from CI or a developer machine would be evidence of nothing.
+  3. **Three Phase 0 pre-checks were deferred to Phase 1** — the parent auth contract (TASK-0.9), the parent API envelope and `src/lib/api-client.ts` (TASK-0.7), and the parent brand hues in `src/app/globals.css` (TASK-0.8). All require a session started with `freelancing-solutions/tendersa` as its initial source.
+- **Not a blocker but worth revisiting**: the offline WebView2 installer costs +391 MB, roughly three times the estimate it was approved on, because NSIS and MSI each embed a copy. Dropping one installer format would remove one copy.
+- **Approved by**: pending user review of this evaluation.

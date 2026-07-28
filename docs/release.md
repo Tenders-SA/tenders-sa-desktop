@@ -26,14 +26,27 @@ non-goal of the current contract.
 
 ### Installer size
 
-Expect installers of roughly **130 MB**. `webviewInstallMode` is set to
-`offlineInstaller`, which embeds the full WebView2 runtime (~127 MB) so
-the application can be installed with no internet connection at all.
-That is a deliberate trade for users working from sites with poor
-connectivity — see `requirements.md` §Supported platforms. WebView2 is
-already present on Windows 11 and on most Windows 10 devices, so the
-embedded runtime is insurance for the minority that lack it, not the
-common path.
+`webviewInstallMode` is set to `offlineInstaller`, which embeds the full
+WebView2 runtime so the application installs with no internet connection
+at all.
+
+**Measured, not estimated:**
+
+| Packaging run | Commit | Artifact |
+|---|---|---|
+| [30313966903](https://github.com/Tenders-SA/tenders-sa-desktop/actions/runs/30313966903) (download bootstrapper) | `e0cd4c9` | 7.8 MB |
+| [30335441194](https://github.com/Tenders-SA/tenders-sa-desktop/actions/runs/30335441194) (offline installer) | `ea02e08` | 399 MB |
+
+The artifact contains **both** the NSIS and MSI installers, and each
+embeds its own copy of the WebView2 runtime — which is why the increase
+is around +391 MB rather than the ~127 MB a single embedded runtime
+would cost. If that is too large, the options are to drop one installer
+format (halving the embedded payload) or to move to `embedBootstrapper`,
+which is far smaller but requires internet at install time.
+
+WebView2 already ships with Windows 11 and is present on most Windows 10
+devices, so the embedded runtime is insurance for the minority that lack
+it, not the common path.
 
 ## Signing secrets (SEC-4)
 
