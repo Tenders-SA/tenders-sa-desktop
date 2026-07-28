@@ -51,7 +51,7 @@ Create the production-oriented foundation for a Tauri 2 procurement desktop clie
 - [x] TASK-0.10 — Build the accessible desktop application shell
 - [x] TASK-0.11 — Add structured logging and redaction
 - [x] TASK-0.12 — Configure CI and contributor documentation
-- [ ] TASK-0.13 — Evaluate Phase 0 foundation
+- [ ] TASK-0.13 — Evaluate Phase 0 foundation (evaluation recorded and all automated gates + Windows packaging pass; remains open pending application-launch confirmation and PERF-1 reference-device measurements — see INTEGRATION_EVAL.md)
 - [ ] TASK-1.1 — Pin and document the parent audit baseline
 - [ ] TASK-1.2 — Inventory canonical parent data models
 - [ ] TASK-1.3 — Audit authentication and subscription contracts
