@@ -13,7 +13,7 @@ pnpm run tauri dev
 
 Full setup, verification commands, and platform notes are in [`docs/development.md`](docs/development.md).
 
-Windows is the only supported platform for v1. Every check runs on Linux and macOS too, but macOS and Linux packaging are explicit non-goals of the current contract.
+Windows is the only supported platform for v1: **Windows 10 version 1709 or later, or Windows 11**, 64-bit. Every check runs on Linux and macOS too, but macOS and Linux packaging are explicit non-goals of the current contract.
 
 ## What exists today
 

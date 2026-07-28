@@ -24,6 +24,17 @@ Bundle targets are restricted to `nsis` and `msi` in
 `src-tauri/tauri.conf.json`. macOS and Linux targets are an explicit
 non-goal of the current contract.
 
+### Installer size
+
+Expect installers of roughly **130 MB**. `webviewInstallMode` is set to
+`offlineInstaller`, which embeds the full WebView2 runtime (~127 MB) so
+the application can be installed with no internet connection at all.
+That is a deliberate trade for users working from sites with poor
+connectivity — see `requirements.md` §Supported platforms. WebView2 is
+already present on Windows 11 and on most Windows 10 devices, so the
+embedded runtime is insurance for the minority that lack it, not the
+common path.
+
 ## Signing secrets (SEC-4)
 
 Signing material exists **only** in repository secrets. It is never

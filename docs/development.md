@@ -4,9 +4,12 @@
 
 - **Node 22** and **pnpm** (the repository pins its lockfile to pnpm).
 - **Rust stable** with `rustfmt` and `clippy`.
-- **Windows 10/11** for a real product run. Windows is the only
-  supported platform for v1 — macOS and Linux packaging are explicit
-  non-goals of the current contract.
+- **Windows 10 version 1709 or later, or Windows 11**, 64-bit, for a real
+  product run. Windows is the only supported platform for v1 — macOS and
+  Linux packaging are explicit non-goals of the current contract. See
+  `requirements.md` §Supported platforms for why that floor, and note the
+  installer embeds the WebView2 offline installer (~127MB) so it works
+  without internet access.
 
 ### Working on Linux or macOS
 
