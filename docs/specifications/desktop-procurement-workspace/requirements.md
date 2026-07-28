@@ -47,6 +47,13 @@
 - No production credentials, production write operations, or mock endpoint presented as a production contract.
 - No macOS or Linux build, packaging, or signing target in this contract. Windows is the only supported platform for v1; cross-platform support is a later, separately approved specification.
 
+## Supported platforms
+
+- **Minimum supported version: Windows 10 version 1709 or later**, including the Windows 10 Enterprise/IoT LTSC editions, and Windows 11. This matches the operating systems Microsoft supports for Edge and therefore the WebView2 runtime Tauri renders with ([Microsoft Edge supported operating systems](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-supported-operating-systems)).
+- WebView2 is part of Windows 11 and is already present on the large majority of Windows 10 devices, but not all. The Windows installer therefore embeds the WebView2 offline installer (`bundle.windows.webviewInstallMode = offlineInstaller`) so installation never requires an internet connection, at the cost of roughly 127 MB of installer size. This is a deliberate trade for a product whose users may work from sites with poor connectivity.
+- 64-bit (`x86_64`) only. ARM64 Windows is not a target for v1.
+- PERF-1's start-up targets are measured on the agreed Windows 11 reference device. They are **not** a guarantee on the minimum supported configuration; start-up figures for older Windows 10 hardware require their own recorded evidence and, if they cannot be met, an approved threshold change.
+
 ## Functional Requirements
 
 - [ ] **REQ-1 — Repository foundation**: the repository shall contain a Tauri 2 application using React, strict TypeScript, Rust, Vite, Tailwind CSS, an accessible component foundation, TanStack Query, Zustand, React Hook Form, and Zod, organised by feature.
@@ -69,7 +76,7 @@
 
 ## Non-Functional Requirements
 
-- [ ] **PERF-1**: on the agreed Windows 11 reference device, measured cold start to interactive shell shall target 3 seconds or less and warm start 1.5 seconds or less; deviations require recorded evidence and an approved threshold change.
+- [ ] **PERF-1**: on the agreed Windows 11 reference device, measured cold start to interactive shell shall target 3 seconds or less and warm start 1.5 seconds or less; deviations require recorded evidence and an approved threshold change. See §Supported platforms: these targets are defined against the reference device and are not a guarantee on the minimum supported Windows 10 configuration.
 - [ ] **PERF-2**: normal shell interaction shall acknowledge input within 100 ms, and large lists shall use pagination or virtualization rather than loading unbounded records.
 - [ ] **PERF-3**: cache and sync queries shall be indexed and bounded; the client shall not issue unbounded parent API requests.
 - [ ] **SEC-1**: Tauri capabilities shall follow least privilege. Filesystem, shell, opener, SQL, notification, and updater access shall be granted only to windows and commands that require them.

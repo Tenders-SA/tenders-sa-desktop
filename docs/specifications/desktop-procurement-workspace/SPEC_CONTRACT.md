@@ -25,6 +25,7 @@ Create the production-oriented foundation for a Tauri 2 procurement desktop clie
 - No automatic submission, pricing approval, partner commitment, or compliance override.
 - Original product prompt remains verbatim under `docs/prompts/`.
 - A Windows release package/build is verified by a human or approved CI gate under repository rules.
+- Supported platforms are Windows 10 version 1709 or later (incl. LTSC editions) and Windows 11, 64-bit only. The installer embeds the WebView2 offline installer so installation never requires internet access.
 - The desktop application ships a single dark theme only, no light-theme variant. Colors derive from the existing web platform's brand hues (emerald primary, gold accent, blue info) re-tuned for dark-surface WCAG 2.2 AA contrast.
 
 ## INTEGRATION WARNINGS
