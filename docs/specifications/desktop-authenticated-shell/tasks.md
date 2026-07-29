@@ -13,6 +13,36 @@
 - [x] Integration evaluation passed
 - [ ] All success criteria verified — **2 blocked**: Windows package/launch (G4) and PERF-2 on the reference device; plus Phase 0–1 REQ-1 still open. See INTEGRATION_EVAL.md §Result
 
+## Work shipped after this contract closed, without a specification
+
+Recorded because the repository's workflow (`AGENTS.md`) is spec-driven and a reader finding
+this code without a matching specification would reasonably assume one had been skipped by
+mistake. It was not: the user directed that the priority is a launchable MVP as quickly as
+possible, and that problems the desktop cannot fix on its own side be left alone. Speed was
+chosen over the five-file cycle deliberately, by the person entitled to make that call.
+
+**None of it changes this contract's scope or its approved decisions.** It is additive product
+surface plus three defect fixes, all on the same branch, all with the same gates (format,
+typecheck, lint, full suite) and CI green per commit.
+
+- **Tender discovery** — `/tenders`, searchable, paginated, filtered by province and
+  publication type. Filter values are constrained by what the parent route actually matches
+  (`equals` for province, a fixed branch list for publication type), read from parent source at
+  the pinned baseline.
+- **Tender detail** — `/tenders/:tenderId`, including defensive rendering of the three fields
+  whose runtime type gap E-11 leaves genuinely unpinned.
+- **Sign-out** — `logout()` had no UI reaching it. Security-relevant here rather than cosmetic,
+  because the parent does not revoke (see `auth.md` §4).
+- **Session loss on 401** — implements the reaction `auth.md` §Credential lifecycle already
+  specified, at one transport-level choke point.
+- **Three fixes for affordances that did not work**: Tender Radar advertised in navigation while
+  its route was unmounted; a successful login leaving the user on the login form; and the
+  not-connected copy on the Command Centre claiming tender discovery was unbuilt after it
+  shipped.
+
+Anything requiring a parent change remains a proposal and was not made. The parent checkout was
+verified untouched at `8ff2e4c2` after this work: clean worktree, 0 commits ahead.
+
 ## Phase 2A: Contract re-verification and transport
 
 - [x] **TASK-2.1 — Re-verify the audited contract at a current parent baseline**
