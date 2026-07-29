@@ -1,7 +1,62 @@
 # ADR: Typed API Transport (TASK-0.7)
 
-- **Status**: accepted
+- **Status**: accepted, **partially superseded by Phase 1** — see §0
 - **Refs**: REQ-5, INT-2, INT-6, PERF-3; design.md §API Client Design
+
+## 0. Phase 1 resolution — the upstream question is answered
+
+> **Added 2026-07-28, after Phase 1 (TASK-1.3, TASK-1.4) and on explicit user
+> direction. This section supersedes §"Which API this is" wherever they conflict.**
+
+This ADR was written while the parent repository was unreachable. It correctly flagged the
+ambiguity and closed by saying: *"Whether the desktop client ultimately consumes one upstream
+or two is itself a Phase 1 finding."*
+
+**Phase 1 has answered it, and the answer is one upstream:**
+
+> **The desktop consumes the main application's parent-internal API — the same endpoints the
+> Tenders-SA web application uses. It does not consume the public Developer API at
+> `api.tenders-sa.org`.**
+
+| | Main application API — **the target** | Developer API — **not the target** |
+|---|---|---|
+| Host | the application host (`VITE_API_BASE_URL`) | `api.tenders-sa.org` |
+| Routes | `/api/auth/*`, `/api/tenders`, `/api/v1/applications`, `/api/v1/company/profile`, `/api/subscription/*` | `/v1/*`, `/v2/*` |
+| Auth | session JWT, `Authorization: Bearer` | API key |
+| Pagination | `page`/`limit`, or `limit`/`offset` | `limit`/`cursor` |
+| Coverage | auth, workspace, mutations | read-only public data |
+
+Reasons, from the audit rather than preference:
+
+1. **`requirements.md` always scoped the parent-internal API.** The Developer API has no
+   auth-session, workspace, or mutation routes, so it cannot serve this product at all.
+2. **`endpoint-inventory.md`** inventories 16 main-application endpoints; the Developer API
+   appears only as the drift comparison INT-6 requires.
+3. **`auth-subscription-contract.md`** establishes the session contract against
+   `/api/auth/*` on the application host.
+
+### What this changes in the sections below
+
+| Statement below | Status |
+|-----------------|--------|
+| "This transport targets the **Tenders-SA Developer API**" | **Superseded.** It targets the main application API. |
+| "the auth port it exposes is a bearer-key hook, **not** the audited native session contract" | **Superseded.** TASK-1.3 audited the session contract; the adapter is Phase 2 work. |
+| "Whether the desktop client ultimately consumes one upstream or two is itself a Phase 1 finding" | **Resolved: one upstream.** |
+| CSP `connect-src` "must be widened to `https://api.tenders-sa.org`" | **Superseded twice over.** The API host is configuration, not a constant — and Phase 1 found the parent sets **no CORS headers**, so requests are issued from Rust and `connect-src` never needs widening at all. |
+| The verified envelope, retry, timeout, cancellation and error-normalisation design | **Still valid.** These are transport-policy decisions and survive the retarget. |
+
+### Still-open consequences, tracked
+
+- **PA-1**: `src/tests/api-transport.test.ts` still uses `baseUrl: "https://api.tenders-sa.org"`
+  and asserts `cursor` pagination that no main-application route uses. The base URL is
+  incidental to what those tests cover, but the shape is misleading. Phase 2 re-points it —
+  `phase-2-plan.md` acceptance criterion **A16**.
+- **C-1**: the `fetch` transport must be swapped for a Rust-backed adapter behind the existing
+  injectable seam before any live call can succeed.
+- The pinned `tenders-sa-developer-api-v2.1.0-openapi.json` is retained **only** as INT-6 drift
+  evidence. It is not a source of desktop types.
+
+Everything from §"Which API this is" onward is preserved as the original Phase 0 record.
 
 ## Which API this is
 
