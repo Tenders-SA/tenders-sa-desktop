@@ -91,7 +91,7 @@ platform's contracts as they are; the web application is not changed to accommod
 - [x] TASK-2.3 — Implement the transport adapter (per-endpoint schemas; 429 no longer auto-retried per REQ-A6 — see tasks.md evidence)
 - [x] TASK-2.4 — Close the endpoint-parity gap (PA-1) (guard shipped broken, caught by a sensitivity check, fixed and pinned — see tasks.md evidence)
 - [x] TASK-2.5 — Extend the authentication failure union (adds account-inactive, rate-limited with Retry-After, server-error — see tasks.md evidence)
-- [ ] TASK-2.6 — Implement the audited auth adapter
+- [x] TASK-2.6 — Implement the audited auth adapter (all four audited traps handled and tested; G2 approved by user 2026-07-29 — see tasks.md evidence)
 - [ ] TASK-2.7 — Activate the login shell
 - [ ] TASK-2.8 — Add the subscription endpoint adapter
 - [ ] TASK-2.9 — Render real data in the Command Centre
@@ -100,13 +100,13 @@ platform's contracts as they are; the web application is not changed to accommod
 
 ## HUMAN APPROVAL GATES
 
-| # | Gate | Blocks |
-|---|------|--------|
-| G1 | Approve this contract | All implementation |
-| G2 | Accept the auth adapter as audited | TASK-2.10 |
-| G3 | Enable `desktopAuth` | Any real authentication |
-| G4 | Windows package + launch verification | Release |
-| G5 | Production endpoint configuration | Production use |
+| # | Gate | Blocks | Status |
+|---|------|--------|--------|
+| G1 | Approve this contract | All implementation | **CLEARED** 2026-07-29 |
+| G2 | Accept the auth adapter as audited | TASK-2.10 | **CLEARED** 2026-07-29 |
+| G3 | Enable `desktopAuth` | Any real authentication | outstanding |
+| G4 | Windows package + launch verification | Release | outstanding |
+| G5 | Production endpoint configuration | Production use | outstanding |
 
 ## COMMIT FORMAT
 
