@@ -61,6 +61,7 @@ export function stubApiClients(
     },
     planner: { listEvents: idle(), listSuggested: idle() },
     preferences: { get: idle(), update: idle() },
+    supplierIntelligence: { search: idle() },
   } as unknown as ApiClients;
 
   return { ...clients, ...overrides };

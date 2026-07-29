@@ -67,6 +67,7 @@ describe("navigation model", () => {
       "Tasks",
       "Company Profile",
       "Company Document Vault",
+      "Supplier Intelligence",
       "Notifications",
       "Settings",
     ]);
@@ -80,7 +81,6 @@ describe("navigation model", () => {
     expect(unavailable.map((item) => item.label)).toEqual([
       "Proposals",
       "JV and Partner Network",
-      "Supplier Intelligence",
       "Buyer Intelligence",
       "Award Intelligence",
       "Reports",

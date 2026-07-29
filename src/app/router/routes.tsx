@@ -24,6 +24,7 @@ import { NotificationsScreen } from "../../features/notifications/Notifications"
 import { Calendar } from "../../features/calendar/Calendar";
 import { Tasks } from "../../features/tasks/Tasks";
 import { Settings } from "../../features/settings/Settings";
+import { SupplierIntelligence } from "../../features/intelligence/SupplierIntelligence";
 
 export interface AppRoutesProps {
   auth: AuthPort;
@@ -178,6 +179,12 @@ export function AppRoutes({
             path="tasks"
             element={
               <Tasks dashboard={clients.dashboard} planner={clients.planner} />
+            }
+          />
+          <Route
+            path="suppliers"
+            element={
+              <SupplierIntelligence endpoint={clients.supplierIntelligence} />
             }
           />
           <Route

@@ -61,7 +61,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
         available: true,
       },
       { label: "JV and Partner Network", available: false },
-      { label: "Supplier Intelligence", available: false },
+      { label: "Supplier Intelligence", path: "/suppliers", available: true },
       { label: "Buyer Intelligence", available: false },
       { label: "Award Intelligence", available: false },
     ],

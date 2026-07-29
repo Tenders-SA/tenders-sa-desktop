@@ -29,6 +29,7 @@ import { PlannerEndpoint } from "../services/api/endpoints/planner";
 import { PreferencesEndpoint } from "../services/api/endpoints/preferences";
 import { RecommendationsEndpoint } from "../services/api/endpoints/recommendations";
 import { SavedTendersEndpoint } from "../services/api/endpoints/saved-tenders";
+import { SupplierIntelligenceEndpoint } from "../services/api/endpoints/supplier-intelligence";
 import { GatedAuthService } from "../services/auth/gated-auth-service";
 import { nativeCredentialStore } from "../services/auth/native-credential-store";
 import { ParentAuthAdapter } from "../services/auth/parent-auth-adapter";
@@ -83,6 +84,7 @@ export interface ApiClients {
   notifications: NotificationsEndpoint;
   planner: PlannerEndpoint;
   preferences: PreferencesEndpoint;
+  supplierIntelligence: SupplierIntelligenceEndpoint;
 }
 
 export interface AuthWiring extends ApiClients {
@@ -168,6 +170,7 @@ export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
     notifications: new NotificationsEndpoint(endpointOptions),
     planner: new PlannerEndpoint(endpointOptions),
     preferences: new PreferencesEndpoint(endpointOptions),
+    supplierIntelligence: new SupplierIntelligenceEndpoint(endpointOptions),
   };
 
   return {
