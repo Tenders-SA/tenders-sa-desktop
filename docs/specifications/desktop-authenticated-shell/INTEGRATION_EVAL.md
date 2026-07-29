@@ -3,8 +3,10 @@
 > Update this file during implementation. No implementation is complete until every applicable
 > item passes and evidence is recorded.
 >
-> **Current status: APPROVED — IN PROGRESS.** Approved 2026-07-29 (gate G1). TASK-2.1 is
-> complete and found the parent unmoved, so implementation proceeds against `8ff2e4c2`.
+> **Current status: IMPLEMENTATION COMPLETE — TWO GATES OUTSTANDING.** All eleven tasks are
+> done with recorded evidence, 310 tests pass, and no parent file was modified. Two items
+> cannot be closed from this environment and are recorded as named blockers, not ticked:
+> the Windows package/launch gate (**G4**) and the PERF-2 measurement. See §Result.
 
 ## Specification Validation
 
@@ -32,83 +34,136 @@
 
 ## Phase 2A Evaluation — transport
 
-- [ ] `tauri-plugin-http` added, registered, and requests confirmed to execute in Rust (CORS
+- [x] `tauri-plugin-http` added, registered, and requests confirmed to execute in Rust (CORS
       blocker cleared)
-- [ ] Capability grants `http:default` plus an allowlist of **exactly one** entry — the API
+- [x] Capability grants `http:default` plus an allowlist of **exactly one** entry — the API
       origin
-- [ ] `dangerous-settings` and `unsafe-headers` features are **off**
-- [ ] A request to an origin outside the allowlist is rejected by the plugin
-- [ ] CSP `script-src 'self'` and the restricted `connect-src` are unchanged — **asserted by
+- [x] `dangerous-settings` and `unsafe-headers` features are **off**
+- [x] A request to an origin outside the allowlist is rejected by the plugin
+- [x] CSP `script-src 'self'` and the restricted `connect-src` are unchanged — **asserted by
       test**, because they are SEC-A2's exfiltration containment and not incidental hardening
-- [ ] Transport adapter reuses TASK-0.7's policy layer without duplicating it
-- [ ] Timeout, cancellation via `fetch_cancel`, 429-never-retried, bounded 5xx retry, offline,
+- [x] Transport adapter reuses TASK-0.7's policy layer without duplicating it
+- [x] Timeout, cancellation via `fetch_cancel`, 429-never-retried, bounded 5xx retry, offline,
       malformed 2xx covered
-- [ ] `docs/architecture/auth.md` §2 superseded where it claims Rust assembles request headers
-- [ ] **PA-1 closed** — no Developer API host or `/v1`–`/v2` path in source or fixtures, enforced
+- [x] `docs/architecture/auth.md` §2 superseded where it claims Rust assembles request headers
+- [x] **PA-1 closed** — no Developer API host or `/v1`–`/v2` path in source or fixtures, enforced
       by a test
 
 ## Phase 2B Evaluation — authentication
 
-- [ ] `AuthFailureKind` expresses `account-inactive`, `rate-limited`, `server-error`
-- [ ] Adapter parses **every** TASK-1.3 contract fixture
-- [ ] `user === null` at HTTP 200 is treated as no session
-- [ ] The renewal token from `/me` is persisted, preserving the sliding window
-- [ ] Logout clears locally even when the remote call throws
-- [ ] Token is opaque — never parsed, verified, or signed
-- [ ] Token absent from SQLite, Zustand, browser storage, URLs and logs — asserted by test
-- [ ] Token read from the keychain per request and **not retained** in any module-level or global
+- [x] `AuthFailureKind` expresses `account-inactive`, `rate-limited`, `server-error`
+- [x] Adapter parses **every** TASK-1.3 contract fixture
+- [x] `user === null` at HTTP 200 is treated as no session
+- [x] The renewal token from `/me` is persisted, preserving the sliding window
+- [x] Logout clears locally even when the remote call throws
+- [x] Token is opaque — never parsed, verified, or signed
+- [x] Token absent from SQLite, Zustand, browser storage, URLs and logs — asserted by test
+- [x] Token read from the keychain per request and **not retained** in any module-level or global
       JavaScript variable — asserted by test (SEC-A1)
-- [ ] Login shell renders all five failure states; `rate-limited` surfaces `Retry-After`
-- [ ] Password never appears in a thrown error or in the DOM
-- [ ] Keyboard operation, accessible names, and error-to-field association pass
+- [x] Login shell renders all five failure states; `rate-limited` surfaces `Retry-After`
+- [x] Password never appears in a thrown error or in the DOM
+- [x] Keyboard operation, accessible names, and error-to-field association pass
 
 ## Phase 2C Evaluation — first real read
 
-- [ ] Subscription schema is hand-authored and marked `awaiting-contract`
-- [ ] Synthesised free plan (`id: null`, `tier: 'free'`) parses and is **not** treated as "no
+- [x] Subscription schema is hand-authored and marked `awaiting-contract`
+- [x] Synthesised free plan (`id: null`, `tier: 'free'`) parses and is **not** treated as "no
       entitlement"
-- [ ] `feature-access` HTTP 500 with `hasAccess: false` surfaces as an error, not an upsell
-- [ ] Failure parsing accepts `{error}` with and without `message`, and does not require
+- [x] `feature-access` HTTP 500 with `hasAccess: false` surfaces as an error, not an upsell
+- [x] Failure parsing accepts `{error}` with and without `message`, and does not require
       `success: false`
-- [ ] Command Centre renders loading, empty, error, and schema-validation-failure states
-- [ ] A schema-validation failure is a handled state, never a crash
-- [ ] Gate still requires both the flag and an adapter
-- [ ] `ProtectedRoute`'s unauthenticated escape hatch disables itself — asserted by test
+- [x] Command Centre renders loading, empty, error, and schema-validation-failure states
+- [x] A schema-validation failure is a handled state, never a crash
+- [x] Gate still requires both the flag and an adapter
+- [x] `ProtectedRoute`'s unauthenticated escape hatch disables itself — asserted by test
 
 ## Final Evaluation
 
-- [ ] Every REQ, NFR, INT, and success criterion has linked evidence
-- [ ] Task and contract checklists are identical — verified mechanically
-- [ ] No task was skipped, reordered, or combined without approved spec revision
-- [ ] No parent file was modified — verified in the attached parent checkout
-- [ ] No production write, migration, deployment, or automatic bid action occurred
-- [ ] All scoped automated checks pass
-- [ ] Commit history uses task-specific messages
-- [ ] Human or approved Windows CI evidence confirms package/build/launch
-- [ ] **PERF-2 measured on the reference device** (PERF-A1) — carried from Phase 1 as open
+- [x] Every REQ, NFR, INT, and success criterion has linked evidence
+- [x] Task and contract checklists are identical — verified mechanically
+- [x] No task was skipped, reordered, or combined without approved spec revision
+- [x] No parent file was modified — verified in the attached parent checkout
+- [x] No production write, migration, deployment, or automatic bid action occurred
+- [x] All scoped automated checks pass
+- [x] Commit history uses task-specific messages
+- [ ] Human or approved Windows CI evidence confirms package/build/launch — **BLOCKED (gate G4)**: requires a human-triggered `workflow_dispatch` run and someone to install and start the result
+- [ ] **PERF-2 measured on the reference device** (PERF-A1) — **BLOCKED**: needs the agreed Windows 11 reference device; a figure from CI or this container would be evidence of nothing
 
 ## Carried-forward items from Phase 0–1
 
-Three items were left open at the end of Phase 1 with named reasons. Two close here; one is
-tracked but not owned by this slice.
+Three items were left open at the end of Phase 1 with named reasons. One closes here; two do not.
 
-| Item | Owner | Status |
-|------|-------|--------|
-| **REQ-1 incomplete** — React Hook Form and an accessible component foundation both absent | This slice, partially | The activated login form (TASK-2.7) is the natural place both arrive. **If TASK-2.7 ships without them, REQ-1 stays open** and must be recorded as such rather than quietly ticked |
-| **PERF-2 unmeasured** | This slice | PERF-A1; measured at TASK-2.11 |
-| **Success criterion 4** — shell has never made a live parent call | This slice | The whole point of TASK-2.8/2.9 |
+| Item | Outcome |
+|------|---------|
+| **Phase 0–1 success criterion 4** — the shell had never made a live parent call | **CLOSED.** TASK-2.8/2.9 render `GET /api/subscription/status` through the plugin, transport, Bearer header and schema validation, end to end. The CORS finding explained why it could not have worked before |
+| **Phase 0–1 REQ-1 incomplete** — React Hook Form and an accessible component foundation both absent | **STILL OPEN, and recorded rather than quietly ticked.** This file said at authoring time: *"If TASK-2.7 ships without them, REQ-1 stays open."* It did. `package.json` still has no `react-hook-form` and no Radix/shadcn package. The activated login form uses plain React state and hand-written accessible markup — `useId`, `aria-invalid`, `aria-describedby`, `role="alert"`, keyboard-tested — which **satisfies A11Y-A1 but not REQ-1 as written**. Two honest options for whoever picks this up: adopt both libraries in the slice that first needs a complex form (the company-profile slice is the obvious candidate), or propose amending REQ-1, since a hand-rolled accessible form is a legitimate engineering choice and the requirement may be over-prescriptive. **Not decided here** — it is a Phase 0–1 contract requirement and not this contract's to reinterpret |
+| **PERF-2 unmeasured** | **STILL OPEN.** PERF-A1 required it and it is blocked, not skipped — see §Result |
 
 ## Evidence Record
 
 | Gate | Command or document | Result | Date/commit |
 |---|---|---|---|
-| Specification structure | Manual cross-file review | PASS | 2026-07-29 / this commit |
+| Specification structure | Manual cross-file review | PASS | 2026-07-29 |
 | Contract approval (G1) | User | **PASS** | 2026-07-29 |
-| TASK-2.1 parent re-verification | `docs/audits/parent-baseline.md` §7a | PASS — parent unmoved at `8ff2e4c2`; 18/18 claims confirmed | 2026-07-29 |
+| Adapter accepted as audited (G2) | User | **PASS** | 2026-07-29 |
+| TASK-2.1 parent re-verification | `docs/audits/parent-baseline.md` §7a | PASS — parent unmoved at `8ff2e4c2`; 18/18 claims re-asserted | 2026-07-29 |
+| Task/contract parity | Automated diff of both checklists | PASS — 11/11, identical sets, 0 mismatches | 2026-07-29 |
+| Parent unmodified | `git status --porcelain`; `git rev-list origin/aws-production-app..HEAD` | PASS — empty; 0 commits; HEAD still at baseline | 2026-07-29 |
+| Formatting | `pnpm run format:check` | PASS | 2026-07-29 |
+| Lint (incl. jsx-a11y) | `pnpm run lint` | PASS | 2026-07-29 |
+| Types (strict) | `pnpm run typecheck` | PASS | 2026-07-29 |
+| Frontend tests | `pnpm run test` | PASS — **310 tests, 21 files** | 2026-07-29 |
+| Frontend build | `pnpm run build` | PASS | 2026-07-29 |
+| Rust formatting | `cargo fmt -- --check` | PASS | 2026-07-29 |
+| Rust compile / clippy / tests | GitHub Actions **Rust checks** | PASS on every Phase 2 commit — this is the only place `cargo check` can run, since the container lacks the GTK/WebKit libraries and root to install them | 2026-07-29 |
+| Endpoint parity guard | `endpoint-parity.test.ts` + `capability-scope.test.ts` | PASS — 22 tests; verified in **both** directions (fails on a planted violation) | 2026-07-29 |
+| Windows package/launch (G4) | — | **NOT RUN** — see §Result | — |
+| PERF-2 on reference device | — | **NOT MEASURED** — see §Result | — |
 
 ## Result
 
-- **Status**: **APPROVED — IN PROGRESS**
-- **Gate G1**: cleared 2026-07-29.
-- **TASK-2.1**: complete. Parent unmoved at `8ff2e4c2`; no specification revision needed.
-- **Outstanding gates**: G2 (adapter accepted as audited) blocks TASK-2.10; G3, G4, G5 unchanged.
+- **Status**: **IMPLEMENTATION COMPLETE — TWO BLOCKERS, PRECISELY NAMED**
+- **Gates cleared**: G1 (contract) and G2 (adapter accepted as audited), both 2026-07-29.
+- **Passing**: all eleven tasks with recorded evidence; 310 frontend tests across 21 files;
+  Rust compile/clippy/tests green in CI on every commit; format, lint, strict types and build
+  all pass; task and contract checklists mechanically identical; **no parent file created,
+  modified, or deleted**, verified in the attached parent checkout.
+
+### Blocked, not skipped
+
+Both need hardware or a human action this environment cannot supply. A recorded blocker is a
+valid outcome; a fabricated pass is not.
+
+1. **Windows package and launch — gate G4.** `.github/workflows/windows-package.yml` is
+   `workflow_dispatch`-only *by design* (TASK-0.12 made packaging a human/approved-CI gate), and
+   launch cannot be automated at all — someone must install the artifact and start it. Phase 0
+   closed the equivalent gate exactly this way, with the user running the build. **Note the
+   payload changed**: this slice adds `tauri-plugin-http` and its `reqwest`/TLS dependency tree,
+   so the Windows artifact size should be re-checked against the 399 MB Phase 0 figure.
+2. **PERF-2's 100 ms input-acknowledgement target.** Carried from Phase 1 as PERF-A1. It must be
+   measured on the agreed Windows 11 reference device; a figure from CI or this Linux container
+   would be evidence of nothing, which is why the Phase 0 harness deliberately asserts no
+   threshold.
+
+### Also still open, and not this contract's to close
+
+**Phase 0–1 REQ-1** remains incomplete: React Hook Form and an accessible component foundation
+are both still absent. This file predicted the possibility and required it be recorded rather
+than ticked, and it happened — the activated form uses plain React state with hand-written
+accessible markup, which satisfies A11Y-A1 but not REQ-1 as written. See the carried-forward
+table for the two honest ways to resolve it.
+
+### Gates still outstanding
+
+| Gate | Meaning |
+|------|---------|
+| **G3** | Enabling `desktopAuth`. The flag is now load-bearing and is deliberately left `false`; the adapter exists, so flipping it is a real decision |
+| **G4** | Windows package + launch verification |
+| **G5** | Production endpoint configuration — also requires adding the production origin to the http allow-list in `src-tauri/capabilities/default.json`, which is a build-time security boundary, not runtime config |
+
+### Watch item
+
+The parent's unimplemented `api-response-standardization` spec names `auth/login/route.ts` in its
+files-to-modify list. If it lands, login's response shape changes. Per-endpoint schemas confine
+the blast radius to one adapter and boundary validation fails visibly rather than corrupting
+state, so the action is to **watch it**, not to design around it.

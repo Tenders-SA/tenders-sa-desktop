@@ -98,89 +98,89 @@ serve this product at all. `docs/architecture/api.md` §0 records the resolution
 
 ## Functional Requirements
 
-- [ ] **REQ-A1 — Native HTTP transport via `tauri-plugin-http`**: API requests shall be issued
+- [x] **REQ-A1 — Native HTTP transport via `tauri-plugin-http`**: API requests shall be issued
       through `tauri-plugin-http`, which performs the request in Rust and is therefore not
       subject to browser CORS. Browser `fetch`/`XHR` to the API shall remain blocked by the
       existing CSP. The plugin's URL scope shall be an **explicit allowlist containing only the
       configured API origin** — the plugin grants no origin by default, and that default-deny
       posture shall not be widened.
-- [ ] **REQ-A2 — Transport adapter**: the plugin shall be consumed through Phase 0's existing
+- [x] **REQ-A2 — Transport adapter**: the plugin shall be consumed through Phase 0's existing
       injectable transport seam, preserving its timeout, cancellation, bounded-retry, and
       error-normalisation policy without reimplementation.
-- [ ] **REQ-A3 — Audited auth adapter**: an `AuthPort` implementation shall authenticate via
+- [x] **REQ-A3 — Audited auth adapter**: an `AuthPort` implementation shall authenticate via
       `POST /api/auth/login`, carry `Authorization: Bearer <token>` on every request, and treat
       the token as opaque — never parsing, verifying, or signing it (INT-1).
-- [ ] **REQ-A4 — Session validity and renewal**: session restoration shall call
+- [x] **REQ-A4 — Session validity and renewal**: session restoration shall call
       `GET /api/auth/me`, treat `user === null` as "no session" regardless of the HTTP 200
       status, and **replace the stored token with the one returned** on every successful call.
-- [ ] **REQ-A5 — Failure states**: `AuthFailureKind` shall express at minimum
+- [x] **REQ-A5 — Failure states**: `AuthFailureKind` shall express at minimum
       `account-inactive`, `rate-limited`, and `server-error` in addition to the existing kinds,
       and the login UI shall render each distinctly.
-- [ ] **REQ-A6 — Rate-limit safety**: a `429` shall never be retried automatically, and its
+- [x] **REQ-A6 — Rate-limit safety**: a `429` shall never be retried automatically, and its
       `Retry-After` value shall be surfaced to the user.
-- [ ] **REQ-A7 — Keychain lifecycle**: the token shall be stored, replaced, and cleared only
+- [x] **REQ-A7 — Keychain lifecycle**: the token shall be stored, replaced, and cleared only
       through the Phase 0 native keychain commands, and shall never enter SQLite, Zustand,
       browser storage, a URL, or a log.
-- [ ] **REQ-A8 — Logout**: logout shall call the parent endpoint and then clear local
+- [x] **REQ-A8 — Logout**: logout shall call the parent endpoint and then clear local
       credentials **regardless of the remote outcome**, because the parent performs no token
       revocation.
-- [ ] **REQ-A9 — Gate**: production authentication shall remain unavailable unless both the
+- [x] **REQ-A9 — Gate**: production authentication shall remain unavailable unless both the
       `desktopAuth` flag is enabled and an audited adapter is present, and the shell's
       unauthenticated escape hatch shall disable itself once auth is live.
-- [ ] **REQ-A10 — One real read**: the Command Centre shall render validated data from
+- [x] **REQ-A10 — One real read**: the Command Centre shall render validated data from
       `GET /api/subscription/status`, correctly handling the synthesised free plan with a
       `null` id.
-- [ ] **REQ-A11 — Entitlement integrity**: entitlement shall never be computed locally; a
+- [x] **REQ-A11 — Entitlement integrity**: entitlement shall never be computed locally; a
       `feature-access` HTTP 500 carrying `hasAccess: false` shall render as an error, not as an
       upgrade prompt.
-- [ ] **REQ-A12 — Per-endpoint schemas**: each consumed endpoint shall declare its own Zod
+- [x] **REQ-A12 — Per-endpoint schemas**: each consumed endpoint shall declare its own Zod
       response schema. No global envelope shall be assumed, and failure parsing shall accept
       `{error}` with or without `message` and shall not require `success: false`.
-- [ ] **REQ-A13 — CSRF forward-compatibility**: the client shall capture `csrfToken` at login,
+- [x] **REQ-A13 — CSRF forward-compatibility**: the client shall capture `csrfToken` at login,
       hold it in memory only, and send `x-csrf-token` on mutations; its absence shall never
       block login or any operation.
-- [ ] **REQ-A14 — Endpoint parity**: no Developer API host or `/v1`–`/v2` path shall appear in
+- [x] **REQ-A14 — Endpoint parity**: no Developer API host or `/v1`–`/v2` path shall appear in
       desktop source or test fixtures. Gap PA-1 shall be closed.
 
 ## Non-Functional Requirements
 
-- [ ] **SEC-A1 — Token storage boundary**: the Bearer token shall be **at rest only in the OS
+- [x] **SEC-A1 — Token storage boundary**: the Bearer token shall be **at rest only in the OS
       keychain**. It may exist in webview memory **transiently, for the duration of a single
       request**, because `tauri-plugin-http` requires the caller to supply request headers. It
       shall never be written to SQLite, Zustand, `localStorage`, `sessionStorage`, IndexedDB, a
       URL, a log, or any module-level or global JavaScript variable.
       *This is a deliberate, recorded relaxation of the Phase 1 design position — see
       `design.md` §Transport decision.*
-- [ ] **SEC-A2 — Exfiltration containment**: because the token is briefly webview-reachable,
+- [x] **SEC-A2 — Exfiltration containment**: because the token is briefly webview-reachable,
       the paths by which a compromised webview could send it anywhere shall be closed:
       the plugin's URL allowlist shall permit **only** the API origin; the CSP shall keep
       `script-src 'self'` (no remote script sources) and `connect-src` restricted to `'self'`
       and `ipc:` so ordinary `fetch`/`XHR` cannot reach an external host. Tests shall assert
       both.
-- [ ] **SEC-A3**: no credential, token, or password shall appear in any log at either redaction
+- [x] **SEC-A3**: no credential, token, or password shall appear in any log at either redaction
       mode, or in any user-visible error.
-- [ ] **SEC-A4**: backend authorization remains authoritative; no desktop control is treated as
+- [x] **SEC-A4**: backend authorization remains authoritative; no desktop control is treated as
       an access boundary.
-- [ ] **REL-A1**: a schema-validation failure shall render a handled error state, never a crash.
-- [ ] **REL-A2**: network failure, timeout, and cancellation shall remain distinct from
+- [x] **REL-A1**: a schema-validation failure shall render a handled error state, never a crash.
+- [x] **REL-A2**: network failure, timeout, and cancellation shall remain distinct from
       authentication failure.
-- [ ] **A11Y-A1**: the activated login form shall be keyboard operable, expose accessible names,
+- [x] **A11Y-A1**: the activated login form shall be keyboard operable, expose accessible names,
       associate errors with their fields, and meet WCAG 2.2 AA contrast.
-- [ ] **PRIV-A1**: logout and device reset shall remove local account data after clear human
+- [x] **PRIV-A1**: logout and device reset shall remove local account data after clear human
       confirmation.
 - [ ] **PERF-A1**: PERF-2's 100 ms input-acknowledgement target, left unmeasured in Phase 1,
       shall be measured on the agreed Windows 11 reference device.
 
 ## Integration Requirements
 
-- [ ] **INT-A1**: authenticate only through the audited contract in
+- [x] **INT-A1**: authenticate only through the audited contract in
       `docs/audits/auth-subscription-contract.md`; do not reimplement parent JWT logic.
-- [ ] **INT-A2**: validate every consumed response at the desktop boundary.
-- [ ] **INT-A3**: consume the main application's parent-internal API only.
-- [ ] **INT-A4**: re-verify the audited contract against parent source at a current baseline
+- [x] **INT-A2**: validate every consumed response at the desktop boundary.
+- [x] **INT-A3**: consume the main application's parent-internal API only.
+- [x] **INT-A4**: re-verify the audited contract against parent source at a current baseline
       **before** implementation begins — the audit is a point-in-time artifact, and commit
       `9fd93b2` demonstrated that in-scope parent routes move within days.
-- [ ] **INT-A5**: any parent defect found during implementation shall be recorded as a proposal
+- [x] **INT-A5**: any parent defect found during implementation shall be recorded as a proposal
       in a separate parent-repository specification, never fixed from this repository.
 
 ## Impact Map
@@ -214,19 +214,19 @@ need to change a frozen parent module stops at a written proposal.
 
 ## Success Criteria
 
-- [ ] A user logs in against a non-production parent environment and reaches the Command Centre.
-- [ ] The session survives an application restart via `/api/auth/me`, with the returned token
+- [x] A user logs in against a non-production parent environment and reaches the Command Centre.
+- [x] The session survives an application restart via `/api/auth/me`, with the returned token
       persisted.
-- [ ] The Command Centre renders real, schema-validated subscription data.
-- [ ] Logout clears the keychain even when the remote call fails.
-- [ ] All five login failure states render distinctly.
-- [ ] Automated tests prove the token is absent from SQLite, Zustand, browser storage, URLs, and
+- [x] The Command Centre renders real, schema-validated subscription data.
+- [x] Logout clears the keychain even when the remote call fails.
+- [x] All five login failure states render distinctly.
+- [x] Automated tests prove the token is absent from SQLite, Zustand, browser storage, URLs, and
       logs, and is never retained in a module-level or global JavaScript variable beyond the
       request that uses it.
-- [ ] The HTTP plugin's URL allowlist contains only the API origin, and the CSP still forbids
+- [x] The HTTP plugin's URL allowlist contains only the API origin, and the CSP still forbids
       remote scripts and external `connect-src` — both asserted by test.
-- [ ] No Developer API host or `/v1`–`/v2` path remains anywhere in desktop source or fixtures.
-- [ ] `desktopAuth=false` fully disables authentication, and the gate still requires both
+- [x] No Developer API host or `/v1`–`/v2` path remains anywhere in desktop source or fixtures.
+- [x] `desktopAuth=false` fully disables authentication, and the gate still requires both
       conditions.
 - [ ] A human or approved Windows CI job confirms the package builds and launches.
 - [ ] PERF-2 is measured on the reference device.
