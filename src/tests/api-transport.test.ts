@@ -125,23 +125,27 @@ describe("ApiTransport", () => {
     expect(error.kind).toBe("forbidden");
   });
 
-  it("treats a rate limit as transient and retries it", async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(
-        jsonResponse({ success: false, error: "Too many requests" }, 429),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({ success: true, data: { id: "t1", title: "ok" } }),
-      ) as unknown as typeof fetch;
+  it("never auto-retries a rate limit (REQ-A6)", async () => {
+    // CHANGED IN PHASE 2, deliberately. Phase 0 treated 429 as transient
+    // and retried it, which is ordinary practice. The Phase 1 audit made
+    // that wrong here: the parent's limiter is IP-keyed, allows 10
+    // attempts per 15 minutes, and is *deliberately* not reset on success
+    // (auth-subscription-contract.md §3, with the reasoning quoted in the
+    // route). Retrying therefore spends the user's own budget for nothing,
+    // and because the key is an IP it can lock out everyone behind one
+    // office NAT. REQ-A6 makes "never auto-retry a 429" a requirement, so
+    // `ApiError.isTransient` no longer includes `rate-limited` and the
+    // wait is surfaced via `retryAfterSeconds` for the caller to honour.
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ success: false, error: "Too many requests" }, 429),
+    ) as unknown as typeof fetch;
 
-    const result = await makeTransport(fetchImpl).get({
-      path: "/v2/tenders",
-      schema: dataSchema,
-    });
+    const error = (await makeTransport(fetchImpl)
+      .get({ path: "/v2/tenders", schema: dataSchema })
+      .catch((e: unknown) => e)) as ApiError;
 
-    expect(result.title).toBe("ok");
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(error.kind).toBe("rate-limited");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("retries a 5xx and gives up after the retry budget", async () => {

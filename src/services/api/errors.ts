@@ -32,6 +32,8 @@ export class ApiError extends Error {
   readonly status?: number;
   readonly code?: string;
   readonly requestId?: string;
+  /** Seconds from a `Retry-After` header, so the UI can show a real wait. */
+  readonly retryAfterSeconds?: number;
 
   constructor(init: {
     kind: ApiErrorKind;
@@ -39,6 +41,7 @@ export class ApiError extends Error {
     status?: number;
     code?: string;
     requestId?: string;
+    retryAfterSeconds?: number;
   }) {
     super(init.message);
     this.name = "ApiError";
@@ -46,14 +49,25 @@ export class ApiError extends Error {
     this.status = init.status;
     this.code = init.code;
     this.requestId = init.requestId;
+    this.retryAfterSeconds = init.retryAfterSeconds;
   }
 
-  /** Safe-idempotent retry is only ever attempted for these. */
+  /**
+   * Safe-idempotent retry is only ever attempted for these.
+   *
+   * `rate-limited` is deliberately NOT transient (REQ-A6), which is a
+   * change from the Phase 0 behaviour. The Phase 1 audit found the
+   * parent's limiter is IP-keyed, allows 10 attempts per 15 minutes, and
+   * is deliberately not reset on success
+   * (`auth-subscription-contract.md` §3). Auto-retrying therefore spends
+   * the user's own budget to no benefit, and because the key is an IP it
+   * can lock out everyone behind one office NAT. A 429 is surfaced with
+   * `retryAfterSeconds` instead, and the caller decides.
+   */
   get isTransient(): boolean {
     return (
       this.kind === "offline" ||
       this.kind === "timeout" ||
-      this.kind === "rate-limited" ||
       this.kind === "server"
     );
   }
@@ -65,6 +79,7 @@ export class ApiError extends Error {
       status: this.status,
       code: this.code,
       requestId: this.requestId,
+      retryAfterSeconds: this.retryAfterSeconds,
     };
   }
 }
@@ -108,6 +123,31 @@ export function fromUnparseableResponse(status: number): ApiError {
     kind: kindForStatus(status),
     message: `Request failed with status ${status}`,
     status,
+  });
+}
+
+/**
+ * Builds an ApiError from a parent-internal failure body (REQ-A12).
+ *
+ * The parent emits no machine-readable error code on the routes this
+ * client consumes, so `code` is almost always absent and the HTTP status
+ * plus the `error` string are the only signals. `message` (present only
+ * on the middleware form) is *not* used as the user-facing message: it is
+ * an implementation detail of which layer rejected the request, not a
+ * stable contract, and "Authentication required" is less useful to a user
+ * than the status-derived text.
+ */
+export function fromParentError(
+  status: number,
+  body: { error: string; message?: string; code?: string },
+  retryAfterSeconds?: number,
+): ApiError {
+  return new ApiError({
+    kind: kindForStatus(status),
+    message: body.error,
+    status,
+    code: body.code,
+    retryAfterSeconds,
   });
 }
 
