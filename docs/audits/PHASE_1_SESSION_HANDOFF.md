@@ -1,5 +1,23 @@
 # Phase 1 session handoff
 
+> ## ⚠️ HISTORICAL — Phase 1 is complete. Do not act on this note.
+>
+> Every blocker below was resolved on 2026-07-28. The parent repository was
+> attached and readable, all three deferred Phase 0 pre-checks were closed,
+> and TASK-1.1 through TASK-1.8 are done and merged.
+>
+> Two things this note says are now **wrong**, and are corrected in the
+> artifacts rather than here:
+>
+> - It records `be09f9d51` as "never confirmed to exist". **It exists** and is
+>   a reachable ancestor of the default branch. It was still not adopted as
+>   the baseline, for a different reason — see `parent-baseline.md` §2.
+> - It describes the parent repository as unattachable. It is attachable, and
+>   the audit is drawn from parent source rather than inference.
+>
+> Start from `parent-baseline.md`, or from `docs/README.md`. This file is kept
+> for provenance, not guidance.
+
 > **This is not an audit artifact.** It is a working note for whoever
 > starts Phase 1. The audit artifacts are `parent-baseline.md`,
 > `model-inventory.md`, `auth-subscription-contract.md`,

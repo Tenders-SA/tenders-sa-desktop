@@ -12,6 +12,35 @@ evidence, risk, owner, and approval boundary.
 Per INT-7, every parent-side item is a **proposal for a separate parent-repository
 specification**. **No parent change was made.**
 
+> ## Disposition decision — 2026-07-29
+>
+> **The parent proposals are not being pursued.** Directed by the product owner: the Tenders-SA
+> web application is in production and is **not modified to accommodate the desktop client**. The
+> desktop is an extension of the existing platform, so it adapts to the platform's contracts as
+> they are.
+>
+> This does **not** retract any finding below. The classifications, evidence, risks and owners
+> stand as the audit recorded them — what changes is only what happens next:
+>
+> | Class | Was | Now |
+> |---|---|---|
+> | P-1…P-10 (enhance endpoint / additive model) | Proposals for separate parent specs | **Absorbed desktop-side.** Not raised as parent work |
+> | D-1…D-14 (deferred) | Deferred to parent or later slices | Unchanged — the parent-owned ones remain the parent team's own backlog, not desktop asks |
+> | R-1…R-8 (rejected duplication) | Rejected | Unchanged |
+>
+> Two consequences worth stating rather than discovering later:
+>
+> - **The accommodations are uglier than the fixes would have been**, and that ugliness now lives
+>   on the desktop side permanently. A-1 is the clearest case: with no parent error code, telling
+>   "account inactive" from "wrong password" requires **string-matching the `error` value**. The
+>   Phase 2 contract requires that match be isolated in one function with the strings pinned by
+>   fixtures, so a parent copy edit fails a test rather than silently degrading a user.
+> - **P-5 is a defect in the web application, not a desktop concern** — `PUT
+>   /api/v1/company/profile` stores an unvalidated string that the unguarded `JSON.parse` on read
+>   then 500s on permanently, and it is reachable from the existing web app today. The desktop
+>   avoids it by always sending arrays (C-6). It is recorded here for the platform team's own
+>   judgement; nothing in the desktop roadmap depends on it.
+
 ---
 
 ## 1. Pre-check — searching before proposing
