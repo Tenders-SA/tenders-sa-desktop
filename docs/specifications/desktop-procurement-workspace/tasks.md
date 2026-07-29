@@ -6,9 +6,9 @@
 
 - [x] Specification approved by user
 - [x] Phase 0 foundation complete
-- [ ] Phase 1 audit complete
-- [ ] Integration evaluation passed
-- [ ] All Phase 0–1 success criteria verified
+- [x] Phase 1 audit complete
+- [x] Integration evaluation passed
+- [ ] All Phase 0–1 success criteria verified — **3 open**: REQ-1 (React Hook Form + accessible component foundation absent), PERF-2 (100 ms input target unmeasured), success criterion 4 (shell has made no live parent call). All Phase 2 scope; see INTEGRATION_EVAL.md §Result
 
 ## Phase 0A: Repository and Native Foundation
 
@@ -181,9 +181,10 @@
 
 ### Final Evaluation Gate
 
-- [ ] **TASK-1.8 — Complete final integration evaluation**
+- [x] **TASK-1.8 — Complete final integration evaluation**
   - *Refs*: all requirements and success criteria
   - *Files*: update `requirements.md`, `tasks.md`, `SPEC_CONTRACT.md`, `INTEGRATION_EVAL.md`
   - *Pre-check*: audit task/contract parity and trace every requirement to evidence
   - *Verify*: all checks pass, no parent file was modified, commit history is task-scoped, and the contract records PASS or a precise blocker
   - *Commit*: `docs(desktop-workspace/1.8): complete integration evaluation`
+  - *Evidence*: `INTEGRATION_EVAL.md` updated with the Phase 1 evaluation, a full requirement trace, and the Phase 1 evidence record; `requirements.md` checkboxes ticked against evidence. **Pre-check ran mechanically.** Task/contract parity: a script parsed both checklists — **21 entries each, identical task sets, zero checkbox mismatches**. Requirement trace: every REQ, NFR, INT and success criterion assessed individually against recorded evidence rather than ticked in bulk. **Verify satisfied. No parent file was modified** — verified in the attached parent checkout rather than assumed: `git status --porcelain` empty, `git rev-list origin/aws-production-app..HEAD` = 0, HEAD still at the baseline SHA, no stash entries. This is a materially stronger claim than Phase 0 could make, which could only note the parent was inaccessible. **Commit history is task-scoped**: seven commits, `docs(desktop-workspace/1.N)`, each touching its own audit artifact plus the two checklist files; the two commits carrying an extra file (TASK-1.1's transplanted pre-check resolutions, TASK-1.7's gap-report consistency fix) both disclose it in their evidence. **All scoped gates pass**: `pnpm format:check`, `lint`, `typecheck`, `test` (**187 passing, 14 files**), `build`, and `cargo fmt --check`. **`cargo test` was not re-run and this is recorded rather than glossed**: the container lacks the GTK/WebKit system libraries Tauri's Linux backend needs to compile and installing them requires root the session does not have — but **Phase 1 changed no Rust at all** (`git diff --name-only 105d5e4..HEAD -- src-tauri/ '*.rs' 'Cargo.*'` is empty; the only non-documentation files changed in the entire phase are two TypeScript test files), so the Rust gates are unaffected, last green at 26 tests on Phase 0's `ea02e08`, and CI re-runs them on push. **Three items are left OPEN with named reasons rather than ticked**, because a recorded blocker is a valid outcome and a fabricated pass is not: (1) **REQ-1 is incomplete** — it names "an accessible component foundation … React Hook Form" and **neither is installed**; `react-hook-form` is absent from `package.json` and no Radix/shadcn package exists. Every other element of REQ-1 holds. This is not new breakage (TASK-0.8 recorded that no shadcn components were installed, and the login shell is deliberately disabled so no form library was needed) and both arrive with Phase 2's activated login form. (2) **PERF-2's 100 ms input-acknowledgement target has never been measured** — the pagination half is satisfied, but the Phase 0 harness deliberately asserts no threshold because a CI or developer-hardware figure would be evidence of nothing; it needs the same reference-device measurement PERF-1 got. (3) **Success criterion 4 is not met** — the shell has never called a live parent endpoint, and TASK-1.3 found why it could not have as built: no CORS headers exist on any needed parent route, so webview `fetch` cannot reach the API and the transport must move to Rust. All three are Phase 2 work and all three are scoped in `phase-2-plan.md`. Also carried forward: ten parent proposals each needing its own approved parent specification, PA-1 (Phase 0's transport tests still carry Developer-API fixtures), and the binding endpoint-parity constraint that the desktop uses the main application's routes and never the public Developer API. Phase 2 implementation has not started and this contract's approved scope is unchanged.
