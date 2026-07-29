@@ -9,7 +9,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { CommandCentre } from "../../features/command-centre/CommandCentre";
 import { LoginShell } from "../../features/auth/LoginShell";
-import type { AuthPort } from "../../services/auth/ports";
+import type { AuthPort, SessionSummary } from "../../services/auth/ports";
 import type { SubscriptionEndpoint } from "../../services/api/endpoints/subscription";
 import type { TendersEndpoint } from "../../services/api/endpoints/tenders";
 import { TenderList } from "../../features/tenders/TenderList";
@@ -38,7 +38,13 @@ export interface AppRoutesProps {
    * and actionable.
    */
   tenders: TendersEndpoint;
-  onSignedIn?: () => void;
+  onSignedIn?: (session: SessionSummary) => void;
+  /**
+   * The signed-in account, for the header's sign-out control. Absent in a
+   * gated build, where no session can exist.
+   */
+  session?: SessionSummary;
+  onSignOut?: () => Promise<void>;
 }
 
 /** Reads `:id` from the URL so the screen itself stays router-agnostic. */
@@ -75,6 +81,8 @@ export function AppRoutes({
   subscription,
   tenders,
   onSignedIn,
+  session,
+  onSignOut,
 }: AppRoutesProps) {
   // While production auth is gated off no session can be established, so
   // the shell would otherwise be unreachable. Derived from the gate rather
@@ -100,7 +108,7 @@ export function AppRoutes({
           />
         }
       >
-        <Route element={<AppLayout />}>
+        <Route element={<AppLayout session={session} onSignOut={onSignOut} />}>
           <Route
             index
             element={<CommandCentre subscriptionEndpoint={subscription} />}

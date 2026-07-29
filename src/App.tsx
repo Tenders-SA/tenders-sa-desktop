@@ -5,6 +5,7 @@ import { AppRoutes } from "./app/router/routes";
 import { createAuthWiring } from "./app/auth-wiring";
 import { loadConfig } from "./app/config/load-config";
 import { markShellInteractive } from "./lib/performance";
+import type { SessionSummary } from "./services/auth/ports";
 
 /**
  * Composition root (TASK-2.10).
@@ -26,7 +27,10 @@ const wiring = createAuthWiring({
 });
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // The session itself, not a boolean: the header needs to name the account
+  // it is offering to sign out of.
+  const [session, setSession] = useState<SessionSummary | undefined>();
+  const isAuthenticated = session !== undefined;
 
   useEffect(() => {
     markShellInteractive();
@@ -39,8 +43,8 @@ function App() {
     let active = true;
     wiring.auth
       .restoreSession()
-      .then((session) => {
-        if (active && session) setIsAuthenticated(true);
+      .then((restored) => {
+        if (active && restored) setSession(restored);
       })
       .catch(() => undefined);
     return () => {
@@ -60,7 +64,19 @@ function App() {
           // route has to exist even with no session. The screen reports the
           // 401 as "sign in", which beats a link that quietly goes home.
           tenders={wiring.tenders}
-          onSignedIn={() => setIsAuthenticated(true)}
+          onSignedIn={setSession}
+          session={session}
+          onSignOut={async () => {
+            // `logout()` clears the keychain even if the remote call fails,
+            // and deleting that entry IS the logout -- the parent does not
+            // revoke. So the local session is dropped unconditionally: any
+            // path that left it set would keep a signed-out user signed in.
+            try {
+              await wiring.auth.logout();
+            } finally {
+              setSession(undefined);
+            }
+          }}
         />
       </BrowserRouter>
     </AppProviders>
