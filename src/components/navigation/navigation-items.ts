@@ -3,12 +3,19 @@
  * (docs/prompts/desktop-procurement-workspace.md §5 "Primary
  * navigation"), including its three-group structure.
  *
- * `available` is the honesty switch. Only Command Centre exists in
- * Phase 0; every other destination belongs to a later, separately
- * approved phase. Items marked unavailable render as visibly disabled
- * rather than as working links, so the shell never represents a
- * later-phase feature as functional (REQ-16, and TASK-0.10's
- * pre-check).
+ * `available` is the honesty switch. Items marked unavailable render as
+ * visibly disabled rather than as working links and are given no `path`
+ * at all, so the shell never represents an unbuilt feature as functional
+ * (REQ-16, and TASK-0.10's pre-check).
+ *
+ * Two destinations exist today: Command Centre, and Tender Radar, which
+ * now points at the tender discovery screen. Tender Radar is deliberately
+ * marked available even though it is currently a searchable, paginated
+ * list rather than the matched-opportunity radar the brief ultimately
+ * describes -- a working screen left unreachable would be worse than a
+ * partial one, and the label is transcribed from the brief and must not
+ * be reworded. Everything else remains a later, separately approved
+ * phase.
  */
 
 export interface NavigationItem {
@@ -29,7 +36,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     label: "Workflow",
     items: [
       { label: "Command Centre", path: "/", available: true },
-      { label: "Tender Radar", available: false },
+      { label: "Tender Radar", path: "/tenders", available: true },
       { label: "Opportunities", available: false },
       { label: "Application Workspaces", available: false },
       { label: "Proposals", available: false },

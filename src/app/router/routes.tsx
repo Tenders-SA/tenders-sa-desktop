@@ -5,6 +5,8 @@ import { CommandCentre } from "../../features/command-centre/CommandCentre";
 import { LoginShell } from "../../features/auth/LoginShell";
 import type { AuthPort } from "../../services/auth/ports";
 import type { SubscriptionEndpoint } from "../../services/api/endpoints/subscription";
+import type { TendersEndpoint } from "../../services/api/endpoints/tenders";
+import { TenderList } from "../../features/tenders/TenderList";
 
 export interface AppRoutesProps {
   auth: AuthPort;
@@ -14,6 +16,7 @@ export interface AppRoutesProps {
    * Command Centre renders no plan panel rather than an empty one.
    */
   subscription?: SubscriptionEndpoint;
+  tenders?: TendersEndpoint;
   onSignedIn?: () => void;
 }
 
@@ -21,6 +24,7 @@ export function AppRoutes({
   auth,
   isAuthenticated,
   subscription,
+  tenders,
   onSignedIn,
 }: AppRoutesProps) {
   // While production auth is gated off no session can be established, so
@@ -52,6 +56,9 @@ export function AppRoutes({
             index
             element={<CommandCentre subscriptionEndpoint={subscription} />}
           />
+          {tenders && (
+            <Route path="tenders" element={<TenderList endpoint={tenders} />} />
+          )}
         </Route>
       </Route>
 

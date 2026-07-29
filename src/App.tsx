@@ -55,6 +55,7 @@ function App() {
           auth={wiring.auth}
           isAuthenticated={isAuthenticated}
           subscription={isAuthenticated ? wiring.subscription : undefined}
+          tenders={isAuthenticated ? wiring.tenders : undefined}
           onSignedIn={() => setIsAuthenticated(true)}
         />
       </BrowserRouter>

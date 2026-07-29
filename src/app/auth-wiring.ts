@@ -17,6 +17,7 @@
 
 import { createParentApiTransport } from "../services/api/tauri-http-transport";
 import { SubscriptionEndpoint } from "../services/api/endpoints/subscription";
+import { TendersEndpoint } from "../services/api/endpoints/tenders";
 import { GatedAuthService } from "../services/auth/gated-auth-service";
 import { nativeCredentialStore } from "../services/auth/native-credential-store";
 import { ParentAuthAdapter } from "../services/auth/parent-auth-adapter";
@@ -37,6 +38,7 @@ export interface AuthWiringOptions {
 export interface AuthWiring {
   auth: GatedAuthService;
   subscription: SubscriptionEndpoint;
+  tenders: TendersEndpoint;
   /** The CSRF token captured at login, in memory only. */
   getCsrfToken: () => string | undefined;
 }
@@ -72,5 +74,10 @@ export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
     getToken: () => credentialStore.loadAccessToken(),
   });
 
-  return { auth, subscription, getCsrfToken: () => csrfToken };
+  const tenders = new TendersEndpoint({
+    transport,
+    getToken: () => credentialStore.loadAccessToken(),
+  });
+
+  return { auth, subscription, tenders, getCsrfToken: () => csrfToken };
 }

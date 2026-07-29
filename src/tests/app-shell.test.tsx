@@ -51,9 +51,15 @@ describe("navigation model", () => {
     ]);
   });
 
-  it("marks only Command Centre as available, so no later phase looks shipped", () => {
+  it("marks only built destinations as available, so no later phase looks shipped", () => {
+    // Grows only when a screen actually exists. Tender Radar joined when
+    // tender discovery shipped; adding a label here without a working route
+    // is exactly what the `available` flag exists to prevent.
     const available = ALL_NAVIGATION_ITEMS.filter((item) => item.available);
-    expect(available.map((item) => item.label)).toEqual(["Command Centre"]);
+    expect(available.map((item) => item.label)).toEqual([
+      "Command Centre",
+      "Tender Radar",
+    ]);
   });
 
   it("gives every unavailable item no path at all", () => {
@@ -172,8 +178,18 @@ describe("CommandPalette", () => {
     renderShell();
     await userEvent.keyboard("{Control>}k{/Control}");
 
-    const laterPhase = screen.getByRole("button", { name: /Tender Radar/ });
+    // Picks an item that is still genuinely unbuilt. This used to name
+    // Tender Radar, which shipped with tender discovery -- so the example
+    // moved rather than the rule. Any unavailable item must stay disabled,
+    // so the palette cannot become a back door into an unbuilt route.
+    const laterPhase = screen.getByRole("button", { name: /Proposals/ });
     expect(laterPhase).toBeDisabled();
+  });
+
+  it("can route into a destination that actually exists", async () => {
+    renderShell();
+    await userEvent.keyboard("{Control>}k{/Control}");
+    expect(screen.getByRole("button", { name: /Tender Radar/ })).toBeEnabled();
   });
 });
 
