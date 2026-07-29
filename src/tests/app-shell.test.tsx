@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AppLayout } from "../app/layouts/AppLayout";
 import { CommandCentre } from "../features/command-centre/CommandCentre";
 import { ProtectedRoute } from "../app/router/ProtectedRoute";
+import { AppRoutes } from "../app/router/routes";
+import type { AuthPort } from "../services/auth/ports";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { SyncStatus } from "../components/common/SyncStatus";
 import {
@@ -254,5 +256,51 @@ describe("SyncStatus", () => {
     render(<SyncStatus pendingCount={0} conflictCount={0} />);
     const status = screen.getByLabelText("Connectivity and sync status");
     expect(status).not.toHaveTextContent("pending");
+  });
+});
+
+describe("ProtectedRoute escape hatch (TASK-2.10, REQ-A9)", () => {
+  function authWith(enabled: boolean): AuthPort {
+    return {
+      isEnabled: () => enabled,
+      login: vi.fn(),
+      restoreSession: vi.fn(async () => undefined),
+      logout: vi.fn(async () => undefined),
+    } as unknown as AuthPort;
+  }
+
+  it("closes itself once auth is live, rather than needing manual removal", () => {
+    // The hatch exists only so a gated build is reachable. If it stayed
+    // open after auth shipped, every protected route would be reachable
+    // with no session -- an unauthenticated bypass, not a convenience.
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppRoutes auth={authWith(true)} isAuthenticated={false} />
+      </MemoryRouter>,
+    );
+    // Redirected to login, not into the shell.
+    expect(screen.getByRole("heading", { name: /sign in/i })).toBeVisible();
+  });
+
+  it("stays open while auth is gated, so the shell remains reachable", () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppRoutes auth={authWith(false)} isAuthenticated={false} />
+      </MemoryRouter>,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Command Centre" }),
+    ).toBeVisible();
+  });
+
+  it("lets an authenticated user into the shell when auth is live", () => {
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppRoutes auth={authWith(true)} isAuthenticated />
+      </MemoryRouter>,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Command Centre" }),
+    ).toBeVisible();
   });
 });

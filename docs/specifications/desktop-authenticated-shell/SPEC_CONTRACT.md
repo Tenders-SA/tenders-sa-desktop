@@ -95,7 +95,7 @@ platform's contracts as they are; the web application is not changed to accommod
 - [x] TASK-2.7 — Activate the login shell (five failure states with actions; user-facing copy ownership settled — see tasks.md evidence)
 - [x] TASK-2.8 — Add the subscription endpoint adapter (both audited traps resolved in the type system — see tasks.md evidence)
 - [x] TASK-2.9 — Render real data in the Command Centre (four states incl. handled schema-validation failure; both traps rendered — see tasks.md evidence)
-- [ ] TASK-2.10 — Enable the gate
+- [x] TASK-2.10 — Enable the gate (adapter wired; flag now load-bearing and left `false` pending G3 — see tasks.md evidence)
 - [ ] TASK-2.11 — Evaluate the authenticated shell
 
 ## HUMAN APPROVAL GATES
