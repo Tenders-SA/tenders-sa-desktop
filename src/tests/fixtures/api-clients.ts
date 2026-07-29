@@ -60,6 +60,7 @@ export function stubApiClients(
       markAllRead: idle(),
     },
     planner: { listEvents: idle(), listSuggested: idle() },
+    preferences: { get: idle(), update: idle() },
   } as unknown as ApiClients;
 
   return { ...clients, ...overrides };

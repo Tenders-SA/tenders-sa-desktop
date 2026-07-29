@@ -64,9 +64,11 @@ describe("navigation model", () => {
       "Opportunities",
       "Application Workspaces",
       "Calendar",
+      "Tasks",
       "Company Profile",
       "Company Document Vault",
       "Notifications",
+      "Settings",
     ]);
   });
 
@@ -77,13 +79,11 @@ describe("navigation model", () => {
     const unavailable = ALL_NAVIGATION_ITEMS.filter((item) => !item.available);
     expect(unavailable.map((item) => item.label)).toEqual([
       "Proposals",
-      "Tasks",
       "JV and Partner Network",
       "Supplier Intelligence",
       "Buyer Intelligence",
       "Award Intelligence",
       "Reports",
-      "Settings",
     ]);
   });
 

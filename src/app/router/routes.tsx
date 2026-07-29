@@ -22,6 +22,8 @@ import { CompanyProfileScreen } from "../../features/company/CompanyProfile";
 import { DocumentVault } from "../../features/documents/DocumentVault";
 import { NotificationsScreen } from "../../features/notifications/Notifications";
 import { Calendar } from "../../features/calendar/Calendar";
+import { Tasks } from "../../features/tasks/Tasks";
+import { Settings } from "../../features/settings/Settings";
 
 export interface AppRoutesProps {
   auth: AuthPort;
@@ -173,8 +175,20 @@ export function AppRoutes({
             element={<DocumentVault endpoint={clients.documents} />}
           />
           <Route
+            path="tasks"
+            element={
+              <Tasks dashboard={clients.dashboard} planner={clients.planner} />
+            }
+          />
+          <Route
             path="notifications"
             element={<NotificationsScreen endpoint={clients.notifications} />}
+          />
+          <Route
+            path="settings"
+            element={
+              <Settings endpoint={clients.preferences} session={session} />
+            }
           />
         </Route>
       </Route>

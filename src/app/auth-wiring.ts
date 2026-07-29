@@ -26,6 +26,7 @@ import { DocumentsEndpoint } from "../services/api/endpoints/documents";
 import { EligibilityEndpoint } from "../services/api/endpoints/eligibility";
 import { NotificationsEndpoint } from "../services/api/endpoints/notifications";
 import { PlannerEndpoint } from "../services/api/endpoints/planner";
+import { PreferencesEndpoint } from "../services/api/endpoints/preferences";
 import { RecommendationsEndpoint } from "../services/api/endpoints/recommendations";
 import { SavedTendersEndpoint } from "../services/api/endpoints/saved-tenders";
 import { GatedAuthService } from "../services/auth/gated-auth-service";
@@ -81,6 +82,7 @@ export interface ApiClients {
   eligibility: EligibilityEndpoint;
   notifications: NotificationsEndpoint;
   planner: PlannerEndpoint;
+  preferences: PreferencesEndpoint;
 }
 
 export interface AuthWiring extends ApiClients {
@@ -165,6 +167,7 @@ export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
     eligibility: new EligibilityEndpoint(endpointOptions),
     notifications: new NotificationsEndpoint(endpointOptions),
     planner: new PlannerEndpoint(endpointOptions),
+    preferences: new PreferencesEndpoint(endpointOptions),
   };
 
   return {

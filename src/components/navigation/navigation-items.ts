@@ -48,7 +48,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
       },
       { label: "Proposals", available: false },
       { label: "Calendar", path: "/calendar", available: true },
-      { label: "Tasks", available: false },
+      { label: "Tasks", path: "/tasks", available: true },
     ],
   },
   {
@@ -71,7 +71,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     items: [
       { label: "Notifications", path: "/notifications", available: true },
       { label: "Reports", available: false },
-      { label: "Settings", available: false },
+      { label: "Settings", path: "/settings", available: true },
     ],
   },
 ];
