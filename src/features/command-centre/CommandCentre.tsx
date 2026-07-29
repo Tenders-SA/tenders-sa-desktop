@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { SubscriptionEndpoint } from "../../services/api/endpoints/subscription";
 import { SubscriptionPanel } from "./SubscriptionPanel";
 
@@ -13,13 +14,13 @@ export interface CommandCentreProps {
  * Command Centre (REQ-2; first real data added by TASK-2.9).
  *
  * The brief describes this as the post-login default screen with deadline,
- * readiness, and pipeline widgets. Almost none of that data is reachable
- * yet, so the page still says so rather than showing mock widgets that
- * would read as working features.
+ * readiness, and pipeline widgets. Most of that data is still unreachable,
+ * so the page says so rather than showing mock widgets that would read as
+ * working features.
  *
- * What IS real is the plan panel: one authenticated read against the parent
- * API, which is what makes Phase 2 a vertical slice rather than an auth
- * refactor. It renders only when an endpoint is supplied.
+ * Two things here are real: the plan panel, which renders only when an
+ * endpoint is supplied, and the route into tender discovery. Everything
+ * else is deliberately described as absent.
  */
 export function CommandCentre({ subscriptionEndpoint }: CommandCentreProps) {
   return (
@@ -31,8 +32,8 @@ export function CommandCentre({ subscriptionEndpoint }: CommandCentreProps) {
         Command Centre
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Dashboard widgets, tender data, and workspace features arrive in later,
-        separately approved phases.
+        Dashboard widgets and workspace features arrive in later, separately
+        approved phases.
       </p>
 
       {subscriptionEndpoint && (
@@ -41,12 +42,18 @@ export function CommandCentre({ subscriptionEndpoint }: CommandCentreProps) {
 
       <div className="mt-6 rounded border border-border bg-card p-6">
         <h2 className="text-sm font-medium text-card-foreground">
-          Tenders and applications are not connected yet
+          Browse tenders
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tender discovery, deadlines, and workspace features arrive in later,
-          separately approved phases.
+          Search live tender notices and check closing dates. Matching,
+          applications, and proposal drafting are not connected yet.
         </p>
+        <Link
+          to="/tenders"
+          className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+        >
+          Open Tender Radar
+        </Link>
       </div>
     </section>
   );

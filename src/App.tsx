@@ -55,7 +55,11 @@ function App() {
           auth={wiring.auth}
           isAuthenticated={isAuthenticated}
           subscription={isAuthenticated ? wiring.subscription : undefined}
-          tenders={isAuthenticated ? wiring.tenders : undefined}
+          // Unconditional, and the prop is required so it cannot become
+          // conditional again: navigation advertises Tender Radar, so the
+          // route has to exist even with no session. The screen reports the
+          // 401 as "sign in", which beats a link that quietly goes home.
+          tenders={wiring.tenders}
           onSignedIn={() => setIsAuthenticated(true)}
         />
       </BrowserRouter>

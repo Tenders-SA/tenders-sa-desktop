@@ -1,4 +1,10 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { AppLayout } from "../layouts/AppLayout";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { CommandCentre } from "../../features/command-centre/CommandCentre";
@@ -7,6 +13,7 @@ import type { AuthPort } from "../../services/auth/ports";
 import type { SubscriptionEndpoint } from "../../services/api/endpoints/subscription";
 import type { TendersEndpoint } from "../../services/api/endpoints/tenders";
 import { TenderList } from "../../features/tenders/TenderList";
+import { TenderDetail } from "../../features/tenders/TenderDetail";
 
 export interface AppRoutesProps {
   auth: AuthPort;
@@ -16,8 +23,50 @@ export interface AppRoutesProps {
    * Command Centre renders no plan panel rather than an empty one.
    */
   subscription?: SubscriptionEndpoint;
-  tenders?: TendersEndpoint;
+  /**
+   * **Required**, unlike `subscription`, and that is the whole point.
+   *
+   * Navigation advertises Tender Radar as available, so its route must
+   * exist in every build. It first shipped as optional and supplied only
+   * when a session existed, which meant that in a gated build the link fell
+   * through to the catch-all and silently redirected home -- the dishonest
+   * affordance REQ-16 exists to prevent. Making it required moves that from
+   * something a test has to notice to something that will not compile.
+   *
+   * Constructing the endpoint costs nothing without a session: with no
+   * token the read fails 401 and the screen says to sign in, which is true
+   * and actionable.
+   */
+  tenders: TendersEndpoint;
   onSignedIn?: () => void;
+}
+
+/** Reads `:id` from the URL so the screen itself stays router-agnostic. */
+function TenderDetailRoute({ endpoint }: { endpoint: TendersEndpoint }) {
+  const { tenderId } = useParams();
+  const navigate = useNavigate();
+
+  // Cannot happen through the route table, but a missing param must not
+  // reach the endpoint as "undefined".
+  if (!tenderId) return <Navigate to="/tenders" replace />;
+
+  return (
+    <TenderDetail
+      endpoint={endpoint}
+      tenderId={tenderId}
+      onBack={() => navigate("/tenders")}
+    />
+  );
+}
+
+function TenderListRoute({ endpoint }: { endpoint: TendersEndpoint }) {
+  const navigate = useNavigate();
+  return (
+    <TenderList
+      endpoint={endpoint}
+      onOpenTender={(id) => navigate(`/tenders/${encodeURIComponent(id)}`)}
+    />
+  );
 }
 
 export function AppRoutes({
@@ -56,9 +105,14 @@ export function AppRoutes({
             index
             element={<CommandCentre subscriptionEndpoint={subscription} />}
           />
-          {tenders && (
-            <Route path="tenders" element={<TenderList endpoint={tenders} />} />
-          )}
+          <Route
+            path="tenders"
+            element={<TenderListRoute endpoint={tenders} />}
+          />
+          <Route
+            path="tenders/:tenderId"
+            element={<TenderDetailRoute endpoint={tenders} />}
+          />
         </Route>
       </Route>
 

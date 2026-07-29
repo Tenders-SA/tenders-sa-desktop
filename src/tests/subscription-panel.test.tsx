@@ -11,6 +11,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { SubscriptionPanel } from "../features/command-centre/SubscriptionPanel";
 import { CommandCentre } from "../features/command-centre/CommandCentre";
 import { ApiError } from "../services/api/errors";
@@ -208,17 +209,23 @@ describe("SubscriptionPanel failures", () => {
 });
 
 describe("CommandCentre integration", () => {
-  it("renders the plan panel when an endpoint is supplied", async () => {
+  /** Contains a `Link` now, so a router is required. */
+  const renderCentre = (subscription?: SubscriptionEndpoint) =>
     render(
-      <CommandCentre subscriptionEndpoint={endpointReturning(subscribed)} />,
+      <MemoryRouter>
+        <CommandCentre subscriptionEndpoint={subscription} />
+      </MemoryRouter>,
     );
+
+  it("renders the plan panel when an endpoint is supplied", async () => {
+    renderCentre(endpointReturning(subscribed));
     await waitFor(() =>
       expect(screen.getByText("Professional")).toBeInTheDocument(),
     );
   });
 
   it("omits the panel entirely in a gated build with no session", () => {
-    render(<CommandCentre />);
+    renderCentre();
     expect(screen.queryByText("Your plan")).toBeNull();
     // The shell must still render, and must still be honest about what is
     // not connected.
@@ -227,10 +234,8 @@ describe("CommandCentre integration", () => {
     ).toBeInTheDocument();
   });
 
-  it("still says tender and workspace features are not connected", () => {
-    render(
-      <CommandCentre subscriptionEndpoint={endpointReturning(subscribed)} />,
-    );
+  it("still says the unbuilt workspace features are not connected", () => {
+    renderCentre(endpointReturning(subscribed));
     expect(screen.getByText(/not connected yet/i)).toBeInTheDocument();
   });
 });

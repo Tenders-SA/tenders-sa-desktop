@@ -7,6 +7,7 @@ import { CommandCentre } from "../features/command-centre/CommandCentre";
 import { ProtectedRoute } from "../app/router/ProtectedRoute";
 import { AppRoutes } from "../app/router/routes";
 import type { AuthPort } from "../services/auth/ports";
+import type { TendersEndpoint } from "../services/api/endpoints/tenders";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { SyncStatus } from "../components/common/SyncStatus";
 import {
@@ -109,23 +110,37 @@ describe("AppLayout", () => {
 });
 
 describe("CommandCentre", () => {
+  // Now contains a `Link`, so it needs a router around it.
+  const renderCentre = () =>
+    render(
+      <MemoryRouter>
+        <CommandCentre />
+      </MemoryRouter>,
+    );
+
   it("stays honest about what is not connected rather than showing mock widgets", () => {
-    // COPY UPDATED BY TASK-2.9. Phase 0's version asserted "nothing to show
-    // yet", which was true then and is no longer: the plan panel is real
-    // data. The *intent* is unchanged and is what this still checks -- the
-    // page must not imply that tender or workspace features work.
-    render(<CommandCentre />);
-    expect(
-      screen.getByRole("heading", { name: /not connected yet/i }),
-    ).toBeVisible();
-    // Appears in both the intro and the panel, so assert at least one.
+    // COPY UPDATED TWICE. Phase 0 asserted "nothing to show yet"; TASK-2.9
+    // replaced that with a "not connected yet" heading once the plan panel
+    // became real. Tender discovery is now real too, so the heading is a
+    // working affordance and the not-connected claim narrowed to what is
+    // still genuinely missing. The *intent* has never changed and is what
+    // this checks: the page must not imply that unbuilt features work.
+    renderCentre();
+    expect(screen.getByText(/not connected yet/i)).toBeVisible();
     expect(
       screen.getAllByText(/later, separately approved phases/i).length,
     ).toBeGreaterThan(0);
   });
 
+  it("offers a real way into tender discovery, not a description of one", () => {
+    renderCentre();
+    expect(
+      screen.getByRole("link", { name: "Open Tender Radar" }),
+    ).toHaveAttribute("href", "/tenders");
+  });
+
   it("shows no plan panel when there is no session to read one for", () => {
-    render(<CommandCentre />);
+    renderCentre();
     expect(screen.queryByText("Your plan")).toBeNull();
   });
 });
@@ -285,38 +300,58 @@ describe("ProtectedRoute escape hatch (TASK-2.10, REQ-A9)", () => {
     } as unknown as AuthPort;
   }
 
+  /** Never resolves; these tests only care which screen mounts. */
+  const idleTenders = {
+    list: vi.fn(() => new Promise<never>(() => {})),
+    get: vi.fn(() => new Promise<never>(() => {})),
+  } as unknown as TendersEndpoint;
+
+  const routesAt = (enabled: boolean, isAuthenticated: boolean) => (
+    <MemoryRouter initialEntries={["/"]}>
+      <AppRoutes
+        auth={authWith(enabled)}
+        isAuthenticated={isAuthenticated}
+        tenders={idleTenders}
+      />
+    </MemoryRouter>
+  );
+
   it("closes itself once auth is live, rather than needing manual removal", () => {
     // The hatch exists only so a gated build is reachable. If it stayed
     // open after auth shipped, every protected route would be reachable
     // with no session -- an unauthenticated bypass, not a convenience.
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <AppRoutes auth={authWith(true)} isAuthenticated={false} />
-      </MemoryRouter>,
-    );
+    render(routesAt(true, false));
     // Redirected to login, not into the shell.
     expect(screen.getByRole("heading", { name: /sign in/i })).toBeVisible();
   });
 
   it("stays open while auth is gated, so the shell remains reachable", () => {
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <AppRoutes auth={authWith(false)} isAuthenticated={false} />
-      </MemoryRouter>,
-    );
+    render(routesAt(false, false));
     expect(
       screen.getByRole("heading", { name: "Command Centre" }),
     ).toBeVisible();
   });
 
   it("lets an authenticated user into the shell when auth is live", () => {
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <AppRoutes auth={authWith(true)} isAuthenticated />
-      </MemoryRouter>,
-    );
+    render(routesAt(true, true));
     expect(
       screen.getByRole("heading", { name: "Command Centre" }),
     ).toBeVisible();
+  });
+
+  it("protects the tender routes too, not just the index", () => {
+    // A new route under the guarded layout must inherit the guard. Mounting
+    // tenders outside it would be an unauthenticated read path.
+    render(
+      <MemoryRouter initialEntries={["/tenders"]}>
+        <AppRoutes
+          auth={authWith(true)}
+          isAuthenticated={false}
+          tenders={idleTenders}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("heading", { name: /sign in/i })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Tenders" })).toBeNull();
   });
 });

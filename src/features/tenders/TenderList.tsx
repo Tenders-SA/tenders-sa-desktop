@@ -1,11 +1,12 @@
 import { useEffect, useId, useState } from "react";
 import { ApiError } from "../../services/api/errors";
-import {
-  daysUntilClosing,
-  type TenderListItem,
-  type TenderListResult,
-  type TendersEndpoint,
+import type {
+  TenderListItem,
+  TenderListResult,
+  TendersEndpoint,
 } from "../../services/api/endpoints/tenders";
+import { ClosingLabel } from "./ClosingLabel";
+import { describeTenderError } from "./tender-errors";
 
 export interface TenderListProps {
   endpoint: TendersEndpoint;
@@ -17,59 +18,11 @@ type State =
   | { status: "ready"; result: TenderListResult }
   | { status: "error"; message: string; kind: string };
 
-function describeError(error: unknown): { message: string; kind: string } {
-  if (!(error instanceof ApiError)) {
-    return { message: "Could not load tenders.", kind: "unknown" };
-  }
-  switch (error.kind) {
-    case "unauthorized":
-      return { message: "Your session has expired.", kind: error.kind };
-    case "offline":
-    case "timeout":
-      return { message: "Could not reach Tenders-SA.", kind: error.kind };
-    case "malformed":
-      return {
-        message:
-          "Tenders could not be read in a format this version understands.",
-        kind: error.kind,
-      };
-    default:
-      return {
-        message: "Tenders are unavailable right now.",
-        kind: error.kind,
-      };
-  }
-}
-
 const ZAR = new Intl.NumberFormat("en-ZA", {
   style: "currency",
   currency: "ZAR",
   maximumFractionDigits: 0,
 });
-
-/** Deadline urgency, as text — never colour alone (A11Y-1). */
-function ClosingLabel({ closingDate }: { closingDate: string }) {
-  const days = daysUntilClosing(closingDate);
-
-  if (days === null) {
-    // An unparseable date must not render as a number a user might act on.
-    return <span className="text-muted-foreground">Closing date unknown</span>;
-  }
-  if (days < 0) {
-    return <span className="text-muted-foreground">Closed</span>;
-  }
-  if (days === 0) {
-    return <span className="font-medium text-destructive">Closes today</span>;
-  }
-  if (days <= 7) {
-    return (
-      <span className="font-medium text-warning">
-        Closes in {days} {days === 1 ? "day" : "days"}
-      </span>
-    );
-  }
-  return <span className="text-muted-foreground">Closes in {days} days</span>;
-}
 
 function TenderRow({
   tender,
@@ -141,7 +94,12 @@ export function TenderList({ endpoint, onOpenTender }: TenderListProps) {
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.kind === "cancelled") return;
-        if (active) setState({ status: "error", ...describeError(error) });
+        if (active) {
+          setState({
+            status: "error",
+            ...describeTenderError(error, "tenders"),
+          });
+        }
       });
 
     return () => {
