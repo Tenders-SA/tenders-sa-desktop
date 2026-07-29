@@ -87,7 +87,7 @@ platform's contracts as they are; the web application is not changed to accommod
 ## TASK CHECKLIST
 
 - [x] TASK-2.1 — Re-verify the audited contract at a current parent baseline (parent unmoved at `8ff2e4c2`; 18/18 claims confirmed — see tasks.md evidence)
-- [ ] TASK-2.2 — Add and scope `tauri-plugin-http`
+- [x] TASK-2.2 — Add and scope `tauri-plugin-http` (one path-scoped origin; 13 boundary tests; Rust compiled first in CI — see tasks.md evidence)
 - [ ] TASK-2.3 — Implement the transport adapter
 - [ ] TASK-2.4 — Close the endpoint-parity gap (PA-1)
 - [ ] TASK-2.5 — Extend the authentication failure union

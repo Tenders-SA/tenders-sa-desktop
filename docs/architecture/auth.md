@@ -41,6 +41,31 @@ reading `exp`.
 
 ### 2. API requests are issued from Rust, not from webview `fetch`
 
+> **Superseded in part by Phase 2 (TASK-2.2), 2026-07-29 — on product-owner direction.**
+>
+> The *conclusion* stands: requests are issued from Rust and browser CORS does not apply. What
+> changed is the **mechanism**, and with it one security property.
+>
+> **Mechanism**: transport uses **`tauri-plugin-http`**, not a hand-written native command. The
+> plugin executes the request in Rust via `reqwest`, grants **no origin by default**, enforces its
+> URL allow-list inside the command (`is_allowed(&url)`), and normalises the `Origin` header to
+> the target's own origin so the parent never sees a `tauri://` origin.
+>
+> **Property that changed**: the plugin takes request headers **from the caller**, so
+> `Authorization` is assembled in TypeScript. The Bearer token is therefore **briefly present in
+> webview memory** on each request. The claim below that the webview "never holds the credential"
+> is **no longer accurate**.
+>
+> **What replaces it** (`desktop-authenticated-shell/requirements.md` SEC-A1, SEC-A2): the token
+> is at rest **only** in the OS keychain, is read per request and never retained in any
+> module-level or global JS variable, and the exfiltration paths are closed and **tested** — the
+> plugin allow-list contains exactly one origin, `script-src` stays `'self'`, and `connect-src`
+> stays local. `src/tests/capability-scope.test.ts` fails if any of the three is widened.
+>
+> The residual risk is a same-request-window read under an XSS that also has an exfiltration
+> channel — narrower than the general case given no remote script sources, but not zero, and
+> recorded rather than glossed.
+
 **Why — two independent reasons, and the second is not a preference.**
 
 - *Security*: the Bearer token never enters webview JavaScript, so it cannot leak via XSS,

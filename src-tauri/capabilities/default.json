@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Least-privilege capability for the main window: core app/window basics, the explicit native security commands, and SQL access to the single local application database. No shell, filesystem, or URL-opening access is granted; those are added only by the task that needs them, scoped to what it needs.",
+  "description": "Least-privilege capability for the main window: core app/window basics, the explicit native security commands, SQL access to the single local application database, and HTTP access scoped to the Tenders-SA application API path only. No shell, filesystem, or URL-opening access is granted; those are added only by the task that needs them, scoped to what it needs. The http allow-list is a security boundary, not configuration: it bounds the set of origins the runtime API base URL may point at, and src/tests/capability-scope.test.ts fails if it is widened.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -12,6 +12,10 @@
     "allow-decrypt-value",
     "allow-log-event",
     "sql:default",
-    "sql:allow-execute"
+    "sql:allow-execute",
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "http://localhost:3000/api/*" }]
+    }
   ]
 }
