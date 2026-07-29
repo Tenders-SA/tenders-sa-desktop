@@ -7,6 +7,7 @@ import type {
 } from "../../services/api/endpoints/tenders";
 import { ClosingLabel } from "./ClosingLabel";
 import { describeTenderError } from "./tender-errors";
+import { PROVINCES, PUBLICATION_FILTERS } from "./tender-filter-options";
 
 export interface TenderListProps {
   endpoint: TendersEndpoint;
@@ -80,7 +81,12 @@ export function TenderList({ endpoint, onOpenTender }: TenderListProps) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [submittedSearch, setSubmittedSearch] = useState("");
+  const [province, setProvince] = useState("");
+  // Empty string is the route's no-parameter default: open tenders.
+  const [publicationType, setPublicationType] = useState("");
   const searchId = useId();
+  const provinceId = useId();
+  const publicationId = useId();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -88,7 +94,16 @@ export function TenderList({ endpoint, onOpenTender }: TenderListProps) {
     setState({ status: "loading" });
 
     endpoint
-      .list({ page, limit: 20, search: submittedSearch }, controller.signal)
+      .list(
+        {
+          page,
+          limit: 20,
+          search: submittedSearch,
+          province,
+          publicationType,
+        },
+        controller.signal,
+      )
       .then((result) => {
         if (active) setState({ status: "ready", result });
       })
@@ -106,9 +121,11 @@ export function TenderList({ endpoint, onOpenTender }: TenderListProps) {
       active = false;
       controller.abort();
     };
-  }, [endpoint, page, submittedSearch]);
+  }, [endpoint, page, submittedSearch, province, publicationType]);
 
   const result = state.status === "ready" ? state.result : undefined;
+  /** Whether a selection, rather than the corpus, could explain an empty page. */
+  const narrowed = province !== "" || publicationType !== "";
 
   return (
     <section aria-labelledby="tenders-heading">
@@ -146,6 +163,60 @@ export function TenderList({ endpoint, onOpenTender }: TenderListProps) {
         </button>
       </form>
 
+      {/*
+        Filters apply immediately rather than on submit, because a select has
+        no ambiguity about when the user is finished with it. Each change
+        resets to page 1: staying on page 4 of a narrower result set would
+        show an empty page and read as "no tenders match".
+      */}
+      <div className="mt-3 flex flex-wrap gap-4">
+        <div className="flex items-center gap-2">
+          <label htmlFor={provinceId} className="text-sm text-muted-foreground">
+            Province
+          </label>
+          <select
+            id={provinceId}
+            value={province}
+            onChange={(event) => {
+              setPage(1);
+              setProvince(event.target.value);
+            }}
+            className="rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground"
+          >
+            <option value="">All provinces</option>
+            {PROVINCES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor={publicationId}
+            className="text-sm text-muted-foreground"
+          >
+            Show
+          </label>
+          <select
+            id={publicationId}
+            value={publicationType}
+            onChange={(event) => {
+              setPage(1);
+              setPublicationType(event.target.value);
+            }}
+            className="rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground"
+          >
+            {PUBLICATION_FILTERS.map((filter) => (
+              <option key={filter.label} value={filter.value ?? ""}>
+                {filter.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {state.status === "loading" && (
         <p role="status" className="mt-6 text-sm text-muted-foreground">
           Loading tenders…
@@ -164,9 +235,18 @@ export function TenderList({ endpoint, onOpenTender }: TenderListProps) {
 
       {result && result.tenders.length === 0 && (
         <p className="mt-6 text-sm text-muted-foreground">
-          {submittedSearch
-            ? `No tenders match “${submittedSearch}”.`
-            : "No tenders are available."}
+          {/*
+            The distinction matters: "none available" when a filter is
+            narrowing the corpus would tell the user the platform is empty
+            when in fact their own selection is.
+          */}
+          {submittedSearch && narrowed
+            ? `No tenders match “${submittedSearch}” with the current filters.`
+            : submittedSearch
+              ? `No tenders match “${submittedSearch}”.`
+              : narrowed
+                ? "No tenders match the current filters."
+                : "No open tenders are available right now."}
         </p>
       )}
 
