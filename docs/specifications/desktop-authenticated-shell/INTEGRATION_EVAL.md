@@ -3,8 +3,8 @@
 > Update this file during implementation. No implementation is complete until every applicable
 > item passes and evidence is recorded.
 >
-> **Current status: PENDING APPROVAL — NOT STARTED.** This specification was authored on
-> 2026-07-29 following the merge of the Phase 0–1 contract. No Phase 2 code exists.
+> **Current status: APPROVED — IN PROGRESS.** Approved 2026-07-29 (gate G1). TASK-2.1 is
+> complete and found the parent unmoved, so implementation proceeds against `8ff2e4c2`.
 
 ## Specification Validation
 
@@ -18,17 +18,17 @@
 - [x] Every task maps to requirements/design and includes files, pre-check, verification, commit
 - [x] Contract task list mirrors `tasks.md` at specification creation
 - [x] Rollback, security, and compatibility constraints documented
-- [ ] **User approved the specification** — status remains `PENDING APPROVAL`
+- [x] **User approved the specification** — 2026-07-29, status `APPROVED` (gate G1)
 
 ## Pre-Implementation Check
 
-- [ ] `SPEC_CONTRACT.md` status is `APPROVED`
-- [ ] Desktop worktree is clean except approved scope
-- [ ] **Parent contract re-verified at a current baseline** (TASK-2.1) — the Phase 1 audit is
-      pinned at `8ff2e4c2` and is a point-in-time artifact; commit `9fd93b2` showed in-scope
-      parent routes moving within days
-- [ ] Parent repository readable for that re-verification
-- [ ] No unapproved parent repository edit is required
+- [x] `SPEC_CONTRACT.md` status is `APPROVED`
+- [x] Desktop worktree is clean except approved scope
+- [x] **Parent contract re-verified at a current baseline** (TASK-2.1) — the parent has **not
+      moved**: still `8ff2e4c2`, 0 commits since, all 15 cited files unchanged, and 18/18
+      load-bearing claims re-asserted against source
+- [x] Parent repository readable for that re-verification — 9794 tracked files, worktree clean
+- [x] No unapproved parent repository edit is required
 
 ## Phase 2A Evaluation — transport
 
@@ -103,12 +103,12 @@ tracked but not owned by this slice.
 | Gate | Command or document | Result | Date/commit |
 |---|---|---|---|
 | Specification structure | Manual cross-file review | PASS | 2026-07-29 / this commit |
-| Contract approval | User | **PENDING** | — |
+| Contract approval (G1) | User | **PASS** | 2026-07-29 |
+| TASK-2.1 parent re-verification | `docs/audits/parent-baseline.md` §7a | PASS — parent unmoved at `8ff2e4c2`; 18/18 claims confirmed | 2026-07-29 |
 
 ## Result
 
-- **Status**: **PENDING APPROVAL — NOT STARTED**
-- **Blocking**: gate G1. No Phase 2 file may be written until the user approves this contract.
-- **First action after approval**: TASK-2.1 — re-verify the audited parent contract at a current
-  baseline. If the contract has moved materially, the specification is revised before any code
-  is written.
+- **Status**: **APPROVED — IN PROGRESS**
+- **Gate G1**: cleared 2026-07-29.
+- **TASK-2.1**: complete. Parent unmoved at `8ff2e4c2`; no specification revision needed.
+- **Outstanding gates**: G2 (adapter accepted as audited) blocks TASK-2.10; G3, G4, G5 unchanged.

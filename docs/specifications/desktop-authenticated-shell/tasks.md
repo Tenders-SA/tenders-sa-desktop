@@ -7,15 +7,15 @@
 
 ## Current Status
 
-- [ ] Specification approved by user
-- [ ] Contract re-verified against parent source at a current baseline
+- [x] Specification approved by user — 2026-07-29 (gate G1)
+- [x] Contract re-verified against parent source at a current baseline — TASK-2.1
 - [ ] Phase 2 slice implemented
 - [ ] Integration evaluation passed
 - [ ] All success criteria verified
 
 ## Phase 2A: Contract re-verification and transport
 
-- [ ] **TASK-2.1 — Re-verify the audited contract at a current parent baseline**
+- [x] **TASK-2.1 — Re-verify the audited contract at a current parent baseline**
   - *Refs*: INT-A4, INT-A1
   - *Files*: update `docs/audits/parent-baseline.md` with a Phase 2 baseline entry; update
     `src/tests/fixtures/parent-auth-contract.ts` only if the contract moved
@@ -25,6 +25,7 @@
     at the new SHA; each is confirmed unchanged or the change is recorded with its impact. If
     the contract moved materially, **stop** and revise the specification before implementing
   - *Commit*: `docs(auth-shell/2.1): re-verify parent auth contract`
+  - *Evidence*: `docs/audits/parent-baseline.md` §7a. **Pre-check**: parent attached and readable — 9794 tracked files, worktree clean. **The parent has not moved**: `origin/aws-production-app` is still `8ff2e4c2b2b5597dc6d8107f628ffe72c9a89bc1`, **0 commits** since the audit baseline, and all 15 files cited by `auth-subscription-contract.md` are unchanged. Byte-identity follows from the SHA, but the **18 load-bearing behavioural claims were re-asserted directly against source anyway** rather than inferred: Bearer precedence plus the parent test guarding it, the login body token and `sameSite: 'strict'` cookie, the 10-per-15-minute IP-keyed limiter, the three status-indistinguishable 401s, `/me`'s 200-with-`user: null` and its token re-minting and lower-cased tier overlay, the absence of any revocation primitive, the 7-day expiry, CSRF validated by exactly one route and none in middleware, `/api/auth/me` on the public allowlist while the subscription routes are gated, the synthesised free plan with `id: null`, `feature-access`'s `hasAccess: false` inside its HTTP 500, and no CORS on any needed route. **All 18 confirmed.** One check failed on first run — the synthesised-free-plan assertion — and investigating showed a too-narrow `grep -A3` window rather than a contract change (`id: null` is four lines in); the finding stands and the check was wrong, which is recorded because a silently "fixed" check is exactly the kind of thing this task exists to catch. **No specification revision is required**; implementation proceeds against `8ff2e4c2`. No parent file was modified.
 
 - [ ] **TASK-2.2 — Add and scope `tauri-plugin-http`**
   - *Refs*: REQ-A1, SEC-A2, SEC-A3

@@ -1,8 +1,8 @@
 # SPEC CONTRACT — Tenders-SA Desktop Authenticated Shell (Phase 2)
 
 # Generated: 2026-07-29
-# Status: PENDING APPROVAL
-# Approved by: —
+# Status: APPROVED
+# Approved by: mobiusndou@gmail.com on 2026-07-29
 
 ## CODER INSTRUCTIONS
 
@@ -11,8 +11,8 @@ This contract governs **Phase 2 only**: the authenticated shell vertical slice. 
 in order; do not combine or silently change them. Complete each pre-check and verification.
 Mirror checklist changes here and in `tasks.md`.
 
-**Implementation must not begin until the user explicitly approves this specification and this
-status is changed to `APPROVED`.**
+Implementation is authorised. The user approved this specification on 2026-07-29 (gate G1).
+Gates G2–G5 remain outstanding and still block what they name below.
 
 This contract does not alter the Phase 0–1 contract at
 `docs/specifications/desktop-procurement-workspace/SPEC_CONTRACT.md`, which remains APPROVED and
@@ -86,7 +86,7 @@ platform's contracts as they are; the web application is not changed to accommod
 
 ## TASK CHECKLIST
 
-- [ ] TASK-2.1 — Re-verify the audited contract at a current parent baseline
+- [x] TASK-2.1 — Re-verify the audited contract at a current parent baseline (parent unmoved at `8ff2e4c2`; 18/18 claims confirmed — see tasks.md evidence)
 - [ ] TASK-2.2 — Add and scope `tauri-plugin-http`
 - [ ] TASK-2.3 — Implement the transport adapter
 - [ ] TASK-2.4 — Close the endpoint-parity gap (PA-1)
