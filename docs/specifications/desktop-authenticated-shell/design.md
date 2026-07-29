@@ -6,87 +6,133 @@
   keychain commands, protected routing, and shell; this slice fills them in.
 - **Justification**: every inbound dependency already exists and is tested. No foundational
   module is created, which is what keeps this slice small enough to be a first vertical.
-- **Primary risks**: the new native HTTP command becoming a general-purpose fetch primitive; a
-  token leaking into webview state; the audited contract having drifted since the Phase 1
-  baseline; and the parent's `api-response-standardization` spec landing mid-slice.
-- **Mitigation**: origin-scoping enforced in Rust and asserted by test; keychain-only storage
-  with a non-leakage test; a mandatory contract re-verification before implementation (INT-A4);
-  per-endpoint schemas that bound the blast radius of a parent envelope change to one adapter.
+- **Primary risks**: the HTTP plugin's URL allowlist being widened past the API origin; the
+  Bearer token being retained in webview state rather than used transiently; the audited contract
+  having drifted since the Phase 1 baseline; and the parent's `api-response-standardization` spec
+  landing mid-slice.
+- **Mitigation**: an allowlist of exactly one origin, asserted by test alongside the CSP
+  restrictions that contain exfiltration (SEC-A2); keychain-at-rest storage with a
+  no-retention test (SEC-A1); a mandatory contract re-verification before implementation
+  (INT-A4); per-endpoint schemas that bound the blast radius of a parent envelope change to one
+  adapter.
+
+### Standing constraint: the desktop adapts to the platform
+
+The Tenders-SA web application is in production and is **not modified to accommodate this
+client**. The desktop is an extension of the existing platform, so every mismatch the Phase 1
+audit found is absorbed on the desktop side. Phase 1 raised ten parent-side items (P-1…P-10);
+**none is requested as a parent change**, and each has a desktop-side accommodation recorded in
+`requirements.md` and the gap report's disposition note. Where an accommodation is uglier than a
+parent fix would have been — string-matching login error strings (A-1) is the clearest case —
+the ugliness stays on this side of the boundary.
 
 ## Architecture
 
 ```text
 React feature UI  (LoginShell, Command Centre)
-    │  no token ever reaches this layer
+    │
     ▼
 Auth service        GatedAuthService → ParentAuthAdapter (new)
-    │
+    │  reads the token from the keychain per request, attaches it, discards it
     ▼
-API transport       existing seam → TauriTransport (new)
+API transport       existing seam → TauriHttpTransport (new)
     │
-    ▼  Tauri IPC — narrow, origin-scoped
-Rust  http::request (new)  ── HTTPS ──►  Main Tenders-SA application API
-    │                                     /api/auth/*, /api/subscription/*
-    ▼
-Rust  security::secret_store  ──►  OS keychain  (token lives only here)
+    ▼  tauri-plugin-http — URL allowlist: the API origin ONLY
+Rust  reqwest  ── HTTPS ──►  Main Tenders-SA application API
+                              /api/auth/*, /api/subscription/*
+
+Rust  security::secret_store  ──►  OS keychain   (token at rest, here only)
 ```
 
-Two properties this topology exists to guarantee:
+## Transport decision — `tauri-plugin-http`, and its recorded tradeoff
 
-1. **The token never enters webview JavaScript.** It is written to and read from the keychain by
-   Rust, and attached to outgoing requests by Rust. The webview asks for "a request to path X";
-   it never holds the credential.
-2. **Browser CORS does not apply.** Native HTTP from Rust is not subject to it, which is what
-   makes the parent reachable at all (`auth-subscription-contract.md` §6).
+**Decision: use `tauri-plugin-http`.** This is a directed decision, made by the product owner on
+2026-07-29, and it is recorded here with its consequences rather than silently absorbed.
 
-## The native HTTP command — the highest-risk decision
+### What it gets right
 
-```rust
-// src-tauri/src/commands/http.rs   (shape, not final code)
-#[tauri::command]
-async fn api_request(
-    method: HttpMethod,      // closed enum: Get | Post | Put | Patch | Delete
-    path: String,            // path only — NOT a URL
-    body: Option<String>,
-    idempotent: bool,
-) -> Result<ApiResponse, SecurityError>
-```
+Verified by reading the plugin source (`tauri-plugin-http` 2.5.2, `src/commands.rs`,
+`src/scope.rs`, `permissions/default.toml`) rather than from memory:
 
-**The webview supplies a path, never a URL.** The origin is read from validated runtime
-configuration inside Rust and concatenated there. This is the single most important design
-choice in the slice: if the command accepted a full URL, it would be a general-purpose native
-fetch primitive callable from the webview, which would hand back exactly the capability SEC-1
-exists to withhold and would make the CSP irrelevant.
+- **It solves the blocker.** The request is executed in Rust via `reqwest`, so browser CORS
+  enforcement does not apply. This is the whole reason the slice exists
+  (`auth-subscription-contract.md` §6).
+- **It is default-deny on origins.** `permissions/default.toml` states the default permission
+  set "enables all fetch operations but does not allow explicitly any origins to be fetched.
+  This needs to be manually configured before usage." Scope is enforced in the command itself —
+  `commands.rs:229` calls `is_allowed(&url)` against the chained command and global
+  allow/deny lists.
+- **It normalises the `Origin` header** (`commands.rs:290-295`), setting it to the target's own
+  origin. The parent therefore never sees a `tauri://` origin, so nothing about this depends on
+  parent-side behaviour.
+- **It blocks forbidden headers** per the fetch spec unless the `unsafe-headers` feature is
+  enabled. We will not enable it.
 
-Additional constraints, all enforced in Rust:
+**Configuration**: the capability grants `http:default` plus an explicit allowlist of exactly
+one entry — the configured API origin. No wildcard host, no second entry. The `dangerous-settings`
+and `unsafe-headers` features stay off.
 
-- `path` must begin with `/api/` and must not contain `..`, a scheme, or an authority.
-- The `Authorization` header is attached by Rust from the keychain. The webview **cannot** set,
-  read, or override it.
-- `x-csrf-token` is attached by Rust from an in-memory value set at login.
-- Errors return `SecurityError`, which never carries secret material — the existing Phase 0
-  type and its redaction tests apply unchanged.
-- Response bodies are returned as text plus status and headers; parsing and validation stay in
-  TypeScript, where the Zod schemas live.
+### The tradeoff, stated plainly
 
-**Rejected**: exposing `tauri-plugin-http`. Its scoping is URL-pattern based and it would place
-a general HTTP capability in the webview's reach. A hand-written command with a path-only
-interface is narrower and auditable in one file.
+`tauri-plugin-http` takes request headers **from the caller** (`commands.rs:73`,
+`headers: Vec<(String, String)>`). The `Authorization` header therefore has to be supplied by
+TypeScript, which means **the token is briefly present in webview memory** on every request.
+
+That is a real reduction in the boundary Phase 1 originally proposed, where Rust attached the
+header and the webview never held the credential. It is not a hypothetical difference: an XSS
+foothold in the webview could read the token during a request.
+
+### Why it is nonetheless an acceptable posture here
+
+Not "it's fine" — specifically, the exfiltration paths are narrow, and SEC-A2 requires keeping
+them that way:
+
+| Path an attacker would need | Status |
+|---|---|
+| Load a remote script | Blocked — CSP `script-src 'self'` |
+| `fetch`/`XHR` to an attacker host | Blocked — CSP `connect-src 'self' ipc: http://ipc.localhost` |
+| Use the HTTP plugin to POST the token elsewhere | Blocked — plugin allowlist contains only the API origin |
+| Read the token from persistent storage | Nothing to read — at rest it is in the OS keychain only |
+| Read a long-lived JS variable | Denied by design — the token is fetched per request and not retained |
+
+The residual risk is a same-request-window read under an XSS that also has an existing
+exfiltration channel. Given `script-src 'self'` and a bundled application with no remote script
+sources, that is a materially smaller surface than the general case.
+
+**Mitigations that are requirements, not intentions**: SEC-A1 forbids retaining the token in any
+JS variable beyond the request; SEC-A2 requires tests asserting both the plugin allowlist and the
+CSP restrictions. If either regresses, a test fails.
+
+### Handling of the two sensitive headers
+
+- **`Authorization`**: read from the keychain immediately before the request, passed to the
+  plugin, not stored. No module-level cache.
+- **`x-csrf-token`**: held in memory for the session (it is re-minted at every login and is not a
+  bearer credential), attached to mutations. Its absence never blocks anything.
+
+### What this changes from the Phase 1 position
+
+`docs/architecture/auth.md` §2 records the Phase 1 decision as "requests are issued from Rust,
+not from webview `fetch`". That remains **true** — the plugin issues them from Rust. The part
+that changes is *who assembles the headers*. TASK-2.2 updates that ADR so the record matches the
+implementation rather than leaving a stale claim, in the same superseding style used for
+`docs/architecture/api.md` §0.
 
 ## Transport adapter
 
-`TauriTransport` implements the interface TASK-0.7 already defined, so the policy layer —
+`TauriHttpTransport` implements the interface TASK-0.7 already defined, so the policy layer —
 timeout, cancellation, bounded retry for safe idempotent operations, error normalisation,
 correlation IDs — is reused rather than reimplemented. Only the byte-moving changes.
 
-Cancellation crosses the IPC boundary by abandoning the pending promise on the TypeScript side
-and letting the Rust request complete and be discarded. **This is a deliberate limitation**: it
-frees the caller immediately, which is what cancellation is for in the UI, but it does not abort
-the in-flight socket. Aborting natively would need a request registry and cancellation tokens in
-Rust; that complexity is not justified for a slice whose only call is a small authenticated GET,
-and it is recorded here so nobody assumes the socket is torn down.
+Cancellation uses the plugin's own `fetch_cancel` command, which the permission set already
+grants (`allow-fetch-cancel`), so an aborted request is genuinely cancelled rather than merely
+abandoned. This is better than the hand-rolled alternative would have been, and it is a point in
+the plugin's favour.
 
-CSP `connect-src` is **not** widened. Nothing in the webview makes network requests.
+**CSP `connect-src` is deliberately not widened.** The plugin does not route through the webview's
+network stack, so it needs no CSP allowance — and leaving `connect-src` restricted is load-bearing
+for SEC-A2, because it is what stops ordinary `fetch` from reaching an external host. Widening it
+would quietly remove one of the containment guarantees.
 
 ## Auth adapter
 
@@ -155,13 +201,13 @@ handled state, not a crash.
 
 | Path | Purpose |
 |---|---|
-| `src-tauri/src/commands/http.rs` | Origin-scoped native HTTP command |
-| `src/services/api/tauri-transport.ts` | Transport adapter over the native command |
+| `src/services/api/tauri-http-transport.ts` | Transport adapter over `tauri-plugin-http` |
 | `src/services/auth/parent-auth-adapter.ts` | Audited `AuthPort` implementation |
 | `src/services/api/endpoints/subscription.ts` | Endpoint adapter + Zod schema |
 | `src/features/command-centre/SubscriptionPanel.tsx` | Real-data panel |
 | `src/tests/parent-auth-adapter.test.ts` | Adapter contract tests |
-| `src/tests/tauri-transport.test.ts` | Transport tests |
+| `src/tests/tauri-http-transport.test.ts` | Transport tests |
+| `src/tests/capability-scope.test.ts` | Asserts the HTTP allowlist and CSP restrictions (SEC-A2) |
 | `src/tests/endpoint-parity.test.ts` | Asserts no Developer API host or `/v1`–`/v2` path |
 
 ## Files to Modify
@@ -172,7 +218,10 @@ handled state, not a crash.
 | `src/services/auth/gated-auth-service.ts` | Accept the adapter; map new failure kinds |
 | `src/features/auth/LoginShell.tsx` | Activate; render all failure states |
 | `src/features/command-centre/**` | Mount the subscription panel |
-| `src-tauri/src/lib.rs`, `capabilities/default.json` | Register and permit one new command |
+| `src-tauri/Cargo.toml`, `package.json` | Add `tauri-plugin-http` / `@tauri-apps/plugin-http` |
+| `src-tauri/src/lib.rs` | Register the plugin |
+| `src-tauri/capabilities/default.json` | Add `http:default` + an allowlist of exactly the API origin |
+| `docs/architecture/auth.md` | Supersede §2's header-assembly claim (TASK-2.2) |
 | `src/tests/api-transport.test.ts` | **PA-1** — re-point Developer-API fixtures |
 | `src/tests/auth-service.test.ts`, `login-shell.test.tsx` | Cover new failure kinds |
 | `.env.example`, config schema | API base URL documentation if needed |
@@ -185,10 +234,11 @@ handled state, not a crash.
   persistence; logout-always-clears including when the remote call throws.
 - **Transport**: timeout, cancellation, 429 never retried, bounded retry on 5xx, offline,
   malformed 2xx.
-- **Rust**: path validation rejecting schemes, authorities and `..`; origin scoping; header
-  injection blocked; `SecurityError` redaction.
-- **Security**: token absent from SQLite, Zustand, browser storage, URLs and logs; token never
-  present in any value reachable from the webview.
+- **Scope**: a request to any origin outside the allowlist is rejected by the plugin; the
+  capability file contains exactly one allowed origin; the CSP still forbids remote scripts and
+  external `connect-src`.
+- **Security**: token absent from SQLite, Zustand, browser storage, URLs and logs, and not
+  retained in any module-level or global JS variable beyond the request that uses it.
 - **Component**: `LoginShell` in every failure state; keyboard, focus, accessible names, error
   association.
 - **Parity**: a test greps source and fixtures for the Developer API host and `/v1`–`/v2` paths.

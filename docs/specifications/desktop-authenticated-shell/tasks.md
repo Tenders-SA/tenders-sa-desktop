@@ -26,25 +26,31 @@
     the contract moved materially, **stop** and revise the specification before implementing
   - *Commit*: `docs(auth-shell/2.1): re-verify parent auth contract`
 
-- [ ] **TASK-2.2 — Add the origin-scoped native HTTP command**
-  - *Refs*: REQ-A1, SEC-A1, SEC-A2, SEC-A3
-  - *Files*: create `src-tauri/src/commands/http.rs`; update `src-tauri/src/lib.rs`,
-    `src-tauri/capabilities/default.json`
-  - *Pre-check*: confirm the configured API origin is available to Rust from validated
-    configuration, and that no existing capability already grants HTTP reach
-  - *Verify*: the command accepts a **path, not a URL**; rejects schemes, authorities and `..`;
-    attaches `Authorization` from the keychain so the webview cannot set, read, or override it;
-    returns `SecurityError` carrying no secret material. `cargo test` covers each rejection case
-  - *Commit*: `feat(auth-shell/2.2): add origin-scoped native http command`
+- [ ] **TASK-2.2 — Add and scope `tauri-plugin-http`**
+  - *Refs*: REQ-A1, SEC-A2, SEC-A3
+  - *Files*: update `src-tauri/Cargo.toml`, `package.json`, `src-tauri/src/lib.rs`,
+    `src-tauri/capabilities/default.json`; create `src/tests/capability-scope.test.ts`; update
+    `docs/architecture/auth.md`
+  - *Pre-check*: read the pinned plugin's `permissions/default.toml` and `src/scope.rs` to
+    confirm the default grants **no** origin, and confirm no existing capability already grants
+    HTTP reach
+  - *Verify*: the capability grants `http:default` plus an allowlist of **exactly one** entry —
+    the configured API origin; `dangerous-settings` and `unsafe-headers` features are **off**;
+    CSP `script-src 'self'` and the restricted `connect-src` are unchanged; a test asserts the
+    allowlist length, its contents, and both CSP directives, so widening any of them fails CI.
+    `docs/architecture/auth.md` §2 is superseded where it claims Rust assembles the headers
+  - *Commit*: `feat(auth-shell/2.2): add scoped http plugin`
 
 - [ ] **TASK-2.3 — Implement the transport adapter**
   - *Refs*: REQ-A2, REL-A2, PERF-3
-  - *Files*: create `src/services/api/tauri-transport.ts`, `src/tests/tauri-transport.test.ts`
+  - *Files*: create `src/services/api/tauri-http-transport.ts`,
+    `src/tests/tauri-http-transport.test.ts`
   - *Pre-check*: confirm TASK-0.7's transport seam is consumed as-is, with no duplicated
     timeout, retry, or error-normalisation logic
-  - *Verify*: timeout, caller cancellation, 429 never auto-retried, bounded retry on 5xx,
-    offline, and malformed 2xx all covered; CSP `connect-src` remains unwidened
-  - *Commit*: `feat(auth-shell/2.3): route transport through the native command`
+  - *Verify*: timeout, caller cancellation **via the plugin's `fetch_cancel`**, 429 never
+    auto-retried, bounded retry on 5xx, offline, and malformed 2xx all covered; a request to an
+    origin outside the allowlist is rejected; CSP `connect-src` remains unwidened
+  - *Commit*: `feat(auth-shell/2.3): route transport through the http plugin`
 
 - [ ] **TASK-2.4 — Close the endpoint-parity gap (PA-1)**
   - *Refs*: REQ-A14, INT-A3
@@ -75,7 +81,8 @@
   - *Verify*: the adapter parses **every** TASK-1.3 fixture; `user === null` at HTTP 200 is
     treated as no session; the renewal token is persisted; logout clears locally even when the
     remote call throws; the token is treated as opaque and never parsed; tests prove it is
-    absent from SQLite, Zustand, browser storage, URLs and logs
+    absent from SQLite, Zustand, browser storage, URLs and logs, and that it is read from the
+    keychain per request rather than cached in a module-level or global variable (SEC-A1)
   - *Commit*: `feat(auth-shell/2.6): add audited parent auth adapter`
 
 - [ ] **TASK-2.7 — Activate the login shell**

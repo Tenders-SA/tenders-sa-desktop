@@ -71,8 +71,8 @@ serve this product at all. `docs/architecture/api.md` §0 records the resolution
 
 ### In scope
 
-- A narrow, origin-scoped native HTTP command in Rust, and a transport adapter implementing
-  Phase 0's existing injectable seam over it.
+- `tauri-plugin-http`, scoped by an explicit URL allowlist to the API origin only, and a
+  transport adapter implementing Phase 0's existing injectable seam over it.
 - An audited authentication adapter implementing `AuthPort` against the Phase 1 contract.
 - Extension of `AuthFailureKind` to express the states the audited contract actually produces.
 - Keychain session lifecycle: store on login, replace on renewal, clear on 401 and logout.
@@ -98,12 +98,15 @@ serve this product at all. `docs/architecture/api.md` §0 records the resolution
 
 ## Functional Requirements
 
-- [ ] **REQ-A1 — Native HTTP transport**: API requests shall be issued from Rust through a
-      narrow native command, never from webview `fetch`. The command shall be scoped to the
-      configured API origin and shall not be a general-purpose fetch primitive.
-- [ ] **REQ-A2 — Transport adapter**: the native command shall be consumed through Phase 0's
-      existing injectable transport seam, preserving its timeout, cancellation, bounded-retry,
-      and error-normalisation policy without reimplementation.
+- [ ] **REQ-A1 — Native HTTP transport via `tauri-plugin-http`**: API requests shall be issued
+      through `tauri-plugin-http`, which performs the request in Rust and is therefore not
+      subject to browser CORS. Browser `fetch`/`XHR` to the API shall remain blocked by the
+      existing CSP. The plugin's URL scope shall be an **explicit allowlist containing only the
+      configured API origin** — the plugin grants no origin by default, and that default-deny
+      posture shall not be widened.
+- [ ] **REQ-A2 — Transport adapter**: the plugin shall be consumed through Phase 0's existing
+      injectable transport seam, preserving its timeout, cancellation, bounded-retry, and
+      error-normalisation policy without reimplementation.
 - [ ] **REQ-A3 — Audited auth adapter**: an `AuthPort` implementation shall authenticate via
       `POST /api/auth/login`, carry `Authorization: Bearer <token>` on every request, and treat
       the token as opaque — never parsing, verifying, or signing it (INT-1).
@@ -141,9 +144,19 @@ serve this product at all. `docs/architecture/api.md` §0 records the resolution
 
 ## Non-Functional Requirements
 
-- [ ] **SEC-A1**: the Bearer token shall never be readable from webview JavaScript.
-- [ ] **SEC-A2**: the native HTTP command shall validate its inputs and reject any request
-      whose origin is not the configured API origin.
+- [ ] **SEC-A1 — Token storage boundary**: the Bearer token shall be **at rest only in the OS
+      keychain**. It may exist in webview memory **transiently, for the duration of a single
+      request**, because `tauri-plugin-http` requires the caller to supply request headers. It
+      shall never be written to SQLite, Zustand, `localStorage`, `sessionStorage`, IndexedDB, a
+      URL, a log, or any module-level or global JavaScript variable.
+      *This is a deliberate, recorded relaxation of the Phase 1 design position — see
+      `design.md` §Transport decision.*
+- [ ] **SEC-A2 — Exfiltration containment**: because the token is briefly webview-reachable,
+      the paths by which a compromised webview could send it anywhere shall be closed:
+      the plugin's URL allowlist shall permit **only** the API origin; the CSP shall keep
+      `script-src 'self'` (no remote script sources) and `connect-src` restricted to `'self'`
+      and `ipc:` so ordinary `fetch`/`XHR` cannot reach an external host. Tests shall assert
+      both.
 - [ ] **SEC-A3**: no credential, token, or password shall appear in any log at either redaction
       mode, or in any user-visible error.
 - [ ] **SEC-A4**: backend authorization remains authoritative; no desktop control is treated as
@@ -208,7 +221,10 @@ need to change a frozen parent module stops at a written proposal.
 - [ ] Logout clears the keychain even when the remote call fails.
 - [ ] All five login failure states render distinctly.
 - [ ] Automated tests prove the token is absent from SQLite, Zustand, browser storage, URLs, and
-      logs, and that it never enters webview JavaScript.
+      logs, and is never retained in a module-level or global JavaScript variable beyond the
+      request that uses it.
+- [ ] The HTTP plugin's URL allowlist contains only the API origin, and the CSP still forbids
+      remote scripts and external `connect-src` — both asserted by test.
 - [ ] No Developer API host or `/v1`–`/v2` path remains anywhere in desktop source or fixtures.
 - [ ] `desktopAuth=false` fully disables authentication, and the gate still requires both
       conditions.

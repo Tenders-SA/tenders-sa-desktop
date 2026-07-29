@@ -12,6 +12,8 @@
 - [x] Predecessor contract complete — Phase 0–1 merged, three open items carried here explicitly
 - [x] Reality check recorded: enhance existing, no new foundational module, no duplicate backend
 - [x] Frozen-module assessment completed; no parent mutation is in scope
+- [x] **Platform-adaptation policy recorded** — the production web application is not modified
+      for this client; all ten Phase 1 parent-side items are absorbed desktop-side
 - [x] Requirements, design, tasks, contract, and evaluation files created
 - [x] Every task maps to requirements/design and includes files, pre-check, verification, commit
 - [x] Contract task list mirrors `tasks.md` at specification creation
@@ -30,12 +32,18 @@
 
 ## Phase 2A Evaluation — transport
 
-- [ ] Native HTTP command takes a **path, not a URL**, and rejects schemes, authorities and `..`
-- [ ] `Authorization` is attached in Rust; the webview cannot set, read, or override it
-- [ ] Command errors carry no secret material
+- [ ] `tauri-plugin-http` added, registered, and requests confirmed to execute in Rust (CORS
+      blocker cleared)
+- [ ] Capability grants `http:default` plus an allowlist of **exactly one** entry — the API
+      origin
+- [ ] `dangerous-settings` and `unsafe-headers` features are **off**
+- [ ] A request to an origin outside the allowlist is rejected by the plugin
+- [ ] CSP `script-src 'self'` and the restricted `connect-src` are unchanged — **asserted by
+      test**, because they are SEC-A2's exfiltration containment and not incidental hardening
 - [ ] Transport adapter reuses TASK-0.7's policy layer without duplicating it
-- [ ] Timeout, cancellation, 429-never-retried, bounded 5xx retry, offline, malformed 2xx covered
-- [ ] CSP `connect-src` remains unwidened
+- [ ] Timeout, cancellation via `fetch_cancel`, 429-never-retried, bounded 5xx retry, offline,
+      malformed 2xx covered
+- [ ] `docs/architecture/auth.md` §2 superseded where it claims Rust assembles request headers
 - [ ] **PA-1 closed** — no Developer API host or `/v1`–`/v2` path in source or fixtures, enforced
       by a test
 
@@ -48,7 +56,8 @@
 - [ ] Logout clears locally even when the remote call throws
 - [ ] Token is opaque — never parsed, verified, or signed
 - [ ] Token absent from SQLite, Zustand, browser storage, URLs and logs — asserted by test
-- [ ] Token never reachable from webview JavaScript — asserted by test
+- [ ] Token read from the keychain per request and **not retained** in any module-level or global
+      JavaScript variable — asserted by test (SEC-A1)
 - [ ] Login shell renders all five failure states; `rate-limited` surfaces `Retry-After`
 - [ ] Password never appears in a thrown error or in the DOM
 - [ ] Keyboard operation, accessible names, and error-to-field association pass
