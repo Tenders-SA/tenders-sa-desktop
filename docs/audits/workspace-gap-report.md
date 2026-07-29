@@ -146,6 +146,7 @@ looked like missing parent capability is desktop work under the existing contrac
 | **P-4** | **E-5** — `/api/tenders` returns a `debug` block of corpus DB statistics on every response | `endpoint-inventory.md` §2.2 | Medium — disclosure + payload bloat on the desktop's most-fetched list | Parent API | Remove or gate behind a flag |
 | **P-5** | **E-10** — `PUT /company/profile` stores unvalidated strings; unguarded `JSON.parse` on read 500s forever after | `endpoint-inventory.md` §9 | **High** — user-triggerable permanent corruption | Parent API | Input validation; **affects web clients too** |
 | **P-6** | **E-11** — tender list vs detail return the same `Json` fields as different types | `endpoint-inventory.md` §9 | Medium | Parent API | Consistency fix |
+| **P-10** | **A-5** — logout hard-codes the cookie name `'token'` instead of importing `AUTH_COOKIE_NAME`, which login does use | `auth-subscription-contract.md` §5 | Low — nothing broken today; latent drift | Parent auth | One-line import; **Tier 1 auth**, trivial blast radius |
 
 **P-5 is the one worth escalating on the parent's own terms**: it is reachable from the existing
 web application, not only from the desktop, and its failure mode is permanent per-record
@@ -179,6 +180,13 @@ rather than auto-merging. A version column would be better; the desktop can ship
 | **D-10** | **E-8** only 4 of 16 in-scope endpoints have route tests | Parent test coverage | Parent API |
 | **D-11** | **E-6** two auth helpers; `verifyJWTFromRequest` drops `role`/`companyId` | Parent auth consolidation | Parent auth |
 | **D-12** | **M-8** supplier identity is a fuzzy `normalizedName` join with no FK | Later intelligence slice | Parent data |
+| **D-13** | **A-4** `/api/auth/me` returns 200 with `user: null` rather than 401, so status codes cannot signal session expiry | Parent auth — **document as intentional, or change**. Changing it is **breaking** for existing browser clients, so the desktop should not push for it; the client-side rule (`user !== null`) fully mitigates | Parent auth |
+| **D-14** | **E-7** the parent-internal API has **no** OpenAPI coverage; all 16 in-scope endpoints need hand-authored schemas marked `awaiting-contract` per INT-6 | Parent API documentation. Anticipated by `requirements.md` and now confirmed; the desktop-side consequence is already carried as **C-2** | Parent API |
+
+**M-5** (list-encoded `String` columns) appears in no row above because it was **resolved**, not
+deferred: `endpoint-inventory.md` §9 pinned the encoding as JSON-in-string from route code. Its
+desktop-side consequence is carried as **C-6**. Recorded here so its absence is not mistaken for
+an oversight.
 
 ### Rejected duplication — capability exists, or the desktop must not build it
 
@@ -219,13 +227,19 @@ promises pricing features.
 | Classification | Count | Owner |
 |----------------|------:|-------|
 | Client-only | 15 | Desktop |
-| Enhance existing endpoint | 6 | Parent (proposals) |
+| Enhance existing endpoint | 7 | Parent (proposals) |
 | Additive data model | 3 | Parent (proposals) |
-| Deferred | 12 | Mixed |
+| Deferred | 14 | Mixed |
 | Rejected duplication | 8 | — |
-| **Total classified** | **44** | |
+| **Total classified** | **47** | |
 
-Nine parent proposals in total (P-1…P-9). **None blocks the Phase 2 slice.** Each degrades an
+Every gap ID raised by TASK-1.2, TASK-1.3 and TASK-1.4 (M-1…M-10, A-1…A-6, E-1…E-11) is
+accounted for above — either classified, or explicitly recorded as resolved (M-5). This was
+verified mechanically rather than by eye: extracting the defined IDs from each source artifact
+and diffing them against the IDs cited here. **The first pass of this report missed A-4, A-5 and
+E-7**; the check caught them and they are now classified as P-10, D-13 and D-14.
+
+Ten parent proposals in total (P-1…P-10). **None blocks the Phase 2 slice.** Each degrades an
 experience the desktop can ship without:
 
 - P-1 costs string-matching on login errors.
