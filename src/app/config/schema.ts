@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1"]);
+/**
+ * Hostnames treated as local development.
+ *
+ * Exported so `load-config.ts` infers the environment from the same set that
+ * validates the URL. Two copies would eventually disagree, and the failure
+ * would be a config that validates but is labelled the wrong environment.
+ */
+export const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1"]);
 
 function isHttpsOrLocalHttp(url: string): boolean {
   let parsed: URL;
