@@ -13,6 +13,7 @@ import type { AuthPort, SessionSummary } from "../../services/auth/ports";
 import type { ApiClients } from "../auth-wiring";
 import { TenderList } from "../../features/tenders/TenderList";
 import { TenderDetail } from "../../features/tenders/TenderDetail";
+import { TenderActions } from "../../features/tenders/TenderActions";
 import { TenderRadar } from "../../features/radar/TenderRadar";
 import { Opportunities } from "../../features/opportunities/Opportunities";
 import { ApplicationList } from "../../features/applications/ApplicationList";
@@ -52,6 +53,14 @@ function TenderDetailRoute({ clients }: { clients: ApiClients }) {
       endpoint={clients.tenders}
       tenderId={tenderId}
       onBack={() => navigate("/tenders")}
+      actions={
+        <TenderActions
+          tenderId={tenderId}
+          eligibility={clients.eligibility}
+          savedTenders={clients.savedTenders}
+          applications={clients.applications}
+        />
+      }
     />
   );
 }

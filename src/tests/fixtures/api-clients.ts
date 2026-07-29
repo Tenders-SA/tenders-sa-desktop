@@ -52,6 +52,7 @@ export function stubApiClients(
       getCidb: idle(),
     },
     documents: { list: idle(), getStats: idle(), getDownloadUrl: idle() },
+    eligibility: { check: idle() },
     notifications: {
       list: idle(),
       unreadCount: idle(),

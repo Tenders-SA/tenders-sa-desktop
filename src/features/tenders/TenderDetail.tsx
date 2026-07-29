@@ -12,6 +12,11 @@ export interface TenderDetailProps {
   endpoint: TendersEndpoint;
   tenderId: string;
   onBack?: () => void;
+  /**
+   * The decide-and-pursue controls, injected rather than built here so this
+   * screen stays a pure read and can be tested without the mutating clients.
+   */
+  actions?: React.ReactNode;
 }
 
 type State =
@@ -88,6 +93,7 @@ export function TenderDetail({
   endpoint,
   tenderId,
   onBack,
+  actions,
 }: TenderDetailProps) {
   const [state, setState] = useState<State>({ status: "loading" });
 
@@ -219,6 +225,8 @@ export function TenderDetail({
           />
 
           <DocumentsSection tender={tender} />
+
+          {actions}
         </>
       )}
     </section>

@@ -8,11 +8,12 @@
  * the wiring is testable: a test can assert that the gate's two conditions
  * behave correctly without rendering the application.
  *
- * **The gate is not weakened here.** `GatedAuthService.isEnabled()` still
+ * **The two-condition gate still stands.** `GatedAuthService.isEnabled()`
  * requires BOTH the `desktopAuth` flag AND an audited adapter
- * (`gated-auth-service.ts`). TASK-2.10 supplies the adapter, which means
- * the flag becomes load-bearing for the first time -- so flipping it is now
- * a real decision (gate G3), not a no-op.
+ * (`gated-auth-service.ts`). The adapter exists and the flag now defaults to
+ * `true`, so authentication is the normal operating mode; setting the flag to
+ * `false` remains a working kill switch for local development against a
+ * backend that is down.
  */
 
 import { createParentApiTransport } from "../services/api/tauri-http-transport";
@@ -22,6 +23,7 @@ import { ApplicationsEndpoint } from "../services/api/endpoints/applications";
 import { CompanyEndpoint } from "../services/api/endpoints/company";
 import { DashboardEndpoint } from "../services/api/endpoints/dashboard";
 import { DocumentsEndpoint } from "../services/api/endpoints/documents";
+import { EligibilityEndpoint } from "../services/api/endpoints/eligibility";
 import { NotificationsEndpoint } from "../services/api/endpoints/notifications";
 import { PlannerEndpoint } from "../services/api/endpoints/planner";
 import { RecommendationsEndpoint } from "../services/api/endpoints/recommendations";
@@ -76,6 +78,7 @@ export interface ApiClients {
   applications: ApplicationsEndpoint;
   company: CompanyEndpoint;
   documents: DocumentsEndpoint;
+  eligibility: EligibilityEndpoint;
   notifications: NotificationsEndpoint;
   planner: PlannerEndpoint;
 }
@@ -159,6 +162,7 @@ export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
     applications: new ApplicationsEndpoint(endpointOptions),
     company: new CompanyEndpoint(endpointOptions),
     documents: new DocumentsEndpoint(endpointOptions),
+    eligibility: new EligibilityEndpoint(endpointOptions),
     notifications: new NotificationsEndpoint(endpointOptions),
     planner: new PlannerEndpoint(endpointOptions),
   };
