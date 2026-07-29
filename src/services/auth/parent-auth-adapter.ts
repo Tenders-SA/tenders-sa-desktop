@@ -108,6 +108,14 @@ const ACCOUNT_INACTIVE_ERROR =
  * Note 401 does NOT map to `unauthorized`-as-session-expiry here: on the
  * login route a 401 means the credentials were rejected, which is a
  * different user-facing state from an expired session.
+ *
+ * **Copy ownership (settled by TASK-2.7).** The `message` strings below are
+ * *diagnostic*, not user-facing. The component owns every string a user
+ * reads, keyed on `kind`. Keeping copy in both places meant two sources of
+ * truth that would drift, and only the component can do what these states
+ * actually need: add a "check your inbox" hint for an inactive account, or
+ * render 742 seconds as "13 minutes". `LoginShell.describeFailure` is the
+ * single place user-facing auth copy lives.
  */
 export function classifyLoginFailure(error: ApiError): AuthError {
   if (error.kind === "rate-limited") {
