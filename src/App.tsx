@@ -37,6 +37,14 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // Any 401 on an authenticated route means the token is dead. Without
+    // this the shell keeps believing it is signed in and the user reads
+    // "sign in to Tenders-SA" on a screen that offers no way to do so.
+    // The wiring has already cleared the keychain by the time this runs.
+    return wiring.onSessionExpired(() => setSession(undefined));
+  }, []);
+
+  useEffect(() => {
     // Restores a session on start-up, which also renews the token: `/me`
     // re-mints on every call and is the only renewal path. A failure here
     // is not fatal -- the user simply starts unauthenticated.

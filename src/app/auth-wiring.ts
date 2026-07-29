@@ -31,8 +31,25 @@ export interface AuthWiringOptions {
   apiBaseUrl: string;
   /** Overridable for tests; defaults to the OS keychain. */
   credentialStore?: SessionCredentialStore;
-  /** Overridable for tests; defaults to the HTTP-plugin transport. */
+  /**
+   * Overridable for tests; defaults to the HTTP-plugin transport.
+   *
+   * An injected transport is used exactly as given, so it does **not** get
+   * the session-loss hook -- a caller supplying its own transport owns
+   * wiring `onUnauthorized` if it wants that behaviour. Stated because the
+   * silent alternative would be a test that passes while the production
+   * path is what actually carries the hook.
+   */
   transport?: ApiTransport;
+  /**
+   * Swaps the network underneath the transport this function builds, rather
+   * than replacing the transport.
+   *
+   * That distinction is the point: a test using this exercises the real
+   * transport with the real `onUnauthorized` hook attached, which a test
+   * passing `transport` cannot. Ignored when `transport` is supplied.
+   */
+  fetchImpl?: typeof fetch;
 }
 
 export interface AuthWiring {
@@ -41,13 +58,45 @@ export interface AuthWiring {
   tenders: TendersEndpoint;
   /** The CSRF token captured at login, in memory only. */
   getCsrfToken: () => string | undefined;
+  /**
+   * Registers the app's reaction to session loss, returning an unsubscribe.
+   *
+   * A subscription rather than a constructor argument because the wiring is
+   * built at module scope, before any React state setter exists. The
+   * keychain is cleared by the wiring itself regardless of whether anyone
+   * has subscribed, so a missing listener cannot leave a dead token behind.
+   */
+  onSessionExpired: (listener: () => void) => () => void;
 }
 
 export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
   const credentialStore = options.credentialStore ?? nativeCredentialStore;
+
+  const sessionExpiredListeners = new Set<() => void>();
+
+  /**
+   * A 401 on an authenticated route means the stored token is dead. The
+   * parent does not revoke and the token is opaque to this client (INT-1),
+   * so being refused is the only way to find out.
+   *
+   * The keychain is cleared first and unconditionally: a token the server
+   * rejects is worthless, and keeping it only means failing every
+   * subsequent request with it.
+   */
+  const handleUnauthorized = () => {
+    void credentialStore.clear().catch(() => undefined);
+    for (const listener of sessionExpiredListeners) {
+      listener();
+    }
+  };
+
   const transport =
     options.transport ??
-    createParentApiTransport({ baseUrl: options.apiBaseUrl });
+    createParentApiTransport({
+      baseUrl: options.apiBaseUrl,
+      onUnauthorized: handleUnauthorized,
+      ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+    });
 
   // Memory only, never persisted: it is re-minted at every login and is not
   // a bearer credential.
@@ -79,5 +128,14 @@ export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
     getToken: () => credentialStore.loadAccessToken(),
   });
 
-  return { auth, subscription, tenders, getCsrfToken: () => csrfToken };
+  return {
+    auth,
+    subscription,
+    tenders,
+    getCsrfToken: () => csrfToken,
+    onSessionExpired: (listener) => {
+      sessionExpiredListeners.add(listener);
+      return () => sessionExpiredListeners.delete(listener);
+    },
+  };
 }

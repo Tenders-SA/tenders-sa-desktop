@@ -34,6 +34,18 @@ export interface TransportOptions {
   defaultPolicy?: Partial<RequestPolicy>;
   /** Injected for deterministic backoff tests. */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * Called when a request to an authenticated parent route fails 401.
+   *
+   * The parent does not revoke, so the desktop learns a token is dead only
+   * by being refused with it -- there is nothing to poll and no `exp` the
+   * client is allowed to read (INT-1, the token is opaque). This is how
+   * "drop to unauthenticated on any 401" from `auth.md` is implemented in
+   * one place instead of in every screen.
+   *
+   * Not called for requests marked `unauthenticatedIsExpected`.
+   */
+  onUnauthorized?: (path: string) => void;
 }
 
 export interface RequestOptions<T extends z.ZodTypeAny> {
@@ -66,6 +78,13 @@ export interface ParentRequestOptions<T extends z.ZodTypeAny> {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   policy?: Partial<RequestPolicy>;
+  /**
+   * Set on the auth routes. A 401 from `/api/auth/login` means "these
+   * credentials are wrong", not "your session ended", and must not be
+   * reported as session loss -- otherwise a mistyped password would look
+   * like an expiry.
+   */
+  unauthenticatedIsExpected?: boolean;
 }
 
 const DEFAULT_POLICY: RequestPolicy = {
@@ -105,12 +124,14 @@ export class ApiTransport {
   private readonly fetchImpl: typeof fetch;
   private readonly policy: RequestPolicy;
   private readonly sleep: (ms: number) => Promise<void>;
+  private readonly onUnauthorized: TransportOptions["onUnauthorized"];
 
   constructor(options: TransportOptions) {
     this.baseUrl = options.baseUrl;
     this.getApiKey = options.getApiKey;
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.policy = { ...DEFAULT_POLICY, ...options.defaultPolicy };
+    this.onUnauthorized = options.onUnauthorized;
     this.sleep =
       options.sleep ??
       ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -157,6 +178,30 @@ export class ApiTransport {
    * (`endpoint-inventory.md` §4), so a replayed POST is a real duplicate.
    */
   async request<T extends z.ZodTypeAny>(
+    options: ParentRequestOptions<T>,
+  ): Promise<z.infer<T>> {
+    try {
+      return await this.performRequest(options);
+    } catch (error) {
+      // One choke point for session loss. Per `auth.md` §Credential
+      // lifecycle, any 401 on an authenticated route means the stored token
+      // is no longer usable and the app must drop to unauthenticated. Doing
+      // this per screen would mean every new screen has to remember to --
+      // and the one that forgets leaves the user reading "sign in" with no
+      // way to act on it, which is precisely what happened before this
+      // existed.
+      if (
+        error instanceof ApiError &&
+        error.kind === "unauthorized" &&
+        !options.unauthenticatedIsExpected
+      ) {
+        this.onUnauthorized?.(options.path);
+      }
+      throw error;
+    }
+  }
+
+  private async performRequest<T extends z.ZodTypeAny>(
     options: ParentRequestOptions<T>,
   ): Promise<z.infer<T>> {
     const safe = options.method === "GET";

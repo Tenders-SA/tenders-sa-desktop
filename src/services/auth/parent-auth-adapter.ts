@@ -210,6 +210,10 @@ export class ParentAuthAdapter implements AuthPort {
         path: "/api/auth/login",
         schema: loginResponseSchema,
         body: { email: credentials.email, password: credentials.password },
+        // A 401 here is "wrong password", not "session ended". Without this
+        // a mistyped password would fire the transport's session-loss hook
+        // and be reported to the user as an expiry.
+        unauthenticatedIsExpected: true,
         // Explicit, though `request()` already forces this for mutations:
         // a 429 must never be auto-retried (REQ-A6), and a replayed login
         // would spend another attempt from an IP-keyed budget.
@@ -248,6 +252,10 @@ export class ParentAuthAdapter implements AuthPort {
         path: "/api/auth/me",
         schema: meResponseSchema,
         headers: bearerHeader(token),
+        // This method already clears the store on 401 (below) and its
+        // caller decides what the absence of a session means, so the
+        // transport hook would be a redundant second signal.
+        unauthenticatedIsExpected: true,
       });
     } catch (error) {
       if (error instanceof ApiError && error.kind === "unauthorized") {
@@ -294,6 +302,9 @@ export class ParentAuthAdapter implements AuthPort {
         path: "/api/auth/logout",
         schema: logoutResponseSchema,
         headers: token ? bearerHeader(token) : undefined,
+        // Signing out with an already-dead token is a success, not a
+        // session-loss event to report back to a user who is leaving.
+        unauthenticatedIsExpected: true,
         policy: { retry: "never" },
       });
     } catch {
