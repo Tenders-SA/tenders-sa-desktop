@@ -104,7 +104,7 @@
 
 ## Phase 2C: First real read
 
-- [ ] **TASK-2.8 — Add the subscription endpoint adapter**
+- [x] **TASK-2.8 — Add the subscription endpoint adapter**
   - *Refs*: REQ-A10, REQ-A11, REQ-A12, INT-A2
   - *Files*: create `src/services/api/endpoints/subscription.ts` and its tests
   - *Pre-check*: confirm the schema is hand-authored and marked `awaiting-contract`; confirm no
@@ -114,6 +114,7 @@
     `hasAccess: false` is surfaced as an error, not an upsell; failure parsing accepts `{error}`
     with and without `message`
   - *Commit*: `feat(auth-shell/2.8): add subscription endpoint adapter`
+  - *Evidence*: `src/services/api/endpoints/subscription.ts`; `src/tests/subscription-endpoint.test.ts` (15 tests), driven against the TASK-1.3 fixtures. **Pre-check**: schemas are hand-authored and marked `awaiting-contract` (INT-6) — neither parent OpenAPI document describes the parent-internal API — and no global envelope is assumed: `/status` is parent **shape #4** (`{success, <domainKey>}`, *not* `{success, data}`) and `/feature-access` is **shape #7** (bare object, no discriminator). **Both audited traps are resolved in the type system, not left to call-site discipline.** `EntitlementSummary` is a closed union — `subscribed` / `free-with-credits` / `none` — so a caller *cannot* accidentally treat a credit-holding free user as unentitled; the synthesised plan is identified by **`id === null`** rather than `tier === 'free'`, because a genuine free-tier subscription row would share the tier while having a real id, and a test asserts that distinction directly. The HTTP 500 carrying `hasAccess: false` never reaches a caller as a denial: the transport converts any non-2xx to an `ApiError`, and a test asserts the thrown value has **no `hasAccess` property at all**, so a transient outage cannot render as an upgrade prompt. The projection deliberately mirrors the **route response, not the Prisma model** — a test asserts none of the four payment-identifier field names appears in the result, which is what makes the value safe to cache — and `currentPeriodStart` is typed `z.null()` because the route hard-codes it in both branches, so no billing start can be rendered from this endpoint. `getFeatureAccess` **never falls back to a local decision** (INT-5, SEC-A4): access can come from a `BundleWallet` the client has no visibility into, so a local computation cannot be correct even in principle — a test covers the bundle-granted case specifically to document that. The token is read **per request** via an injected `getToken` (SEC-A1), and when absent the `Authorization` header is omitted rather than faked, letting middleware reject the call correctly. **One of my own test-helper bugs was caught rather than shipped**: the "no token" case passed `undefined` into a defaulted parameter, which triggers the default — so the test was silently still sending a token and asserting nothing. Fixed with an explicit `null` sentinel and the gotcha documented in the helper. Verified: `format:check`, `lint`, `typecheck`, `test` (**284 passing**, 269 + 15 new).
 
 - [ ] **TASK-2.9 — Render real data in the Command Centre**
   - *Refs*: REQ-A10, REL-A1, A11Y-A1
