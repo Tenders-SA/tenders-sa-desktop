@@ -18,6 +18,59 @@ const validEnv: RawEnv = {
   VITE_REQUEST_MAX_SAFE_RETRIES: "2",
 };
 
+describe("loadConfig with no environment at all", () => {
+  /**
+   * THE regression this file exists for now.
+   *
+   * `.env` is gitignored, so a fresh clone and every packaged installer start
+   * with no `VITE_*` values whatsoever. `loadConfig` runs at module scope in
+   * `App.tsx`, before React mounts, so when required fields had no defaults it
+   * threw and the window opened completely empty -- no message, no error, just
+   * a blank frame. That is what "the application is not running" looked like,
+   * and it made the shipped installer useless.
+   */
+  it("starts successfully with a completely empty environment", () => {
+    expect(() => loadConfig({})).not.toThrow();
+  });
+
+  it("defaults to the live Tenders-SA application, not localhost", () => {
+    // A packaged build with no .env is a release build. Defaulting to
+    // localhost would ship an app that can only talk to a dev server.
+    const config = loadConfig({});
+    expect(config.apiBaseUrl).toBe("https://www.tenders-sa.org");
+    expect(config.environment).toBe("production");
+  });
+
+  it("derives allowedOrigins from the API base URL so the two cannot disagree", () => {
+    const config = loadConfig({ VITE_API_BASE_URL: "http://localhost:3000" });
+    expect(config.allowedOrigins).toEqual(["http://localhost:3000"]);
+  });
+
+  it("has authentication on and sane request policy by default", () => {
+    const config = loadConfig({});
+    expect(config.featureFlags.desktopAuth).toBe(true);
+    expect(config.request.timeoutMs).toBe(10_000);
+    expect(config.request.maxSafeRetries).toBe(2);
+  });
+
+  it("still rejects a value that IS supplied but malformed", () => {
+    // Defaults remove "absent" as a failure mode, not "wrong". A typo in a
+    // real .env must still fail loudly rather than being silently replaced.
+    expect(() => loadConfig({ VITE_API_BASE_URL: "not-a-url" })).toThrow();
+  });
+
+  it("still refuses a plaintext production endpoint", () => {
+    // The security rule that matters most here survives the defaults: a
+    // production build must not put the bearer token on the wire in the clear.
+    expect(() =>
+      loadConfig({
+        VITE_APP_ENV: "production",
+        VITE_API_BASE_URL: "http://tenders-sa.example",
+      }),
+    ).toThrow();
+  });
+});
+
 describe("loadConfig", () => {
   it("loads a fully valid environment", () => {
     const config = loadConfig(validEnv);
@@ -49,10 +102,23 @@ describe("loadConfig", () => {
     expect(config.featureFlags.desktopAuth).toBe(false);
   });
 
-  it("fails closed when a required value is missing", () => {
+  it("fills a missing value from a default instead of failing closed", () => {
+    // REVERSED DELIBERATELY. This asserted a throw when `VITE_APP_ENV` was
+    // absent, which was defensible while the app was a developer-only shell.
+    // It is wrong for a shipped desktop application: `.env` is gitignored, so
+    // EVERY packaged installer had no env at all and threw at module scope,
+    // opening a completely blank window with no message. Failing closed on an
+    // absent value made the product unusable rather than safe.
+    //
+    // "Fails closed" now applies to values that are supplied and wrong — see
+    // the two tests below, both of which still throw.
     const env = { ...validEnv };
     delete env.VITE_APP_ENV;
-    expect(() => loadConfig(env)).toThrow(ConfigError);
+    const config = loadConfig(env);
+    // validEnv points at localhost, so the environment is inferred as
+    // development rather than being defaulted to production and then rejected
+    // for not being https.
+    expect(config.environment).toBe("development");
   });
 
   it("fails closed when apiBaseUrl is not a valid URL", () => {

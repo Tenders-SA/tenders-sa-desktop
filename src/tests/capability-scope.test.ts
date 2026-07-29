@@ -62,16 +62,42 @@ describe("http plugin scope", () => {
     expect(Array.isArray(httpPermission?.allow)).toBe(true);
   });
 
-  it("allows exactly one origin", () => {
-    // More than one entry is not automatically wrong, but it is never something
-    // that should happen silently: a second origin is a second place the token
-    // can be sent. Adding one deliberately means updating this test and saying why.
-    expect(httpPermission?.allow).toHaveLength(1);
+  it("allows exactly the two origins the product runs against", () => {
+    // A second origin is a second place the token can be sent, so this can
+    // never grow silently. It is TWO deliberately, and here is why:
+    //
+    //   - the runtime API base URL is unusable unless its origin appears here,
+    //     so a packaged build listing only localhost would have every request
+    //     denied by the plugin -- the app would install, open, and fail every
+    //     read with no way for configuration to fix it;
+    //   - and local development points at localhost:3000.
+    //
+    // Adding a third means updating this test and stating the reason.
+    expect(httpPermission?.allow).toHaveLength(2);
+    const urls = (httpPermission?.allow ?? []).map((entry) => entry.url);
+    expect(urls).toContain("https://www.tenders-sa.org/api/*");
+    expect(urls).toContain("http://localhost:3000/api/*");
   });
 
-  it("scopes the allow-list to the API path, not a bare host", () => {
-    const url = httpPermission?.allow?.[0]?.url ?? "";
-    expect(url).toMatch(/\/api\//);
+  it("keeps the production origin on https", () => {
+    // A plaintext production origin would put the bearer token on the wire.
+    const production = (httpPermission?.allow ?? [])
+      .map((entry) => entry.url)
+      .filter((url) => !url.includes("localhost"));
+    expect(production.length).toBeGreaterThan(0);
+    for (const url of production) {
+      expect(url.startsWith("https://")).toBe(true);
+    }
+  });
+
+  it("scopes every entry to the API path, not a bare host", () => {
+    // A bare host would let the plugin reach the whole web application, not
+    // just its API surface.
+    const urls = httpPermission?.allow ?? [];
+    expect(urls.length).toBeGreaterThan(0);
+    for (const entry of urls) {
+      expect(entry.url).toMatch(/\/api\//);
+    }
   });
 
   it("never allows a wildcard host or a wildcard scheme", () => {

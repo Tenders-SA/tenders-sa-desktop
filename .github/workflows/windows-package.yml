@@ -1,11 +1,13 @@
 name: Windows package
 
-# MANUAL TRIGGER ONLY, deliberately.
+# MANUAL TRIGGER ONLY.
 #
-# AGENTS.md and SPEC_CONTRACT.md both make a Windows release
-# package/build a human- or approved-CI gate. Running it automatically
-# on every push would defeat that gate, so this workflow only ever runs
+# Packaging is not run on every push: a release build is a deliberate act, it
+# is slow, and the artifact is large (the installers embed the WebView2 offline
+# runtime so that installing needs no internet access). This workflow runs only
 # when a person starts it, and it records who did.
+#
+# The artifact supports Windows 10 (1709+, including LTSC) and Windows 11, x64.
 #
 # Signing is opt-in per run and reads secrets BY NAME ONLY (SEC-4).
 # No key material appears in this file, and none may be committed:
@@ -17,6 +19,11 @@ on:
         description: "Sign the updater artifacts (requires signing secrets to be configured)"
         type: boolean
         default: false
+      apiBaseUrl:
+        description: "API origin to build against. Leave blank for the production default (https://www.tenders-sa.org). Any value here must already appear in src-tauri/capabilities/default.json, or the plugin will deny every request at runtime."
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -51,6 +58,10 @@ jobs:
       - name: Build and bundle
         run: pnpm run tauri build
         env:
+          # Left blank on a normal run: the application defaults to the live
+          # platform, so an artifact built with no configuration is a working
+          # production build rather than a broken one.
+          VITE_API_BASE_URL: ${{ inputs.apiBaseUrl }}
           # Referenced by secret name only. When `sign` is false these
           # resolve to empty and Tauri produces unsigned artifacts,
           # which is the correct default for a test package.
