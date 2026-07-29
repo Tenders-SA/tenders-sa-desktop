@@ -95,9 +95,26 @@ export function AppRoutes({
 
   return (
     <Routes>
+      {/*
+        A signed-in user is sent into the app rather than shown the form.
+        This is what makes signing in *visibly* work: `/login` sits outside
+        the protected route, so without it a successful login left the user
+        looking at the same form they had just submitted, with the session
+        established and nothing on screen to say so.
+
+        Expressed as a redirect rather than an imperative `navigate()` in the
+        submit handler, so it also covers reaching `/login` with a session
+        already restored from the keychain at start-up.
+      */}
       <Route
         path="/login"
-        element={<LoginShell auth={auth} onSignedIn={onSignedIn} />}
+        element={
+          isAuthenticated ? (
+            <Navigate to="/" replace />
+          ) : (
+            <LoginShell auth={auth} onSignedIn={onSignedIn} />
+          )
+        }
       />
 
       <Route
