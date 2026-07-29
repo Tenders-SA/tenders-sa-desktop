@@ -117,7 +117,7 @@ Three items were left open at the end of Phase 1 with named reasons. One closes 
 | Rust formatting | `cargo fmt -- --check` | PASS | 2026-07-29 |
 | Rust compile / clippy / tests | GitHub Actions **Rust checks** | PASS on every Phase 2 commit — this is the only place `cargo check` can run, since the container lacks the GTK/WebKit libraries and root to install them | 2026-07-29 |
 | Endpoint parity guard | `endpoint-parity.test.ts` + `capability-scope.test.ts` | PASS — 22 tests; verified in **both** directions (fails on a planted violation) | 2026-07-29 |
-| Windows package/launch (G4) | — | **NOT RUN** — see §Result | — |
+| Windows package/launch | — | **NOT RUN** — needs a Windows machine; see §Result | — |
 | PERF-2 on reference device | — | **NOT MEASURED** — see §Result | — |
 
 ## Result

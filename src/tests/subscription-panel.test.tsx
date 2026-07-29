@@ -12,6 +12,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { stubApiClients } from "./fixtures/api-clients";
 import { SubscriptionPanel } from "../features/command-centre/SubscriptionPanel";
 import { CommandCentre } from "../features/command-centre/CommandCentre";
 import { ApiError } from "../services/api/errors";
@@ -209,11 +210,16 @@ describe("SubscriptionPanel failures", () => {
 });
 
 describe("CommandCentre integration", () => {
-  /** Contains a `Link` now, so a router is required. */
+  /**
+   * The Command Centre now takes the whole client set, because it renders
+   * four panels from three routes. Passing `undefined` is the gated case.
+   */
   const renderCentre = (subscription?: SubscriptionEndpoint) =>
     render(
       <MemoryRouter>
-        <CommandCentre subscriptionEndpoint={subscription} />
+        <CommandCentre
+          clients={subscription ? stubApiClients({ subscription }) : undefined}
+        />
       </MemoryRouter>,
     );
 
@@ -234,8 +240,10 @@ describe("CommandCentre integration", () => {
     ).toBeInTheDocument();
   });
 
-  it("still says the unbuilt workspace features are not connected", () => {
+  it("routes into the tender modules rather than describing them", () => {
     renderCentre(endpointReturning(subscribed));
-    expect(screen.getByText(/not connected yet/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open Tender Radar" }),
+    ).toBeInTheDocument();
   });
 });

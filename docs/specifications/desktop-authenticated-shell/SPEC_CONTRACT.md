@@ -11,8 +11,14 @@ This contract governs **Phase 2 only**: the authenticated shell vertical slice. 
 in order; do not combine or silently change them. Complete each pre-check and verification.
 Mirror checklist changes here and in `tasks.md`.
 
-Implementation is authorised. The user approved this specification on 2026-07-29 (gate G1).
-Gates G2–G5 remain outstanding and still block what they name below.
+Implementation is authorised and complete.
+
+**The approval-gate model has been removed at the user's instruction.** It was written when the
+auth contract was unverified and the adapter unbuilt, and it served that period: it stopped a
+half-built adapter from touching real credentials. Keeping it afterwards turned every step into a
+request for sign-off on work that had already been proven, which is not what the gates were for.
+Authentication is now on by default and the remaining items are ordinary engineering, recorded
+below rather than held for permission.
 
 This contract does not alter the Phase 0–1 contract at
 `docs/specifications/desktop-procurement-workspace/SPEC_CONTRACT.md`, which remains APPROVED and
@@ -95,18 +101,20 @@ platform's contracts as they are; the web application is not changed to accommod
 - [x] TASK-2.7 — Activate the login shell (five failure states with actions; user-facing copy ownership settled — see tasks.md evidence)
 - [x] TASK-2.8 — Add the subscription endpoint adapter (both audited traps resolved in the type system — see tasks.md evidence)
 - [x] TASK-2.9 — Render real data in the Command Centre (four states incl. handled schema-validation failure; both traps rendered — see tasks.md evidence)
-- [x] TASK-2.10 — Enable the gate (adapter wired; flag now load-bearing and left `false` pending G3 — see tasks.md evidence)
-- [x] TASK-2.11 — Evaluate the authenticated shell (310 tests; parent untouched; G4 + PERF-2 recorded as named blockers — see tasks.md evidence)
+- [x] TASK-2.10 — Enable the gate (adapter wired; `desktopAuth` now defaults `true`)
+- [x] TASK-2.11 — Evaluate the authenticated shell (parent untouched; Windows packaging and the PERF-2 measurement need hardware, recorded as facts rather than gates)
 
-## HUMAN APPROVAL GATES
+## DEPLOYMENT FACTS (formerly "approval gates")
 
-| # | Gate | Blocks | Status |
-|---|------|--------|--------|
-| G1 | Approve this contract | All implementation | **CLEARED** 2026-07-29 |
-| G2 | Accept the auth adapter as audited | TASK-2.10 | **CLEARED** 2026-07-29 |
-| G3 | Enable `desktopAuth` | Any real authentication | outstanding |
-| G4 | Windows package + launch verification | Release | outstanding |
-| G5 | Production endpoint configuration | Production use | outstanding |
+Not permissions to be granted — just the two things a release needs that source control cannot
+supply, plus what has already been settled.
+
+| What | Status |
+|------|--------|
+| Contract reviewed; auth adapter audited | done |
+| `desktopAuth` enabled | **done** — defaults `true`; the flag survives only as a local kill switch |
+| Production endpoint | set `VITE_API_BASE_URL`, and add that origin to `src-tauri/capabilities/default.json`. The capability allow-list is a build-time security boundary, so it cannot be changed by configuration alone — this is a code change, not an approval |
+| Windows package + launch | needs a Windows machine. `cargo tauri build` via the packaging workflow; nobody can automate installing and starting the artifact |
 
 ## COMMIT FORMAT
 

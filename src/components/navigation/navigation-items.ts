@@ -8,14 +8,17 @@
  * at all, so the shell never represents an unbuilt feature as functional
  * (REQ-16, and TASK-0.10's pre-check).
  *
- * Two destinations exist today: Command Centre, and Tender Radar, which
- * now points at the tender discovery screen. Tender Radar is deliberately
- * marked available even though it is currently a searchable, paginated
- * list rather than the matched-opportunity radar the brief ultimately
- * describes -- a working screen left unreachable would be worse than a
- * partial one, and the label is transcribed from the brief and must not
- * be reworded. Everything else remains a later, separately approved
- * phase.
+ * Tender Radar points at the matched-opportunity screen the brief §6.2
+ * describes -- tenders scored against the company profile -- not at the
+ * keyword search, which lives at `/tenders` and is reachable from both the
+ * Command Centre and the Radar itself.
+ *
+ * The items still marked unavailable are the ones with no parent endpoint
+ * behind them, not merely unbuilt UI: Proposals, Tasks, JV and Partner
+ * Network, Supplier/Buyer/Award Intelligence and Reports each need either a
+ * capability the parent exposes only to its own web pages or a write flow
+ * that would need the accessible-form foundation first. Marking them
+ * available would produce exactly the dishonest affordance REQ-16 forbids.
  */
 
 export interface NavigationItem {
@@ -36,19 +39,27 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
     label: "Workflow",
     items: [
       { label: "Command Centre", path: "/", available: true },
-      { label: "Tender Radar", path: "/tenders", available: true },
-      { label: "Opportunities", available: false },
-      { label: "Application Workspaces", available: false },
+      { label: "Tender Radar", path: "/radar", available: true },
+      { label: "Opportunities", path: "/opportunities", available: true },
+      {
+        label: "Application Workspaces",
+        path: "/applications",
+        available: true,
+      },
       { label: "Proposals", available: false },
-      { label: "Calendar", available: false },
+      { label: "Calendar", path: "/calendar", available: true },
       { label: "Tasks", available: false },
     ],
   },
   {
     label: "Company and intelligence",
     items: [
-      { label: "Company Profile", available: false },
-      { label: "Company Document Vault", available: false },
+      { label: "Company Profile", path: "/company", available: true },
+      {
+        label: "Company Document Vault",
+        path: "/documents",
+        available: true,
+      },
       { label: "JV and Partner Network", available: false },
       { label: "Supplier Intelligence", available: false },
       { label: "Buyer Intelligence", available: false },
@@ -58,7 +69,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   {
     label: "System",
     items: [
-      { label: "Notifications", available: false },
+      { label: "Notifications", path: "/notifications", available: true },
       { label: "Reports", available: false },
       { label: "Settings", available: false },
     ],

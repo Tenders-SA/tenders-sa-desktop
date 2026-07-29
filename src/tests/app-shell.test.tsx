@@ -7,7 +7,7 @@ import { CommandCentre } from "../features/command-centre/CommandCentre";
 import { ProtectedRoute } from "../app/router/ProtectedRoute";
 import { AppRoutes } from "../app/router/routes";
 import type { AuthPort } from "../services/auth/ports";
-import type { TendersEndpoint } from "../services/api/endpoints/tenders";
+import { stubApiClients } from "./fixtures/api-clients";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { SyncStatus } from "../components/common/SyncStatus";
 import {
@@ -53,13 +53,37 @@ describe("navigation model", () => {
   });
 
   it("marks only built destinations as available, so no later phase looks shipped", () => {
-    // Grows only when a screen actually exists. Tender Radar joined when
-    // tender discovery shipped; adding a label here without a working route
-    // is exactly what the `available` flag exists to prevent.
+    // Grows only when a screen actually exists, and every entry here is
+    // checked against a real route by navigation-reachability.test.tsx.
+    // Adding a label without building its route is exactly what the
+    // `available` flag exists to prevent.
     const available = ALL_NAVIGATION_ITEMS.filter((item) => item.available);
     expect(available.map((item) => item.label)).toEqual([
       "Command Centre",
       "Tender Radar",
+      "Opportunities",
+      "Application Workspaces",
+      "Calendar",
+      "Company Profile",
+      "Company Document Vault",
+      "Notifications",
+    ]);
+  });
+
+  it("still marks the modules with no parent capability as unavailable", () => {
+    // These are not merely unbuilt UI: each needs either a capability the
+    // parent exposes only to its own pages, or a write flow that would need
+    // the accessible-form foundation first.
+    const unavailable = ALL_NAVIGATION_ITEMS.filter((item) => !item.available);
+    expect(unavailable.map((item) => item.label)).toEqual([
+      "Proposals",
+      "Tasks",
+      "JV and Partner Network",
+      "Supplier Intelligence",
+      "Buyer Intelligence",
+      "Award Intelligence",
+      "Reports",
+      "Settings",
     ]);
   });
 
@@ -118,30 +142,33 @@ describe("CommandCentre", () => {
       </MemoryRouter>,
     );
 
-  it("stays honest about what is not connected rather than showing mock widgets", () => {
-    // COPY UPDATED TWICE. Phase 0 asserted "nothing to show yet"; TASK-2.9
-    // replaced that with a "not connected yet" heading once the plan panel
-    // became real. Tender discovery is now real too, so the heading is a
-    // working affordance and the not-connected claim narrowed to what is
-    // still genuinely missing. The *intent* has never changed and is what
-    // this checks: the page must not imply that unbuilt features work.
+  it("says what to do rather than rendering empty widgets with no session", () => {
+    // COPY UPDATED THREE TIMES, and the intent has never changed: the page
+    // must not imply that data it does not have is present. Phase 0 said
+    // "nothing to show yet"; TASK-2.9 replaced that with "not connected yet"
+    // once the plan panel became real; now the modules are real too, so with
+    // no session the honest statement is "sign in".
     renderCentre();
-    expect(screen.getByText(/not connected yet/i)).toBeVisible();
-    expect(
-      screen.getAllByText(/later, separately approved phases/i).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getByText(/sign in to see your deadlines/i)).toBeVisible();
   });
 
-  it("offers a real way into tender discovery, not a description of one", () => {
+  it("offers real ways into the tender modules, not descriptions of them", () => {
     renderCentre();
     expect(
       screen.getByRole("link", { name: "Open Tender Radar" }),
+    ).toHaveAttribute("href", "/radar");
+    expect(
+      screen.getByRole("link", { name: "Browse all tenders" }),
     ).toHaveAttribute("href", "/tenders");
   });
 
-  it("shows no plan panel when there is no session to read one for", () => {
+  it("renders no data panels at all when there is no session", () => {
+    // Panels are omitted rather than rendered empty: an empty deadline panel
+    // reads as "nothing closes soon", which is a claim we cannot make.
     renderCentre();
     expect(screen.queryByText("Your plan")).toBeNull();
+    expect(screen.queryByText("Closing this week")).toBeNull();
+    expect(screen.queryByText("Recent activity")).toBeNull();
   });
 });
 
@@ -300,18 +327,14 @@ describe("ProtectedRoute escape hatch (TASK-2.10, REQ-A9)", () => {
     } as unknown as AuthPort;
   }
 
-  /** Never resolves; these tests only care which screen mounts. */
-  const idleTenders = {
-    list: vi.fn(() => new Promise<never>(() => {})),
-    get: vi.fn(() => new Promise<never>(() => {})),
-  } as unknown as TendersEndpoint;
+  const clients = stubApiClients();
 
   const routesAt = (enabled: boolean, isAuthenticated: boolean) => (
     <MemoryRouter initialEntries={["/"]}>
       <AppRoutes
         auth={authWith(enabled)}
         isAuthenticated={isAuthenticated}
-        tenders={idleTenders}
+        clients={clients}
       />
     </MemoryRouter>
   );
@@ -347,7 +370,7 @@ describe("ProtectedRoute escape hatch (TASK-2.10, REQ-A9)", () => {
         <AppRoutes
           auth={authWith(true)}
           isAuthenticated={false}
-          tenders={idleTenders}
+          clients={clients}
         />
       </MemoryRouter>,
     );

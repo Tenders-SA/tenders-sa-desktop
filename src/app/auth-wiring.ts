@@ -18,6 +18,14 @@
 import { createParentApiTransport } from "../services/api/tauri-http-transport";
 import { SubscriptionEndpoint } from "../services/api/endpoints/subscription";
 import { TendersEndpoint } from "../services/api/endpoints/tenders";
+import { ApplicationsEndpoint } from "../services/api/endpoints/applications";
+import { CompanyEndpoint } from "../services/api/endpoints/company";
+import { DashboardEndpoint } from "../services/api/endpoints/dashboard";
+import { DocumentsEndpoint } from "../services/api/endpoints/documents";
+import { NotificationsEndpoint } from "../services/api/endpoints/notifications";
+import { PlannerEndpoint } from "../services/api/endpoints/planner";
+import { RecommendationsEndpoint } from "../services/api/endpoints/recommendations";
+import { SavedTendersEndpoint } from "../services/api/endpoints/saved-tenders";
 import { GatedAuthService } from "../services/auth/gated-auth-service";
 import { nativeCredentialStore } from "../services/auth/native-credential-store";
 import { ParentAuthAdapter } from "../services/auth/parent-auth-adapter";
@@ -52,10 +60,28 @@ export interface AuthWiringOptions {
   fetchImpl?: typeof fetch;
 }
 
-export interface AuthWiring {
-  auth: GatedAuthService;
+/**
+ * Every parent-internal endpoint client the application uses.
+ *
+ * Grouped into one object so a screen receives exactly the client it needs
+ * and the composition root stays the single place a token-reading closure is
+ * handed out.
+ */
+export interface ApiClients {
   subscription: SubscriptionEndpoint;
   tenders: TendersEndpoint;
+  dashboard: DashboardEndpoint;
+  recommendations: RecommendationsEndpoint;
+  savedTenders: SavedTendersEndpoint;
+  applications: ApplicationsEndpoint;
+  company: CompanyEndpoint;
+  documents: DocumentsEndpoint;
+  notifications: NotificationsEndpoint;
+  planner: PlannerEndpoint;
+}
+
+export interface AuthWiring extends ApiClients {
+  auth: GatedAuthService;
   /** The CSRF token captured at login, in memory only. */
   getCsrfToken: () => string | undefined;
   /**
@@ -116,22 +142,30 @@ export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
     auditedAdapter,
   });
 
-  const subscription = new SubscriptionEndpoint({
+  // Read per request from the keychain (SEC-A1) -- never captured into a
+  // variable here, and never cached at module scope. Shared by every client
+  // below so there is exactly one way a token is obtained.
+  const endpointOptions = {
     transport,
-    // Read per request from the keychain (SEC-A1) -- not captured here, and
-    // not cached in a module variable.
     getToken: () => credentialStore.loadAccessToken(),
-  });
+  };
 
-  const tenders = new TendersEndpoint({
-    transport,
-    getToken: () => credentialStore.loadAccessToken(),
-  });
+  const clients: ApiClients = {
+    subscription: new SubscriptionEndpoint(endpointOptions),
+    tenders: new TendersEndpoint(endpointOptions),
+    dashboard: new DashboardEndpoint(endpointOptions),
+    recommendations: new RecommendationsEndpoint(endpointOptions),
+    savedTenders: new SavedTendersEndpoint(endpointOptions),
+    applications: new ApplicationsEndpoint(endpointOptions),
+    company: new CompanyEndpoint(endpointOptions),
+    documents: new DocumentsEndpoint(endpointOptions),
+    notifications: new NotificationsEndpoint(endpointOptions),
+    planner: new PlannerEndpoint(endpointOptions),
+  };
 
   return {
     auth,
-    subscription,
-    tenders,
+    ...clients,
     getCsrfToken: () => csrfToken,
     onSessionExpired: (listener) => {
       sessionExpiredListeners.add(listener);

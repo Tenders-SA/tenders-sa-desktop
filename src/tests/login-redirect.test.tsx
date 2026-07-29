@@ -19,7 +19,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AppRoutes } from "../app/router/routes";
 import type { AuthPort } from "../services/auth/ports";
-import type { TendersEndpoint } from "../services/api/endpoints/tenders";
+import { stubApiClients } from "./fixtures/api-clients";
 
 function authWith(enabled: boolean): AuthPort {
   return {
@@ -30,11 +30,7 @@ function authWith(enabled: boolean): AuthPort {
   } as unknown as AuthPort;
 }
 
-/** Never resolves, so screens stay in their loading state. */
-const idleTenders = {
-  list: vi.fn(() => new Promise<never>(() => {})),
-  get: vi.fn(() => new Promise<never>(() => {})),
-} as unknown as TendersEndpoint;
+const clients = stubApiClients();
 
 function renderAt(
   path: string,
@@ -45,7 +41,7 @@ function renderAt(
       <AppRoutes
         auth={authWith(enabled)}
         isAuthenticated={isAuthenticated}
-        tenders={idleTenders}
+        clients={clients}
       />
     </MemoryRouter>,
   );

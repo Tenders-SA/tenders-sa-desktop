@@ -22,7 +22,7 @@ import { MemoryRouter } from "react-router-dom";
 import { AppRoutes } from "../app/router/routes";
 import { ALL_NAVIGATION_ITEMS } from "../components/navigation/navigation-items";
 import type { AuthPort } from "../services/auth/ports";
-import type { TendersEndpoint } from "../services/api/endpoints/tenders";
+import { stubApiClients } from "./fixtures/api-clients";
 
 /** Gated build: `isEnabled()` false is what opens the escape hatch. */
 const gatedAuth = {
@@ -32,20 +32,12 @@ const gatedAuth = {
   logout: vi.fn(async () => undefined),
 } as unknown as AuthPort;
 
-/** Never resolves, so screens stay in their loading state. */
-const idleTenders = {
-  list: vi.fn(() => new Promise<never>(() => {})),
-  get: vi.fn(() => new Promise<never>(() => {})),
-} as unknown as TendersEndpoint;
+const clients = stubApiClients();
 
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <AppRoutes
-        auth={gatedAuth}
-        isAuthenticated={false}
-        tenders={idleTenders}
-      />
+      <AppRoutes auth={gatedAuth} isAuthenticated={false} clients={clients} />
     </MemoryRouter>,
   );
 }
@@ -85,14 +77,14 @@ describe("navigation reachability", () => {
 
   it("mounts the tender detail route", () => {
     renderAt("/tenders/t1");
-    expect(idleTenders.get).toHaveBeenCalledWith("t1", expect.anything());
+    expect(clients.tenders.get).toHaveBeenCalledWith("t1", expect.anything());
   });
 
   it("decodes an id containing a slash rather than splitting the path", () => {
     // Parent ids are cuids today, but the list route links with
     // `encodeURIComponent`, so the detail route has to decode symmetrically.
     renderAt(`/tenders/${encodeURIComponent("a/b")}`);
-    expect(idleTenders.get).toHaveBeenCalledWith("a/b", expect.anything());
+    expect(clients.tenders.get).toHaveBeenCalledWith("a/b", expect.anything());
   });
 
   it("still sends a genuinely unknown path home", () => {

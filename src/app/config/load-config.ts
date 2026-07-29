@@ -46,7 +46,7 @@ export function loadConfig(env: RawEnv): AppConfig {
     apiBaseUrl: env.VITE_API_BASE_URL,
     allowedOrigins: parseOrigins(env.VITE_ALLOWED_ORIGINS),
     featureFlags: {
-      desktopAuth: parseBoolean(env.VITE_FEATURE_DESKTOP_AUTH) ?? false,
+      desktopAuth: parseBoolean(env.VITE_FEATURE_DESKTOP_AUTH) ?? true,
     },
     telemetry: {
       enabled: parseBoolean(env.VITE_TELEMETRY_ENABLED) ?? false,
