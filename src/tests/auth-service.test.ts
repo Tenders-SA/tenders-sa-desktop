@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { GatedAuthService } from "../services/auth/gated-auth-service";
 import {
   AuthError,
+  type AuthFailureKind,
   type AuthPort,
   type SessionCredentialStore,
   type SessionSummary,
@@ -210,5 +211,44 @@ describe("credential handling", () => {
     );
 
     expect(`${error.message} ${error.stack ?? ""}`).not.toContain(password);
+  });
+});
+
+describe("AuthFailureKind (TASK-2.5, REQ-A5)", () => {
+  it("expresses every failure state the audited contract produces", () => {
+    // The audit found five distinct login outcomes plus transport and gate
+    // failures. Before TASK-2.5 the union could express only three of
+    // them, so "account inactive" and "rate limited" would have surfaced
+    // as "invalid credentials" -- actively misleading in both cases.
+    const kinds: AuthFailureKind[] = [
+      "disabled",
+      "invalid-credentials",
+      "account-inactive",
+      "rate-limited",
+      "server-error",
+      "network",
+      "contract-unconfirmed",
+    ];
+    for (const kind of kinds) {
+      expect(new AuthError(kind, "x").kind).toBe(kind);
+    }
+  });
+
+  it("carries Retry-After only on rate-limited", () => {
+    const limited = new AuthError("rate-limited", "Too many attempts", {
+      retryAfterSeconds: 742,
+    });
+    expect(limited.retryAfterSeconds).toBe(742);
+    expect(new AuthError("invalid-credentials", "x").retryAfterSeconds).toBe(
+      undefined,
+    );
+  });
+
+  it("keeps account-inactive distinct from invalid-credentials", () => {
+    // Both arrive as HTTP 401 and are separable only by the error string
+    // (gap A-1), which is exactly why they need distinct kinds here.
+    expect(new AuthError("account-inactive", "x").kind).not.toBe(
+      "invalid-credentials",
+    );
   });
 });

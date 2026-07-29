@@ -67,7 +67,7 @@
 
 ## Phase 2B: Authentication
 
-- [ ] **TASK-2.5 — Extend the authentication failure union**
+- [x] **TASK-2.5 — Extend the authentication failure union**
   - *Refs*: REQ-A5, REQ-A6
   - *Files*: update `src/services/auth/ports.ts`, `gated-auth-service.ts`,
     `src/tests/auth-service.test.ts`
@@ -76,6 +76,7 @@
   - *Verify*: `account-inactive`, `rate-limited` (carrying retry seconds) and `server-error`
     exist; existing gate behaviour and its tests are unchanged
   - *Commit*: `feat(auth-shell/2.5): express audited auth failure states`
+  - *Evidence*: `src/services/auth/ports.ts`; 3 new tests in `src/tests/auth-service.test.ts`. **Pre-check enumerated the contract's failure states before touching the union**, from the TASK-1.3 fixtures: `invalidCredentials`, `noPasswordSet`, `accountInactive`, `rateLimited`, `serverError`, plus transport failure and the two gate states. Phase 0's union could express only three of them, so **`account-inactive` and `rate-limited` would both have surfaced as `invalid-credentials`** — actively misleading, because there is no password an unverified-email user can type that will work. Added `account-inactive`, `rate-limited` and `server-error`, and gave `AuthError` an optional `retryAfterSeconds` set only for `rate-limited` (REQ-A6), so the UI can show the real wait instead of inviting an immediate retry into an IP-keyed limiter that is deliberately not reset on success. `account-inactive` and `invalid-credentials` both arrive as HTTP 401 and are separable only by the `error` string (gap A-1) — which is precisely why they need distinct kinds here rather than being collapsed. **Existing gate behaviour and its tests are unchanged**: the two-condition `isEnabled()` check and all 18 Phase 0 auth tests still pass untouched. Verified: `format:check`, `lint`, `typecheck`, `test` (**233 passing**, 230 + 3 new).
 
 - [ ] **TASK-2.6 — Implement the audited auth adapter**
   - *Refs*: REQ-A3, REQ-A4, REQ-A7, REQ-A8, INT-A1, SEC-A1

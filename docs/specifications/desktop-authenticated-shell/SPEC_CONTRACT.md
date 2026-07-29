@@ -90,7 +90,7 @@ platform's contracts as they are; the web application is not changed to accommod
 - [x] TASK-2.2 — Add and scope `tauri-plugin-http` (one path-scoped origin; 13 boundary tests; Rust compiled first in CI — see tasks.md evidence)
 - [x] TASK-2.3 — Implement the transport adapter (per-endpoint schemas; 429 no longer auto-retried per REQ-A6 — see tasks.md evidence)
 - [x] TASK-2.4 — Close the endpoint-parity gap (PA-1) (guard shipped broken, caught by a sensitivity check, fixed and pinned — see tasks.md evidence)
-- [ ] TASK-2.5 — Extend the authentication failure union
+- [x] TASK-2.5 — Extend the authentication failure union (adds account-inactive, rate-limited with Retry-After, server-error — see tasks.md evidence)
 - [ ] TASK-2.6 — Implement the audited auth adapter
 - [ ] TASK-2.7 — Activate the login shell
 - [ ] TASK-2.8 — Add the subscription endpoint adapter
