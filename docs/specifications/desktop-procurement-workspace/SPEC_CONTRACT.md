@@ -55,7 +55,7 @@ Create the production-oriented foundation for a Tauri 2 procurement desktop clie
 - [x] TASK-1.1 — Pin and document the parent audit baseline (baseline re-pinned to `8ff2e4c2`; `be09f9d51` confirmed to exist but not adopted — see tasks.md evidence)
 - [x] TASK-1.2 — Inventory canonical parent data models (10 model-layer gaps recorded; no parent model has an optimistic-concurrency column — see tasks.md evidence)
 - [x] TASK-1.3 — Audit authentication and subscription contracts (INT-1 resolved: Bearer, body token. Contract CONFIRMED; production auth remains gated pending Phase 2 — see tasks.md evidence)
-- [ ] TASK-1.4 — Inventory relevant parent endpoints and OpenAPI drift
+- [x] TASK-1.4 — Inventory relevant parent endpoints and OpenAPI drift (16 endpoints under a stated selection rule; no single parent-internal envelope — nine shapes; 11 gaps — see tasks.md evidence)
 - [ ] TASK-1.5 — Produce cross-domain desktop mappings
 - [ ] TASK-1.6 — Create the capability gap report
 - [ ] TASK-1.7 — Define the Phase 2 vertical slice
