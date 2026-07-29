@@ -2,13 +2,25 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "../../components/navigation/Sidebar";
 import { CommandPalette } from "../../components/navigation/CommandPalette";
 import { SyncStatus } from "../../components/common/SyncStatus";
+import { SessionMenu } from "../../features/auth/SessionMenu";
+import type { SessionSummary } from "../../services/auth/ports";
+
+export interface AppLayoutProps {
+  /**
+   * Absent in a gated build, where no session can exist. The header then
+   * shows no account control at all rather than an empty one -- a "Sign
+   * out" button with nothing to sign out of is a false affordance.
+   */
+  session?: SessionSummary;
+  onSignOut?: () => Promise<void>;
+}
 
 /**
  * Protected application layout (REQ-2). The sidebar collapses out of
  * the flow on narrow widths so the shell stays usable on a small
  * window without a separate mobile design.
  */
-export function AppLayout() {
+export function AppLayout({ session, onSignOut }: AppLayoutProps = {}) {
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <a
@@ -27,7 +39,12 @@ export function AppLayout() {
           <span className="text-sm text-muted-foreground">
             Press Ctrl+K to open the command palette
           </span>
-          <SyncStatus />
+          <div className="flex items-center gap-4">
+            <SyncStatus />
+            {session && onSignOut && (
+              <SessionMenu session={session} onSignOut={onSignOut} />
+            )}
+          </div>
         </header>
 
         <main id="main-content" className="min-w-0 flex-1 p-6">

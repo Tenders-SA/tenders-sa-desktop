@@ -38,3 +38,29 @@ export function apiSuccessEnvelope<T extends z.ZodTypeAny>(dataSchema: T) {
     data: dataSchema,
   });
 }
+
+/**
+ * The parent-internal failure shape (TASK-2.3, REQ-A12).
+ *
+ * This is deliberately looser than `apiErrorEnvelopeSchema` above, and
+ * the difference is a Phase 1 finding rather than caution. The
+ * parent-internal API has **no single envelope** -- nine distinct
+ * top-level shapes appear across 16 endpoints, and `success` is absent
+ * from three of them (`endpoint-inventory.md` §3). A failure arrives as
+ * either of:
+ *
+ *   { error: "Unauthorized" }                                  <- route handler
+ *   { error: "Unauthorized", message: "Authentication required" }  <- middleware
+ *
+ * so requiring `success: false` would reject every real parent failure.
+ * In practice the middleware form is what a gated route returns, because
+ * middleware verifies the same JWT before the handler runs
+ * (`auth-subscription-contract.md` §6).
+ */
+export const parentErrorSchema = z.object({
+  error: z.string(),
+  message: z.string().optional(),
+  code: z.string().optional(),
+});
+
+export type ParentError = z.infer<typeof parentErrorSchema>;

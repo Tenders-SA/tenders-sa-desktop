@@ -5,6 +5,9 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AppLayout } from "../app/layouts/AppLayout";
 import { CommandCentre } from "../features/command-centre/CommandCentre";
 import { ProtectedRoute } from "../app/router/ProtectedRoute";
+import { AppRoutes } from "../app/router/routes";
+import type { AuthPort } from "../services/auth/ports";
+import { stubApiClients } from "./fixtures/api-clients";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { SyncStatus } from "../components/common/SyncStatus";
 import {
@@ -49,9 +52,39 @@ describe("navigation model", () => {
     ]);
   });
 
-  it("marks only Command Centre as available, so no later phase looks shipped", () => {
+  it("marks only built destinations as available, so no later phase looks shipped", () => {
+    // Grows only when a screen actually exists, and every entry here is
+    // checked against a real route by navigation-reachability.test.tsx.
+    // Adding a label without building its route is exactly what the
+    // `available` flag exists to prevent.
     const available = ALL_NAVIGATION_ITEMS.filter((item) => item.available);
-    expect(available.map((item) => item.label)).toEqual(["Command Centre"]);
+    expect(available.map((item) => item.label)).toEqual([
+      "Command Centre",
+      "Tender Radar",
+      "Opportunities",
+      "Application Workspaces",
+      "Calendar",
+      "Tasks",
+      "Company Profile",
+      "Company Document Vault",
+      "Supplier Intelligence",
+      "Notifications",
+      "Settings",
+    ]);
+  });
+
+  it("still marks the modules with no parent capability as unavailable", () => {
+    // These are not merely unbuilt UI: each needs either a capability the
+    // parent exposes only to its own pages, or a write flow that would need
+    // the accessible-form foundation first.
+    const unavailable = ALL_NAVIGATION_ITEMS.filter((item) => !item.available);
+    expect(unavailable.map((item) => item.label)).toEqual([
+      "Proposals",
+      "JV and Partner Network",
+      "Buyer Intelligence",
+      "Award Intelligence",
+      "Reports",
+    ]);
   });
 
   it("gives every unavailable item no path at all", () => {
@@ -100,11 +133,42 @@ describe("AppLayout", () => {
   });
 });
 
-describe("CommandCentre placeholder", () => {
-  it("says plainly that no data is loaded rather than showing mock widgets", () => {
-    render(<CommandCentre />);
-    expect(screen.getByText(/nothing to show yet/i)).toBeVisible();
-    expect(screen.getByText(/no data source is connected/i)).toBeVisible();
+describe("CommandCentre", () => {
+  // Now contains a `Link`, so it needs a router around it.
+  const renderCentre = () =>
+    render(
+      <MemoryRouter>
+        <CommandCentre />
+      </MemoryRouter>,
+    );
+
+  it("says what to do rather than rendering empty widgets with no session", () => {
+    // COPY UPDATED THREE TIMES, and the intent has never changed: the page
+    // must not imply that data it does not have is present. Phase 0 said
+    // "nothing to show yet"; TASK-2.9 replaced that with "not connected yet"
+    // once the plan panel became real; now the modules are real too, so with
+    // no session the honest statement is "sign in".
+    renderCentre();
+    expect(screen.getByText(/sign in to see your deadlines/i)).toBeVisible();
+  });
+
+  it("offers real ways into the tender modules, not descriptions of them", () => {
+    renderCentre();
+    expect(
+      screen.getByRole("link", { name: "Open Tender Radar" }),
+    ).toHaveAttribute("href", "/radar");
+    expect(
+      screen.getByRole("link", { name: "Browse all tenders" }),
+    ).toHaveAttribute("href", "/tenders");
+  });
+
+  it("renders no data panels at all when there is no session", () => {
+    // Panels are omitted rather than rendered empty: an empty deadline panel
+    // reads as "nothing closes soon", which is a claim we cannot make.
+    renderCentre();
+    expect(screen.queryByText("Your plan")).toBeNull();
+    expect(screen.queryByText("Closing this week")).toBeNull();
+    expect(screen.queryByText("Recent activity")).toBeNull();
   });
 });
 
@@ -156,8 +220,18 @@ describe("CommandPalette", () => {
     renderShell();
     await userEvent.keyboard("{Control>}k{/Control}");
 
-    const laterPhase = screen.getByRole("button", { name: /Tender Radar/ });
+    // Picks an item that is still genuinely unbuilt. This used to name
+    // Tender Radar, which shipped with tender discovery -- so the example
+    // moved rather than the rule. Any unavailable item must stay disabled,
+    // so the palette cannot become a back door into an unbuilt route.
+    const laterPhase = screen.getByRole("button", { name: /Proposals/ });
     expect(laterPhase).toBeDisabled();
+  });
+
+  it("can route into a destination that actually exists", async () => {
+    renderShell();
+    await userEvent.keyboard("{Control>}k{/Control}");
+    expect(screen.getByRole("button", { name: /Tender Radar/ })).toBeEnabled();
   });
 });
 
@@ -240,5 +314,67 @@ describe("SyncStatus", () => {
     render(<SyncStatus pendingCount={0} conflictCount={0} />);
     const status = screen.getByLabelText("Connectivity and sync status");
     expect(status).not.toHaveTextContent("pending");
+  });
+});
+
+describe("ProtectedRoute escape hatch (TASK-2.10, REQ-A9)", () => {
+  function authWith(enabled: boolean): AuthPort {
+    return {
+      isEnabled: () => enabled,
+      login: vi.fn(),
+      restoreSession: vi.fn(async () => undefined),
+      logout: vi.fn(async () => undefined),
+    } as unknown as AuthPort;
+  }
+
+  const clients = stubApiClients();
+
+  const routesAt = (enabled: boolean, isAuthenticated: boolean) => (
+    <MemoryRouter initialEntries={["/"]}>
+      <AppRoutes
+        auth={authWith(enabled)}
+        isAuthenticated={isAuthenticated}
+        clients={clients}
+      />
+    </MemoryRouter>
+  );
+
+  it("closes itself once auth is live, rather than needing manual removal", () => {
+    // The hatch exists only so a gated build is reachable. If it stayed
+    // open after auth shipped, every protected route would be reachable
+    // with no session -- an unauthenticated bypass, not a convenience.
+    render(routesAt(true, false));
+    // Redirected to login, not into the shell.
+    expect(screen.getByRole("heading", { name: /sign in/i })).toBeVisible();
+  });
+
+  it("stays open while auth is gated, so the shell remains reachable", () => {
+    render(routesAt(false, false));
+    expect(
+      screen.getByRole("heading", { name: "Command Centre" }),
+    ).toBeVisible();
+  });
+
+  it("lets an authenticated user into the shell when auth is live", () => {
+    render(routesAt(true, true));
+    expect(
+      screen.getByRole("heading", { name: "Command Centre" }),
+    ).toBeVisible();
+  });
+
+  it("protects the tender routes too, not just the index", () => {
+    // A new route under the guarded layout must inherit the guard. Mounting
+    // tenders outside it would be an unauthenticated read path.
+    render(
+      <MemoryRouter initialEntries={["/tenders"]}>
+        <AppRoutes
+          auth={authWith(true)}
+          isAuthenticated={false}
+          clients={clients}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("heading", { name: /sign in/i })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Tenders" })).toBeNull();
   });
 });

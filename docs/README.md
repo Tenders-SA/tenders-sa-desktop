@@ -14,7 +14,7 @@ The original brief is an input. The approved specification contract is the autho
 | Contract | Scope | Status |
 |---|---|---|
 | [`desktop-procurement-workspace/`](specifications/desktop-procurement-workspace/) | Phase 0 foundation + Phase 1 parent audit | **APPROVED, complete** — three items recorded as open blockers, all carried into Phase 2 |
-| [`desktop-authenticated-shell/`](specifications/desktop-authenticated-shell/) | Phase 2 — authenticated shell vertical slice | **PENDING APPROVAL** — no implementation may begin |
+| [`desktop-authenticated-shell/`](specifications/desktop-authenticated-shell/) | Phase 2 — authenticated shell, then the workflow modules | **IMPLEMENTED** — authentication is on by default |
 
 ## Phase 1 audit output
 

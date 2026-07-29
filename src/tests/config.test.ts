@@ -29,10 +29,23 @@ describe("loadConfig", () => {
     expect(config.request).toEqual({ timeoutMs: 10000, maxSafeRetries: 2 });
   });
 
-  it("defaults risky feature flags to off when unset", () => {
+  it("defaults authentication ON, because it is the normal operating mode", () => {
+    // REVERSED DELIBERATELY. This defaulted to `false` while the auth adapter
+    // did not exist -- the flag stopped a half-built adapter from touching
+    // real credentials. The adapter now exists and is audited, so an app that
+    // starts unable to sign in is broken rather than safe. The flag survives
+    // only as a kill switch for local work against a backend that is down.
     const env = { ...validEnv };
     delete env.VITE_FEATURE_DESKTOP_AUTH;
     const config = loadConfig(env);
+    expect(config.featureFlags.desktopAuth).toBe(true);
+  });
+
+  it("still honours an explicit `false`, so the kill switch works", () => {
+    const config = loadConfig({
+      ...validEnv,
+      VITE_FEATURE_DESKTOP_AUTH: "false",
+    });
     expect(config.featureFlags.desktopAuth).toBe(false);
   });
 

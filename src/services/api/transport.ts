@@ -1,9 +1,14 @@
 import { z } from "zod";
-import { apiErrorEnvelopeSchema, apiSuccessEnvelope } from "./envelope";
+import {
+  apiErrorEnvelopeSchema,
+  apiSuccessEnvelope,
+  parentErrorSchema,
+} from "./envelope";
 import {
   ApiError,
   cancelledError,
   fromErrorEnvelope,
+  fromParentError,
   fromUnparseableResponse,
   malformedResponseError,
   offlineError,
@@ -29,6 +34,18 @@ export interface TransportOptions {
   defaultPolicy?: Partial<RequestPolicy>;
   /** Injected for deterministic backoff tests. */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * Called when a request to an authenticated parent route fails 401.
+   *
+   * The parent does not revoke, so the desktop learns a token is dead only
+   * by being refused with it -- there is nothing to poll and no `exp` the
+   * client is allowed to read (INT-1, the token is opaque). This is how
+   * "drop to unauthenticated on any 401" from `auth.md` is implemented in
+   * one place instead of in every screen.
+   *
+   * Not called for requests marked `unauthenticatedIsExpected`.
+   */
+  onUnauthorized?: (path: string) => void;
 }
 
 export interface RequestOptions<T extends z.ZodTypeAny> {
@@ -37,6 +54,37 @@ export interface RequestOptions<T extends z.ZodTypeAny> {
   schema: T;
   signal?: AbortSignal;
   policy?: Partial<RequestPolicy>;
+}
+
+export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+/**
+ * A parent-internal request (TASK-2.3).
+ *
+ * `schema` validates the **whole** response body, not a `data` field.
+ * That is REQ-A12: the parent-internal API has nine distinct top-level
+ * shapes, so there is no envelope to unwrap generically and each endpoint
+ * declares exactly what it expects.
+ */
+export interface ParentRequestOptions<T extends z.ZodTypeAny> {
+  method: HttpMethod;
+  path: string;
+  query?: Record<string, string | number | undefined>;
+  /** Schema for the entire response body. */
+  schema: T;
+  /** Serialised as JSON. Omit for GET/DELETE. */
+  body?: unknown;
+  /** Extra headers, e.g. Authorization and x-csrf-token. */
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
+  policy?: Partial<RequestPolicy>;
+  /**
+   * Set on the auth routes. A 401 from `/api/auth/login` means "these
+   * credentials are wrong", not "your session ended", and must not be
+   * reported as session loss -- otherwise a mistyped password would look
+   * like an expiry.
+   */
+  unauthenticatedIsExpected?: boolean;
 }
 
 const DEFAULT_POLICY: RequestPolicy = {
@@ -59,6 +107,13 @@ function buildUrl(
   return url.toString();
 }
 
+/** `Retry-After` is seconds on the parent's 429 (auth-subscription-contract §3). */
+function parseRetryAfter(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number.parseInt(value, 10);
+  return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+}
+
 function backoffMs(attempt: number): number {
   return Math.min(500 * 2 ** (attempt - 1), 8_000);
 }
@@ -69,12 +124,14 @@ export class ApiTransport {
   private readonly fetchImpl: typeof fetch;
   private readonly policy: RequestPolicy;
   private readonly sleep: (ms: number) => Promise<void>;
+  private readonly onUnauthorized: TransportOptions["onUnauthorized"];
 
   constructor(options: TransportOptions) {
     this.baseUrl = options.baseUrl;
     this.getApiKey = options.getApiKey;
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
     this.policy = { ...DEFAULT_POLICY, ...options.defaultPolicy };
+    this.onUnauthorized = options.onUnauthorized;
     this.sleep =
       options.sleep ??
       ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -107,6 +164,142 @@ export class ApiTransport {
       }
     }
     throw lastError ?? malformedResponseError();
+  }
+
+  /**
+   * Issues a parent-internal request, validating the whole response body
+   * against `schema` (REQ-A12).
+   *
+   * This shares the retry, timeout, cancellation and error-normalisation
+   * policy with `get()` rather than reimplementing it (REQ-A2) -- only the
+   * request shape and the response-parsing rule differ. A mutation gets
+   * `retry: "never"` unless the caller explicitly overrides, because the
+   * parent supports no idempotency key on any endpoint
+   * (`endpoint-inventory.md` §4), so a replayed POST is a real duplicate.
+   */
+  async request<T extends z.ZodTypeAny>(
+    options: ParentRequestOptions<T>,
+  ): Promise<z.infer<T>> {
+    try {
+      return await this.performRequest(options);
+    } catch (error) {
+      // One choke point for session loss. Per `auth.md` §Credential
+      // lifecycle, any 401 on an authenticated route means the stored token
+      // is no longer usable and the app must drop to unauthenticated. Doing
+      // this per screen would mean every new screen has to remember to --
+      // and the one that forgets leaves the user reading "sign in" with no
+      // way to act on it, which is precisely what happened before this
+      // existed.
+      if (
+        error instanceof ApiError &&
+        error.kind === "unauthorized" &&
+        !options.unauthenticatedIsExpected
+      ) {
+        this.onUnauthorized?.(options.path);
+      }
+      throw error;
+    }
+  }
+
+  private async performRequest<T extends z.ZodTypeAny>(
+    options: ParentRequestOptions<T>,
+  ): Promise<z.infer<T>> {
+    const safe = options.method === "GET";
+    const policy: RequestPolicy = {
+      ...this.policy,
+      retry: safe ? this.policy.retry : "never",
+      ...options.policy,
+    };
+    const url = buildUrl(this.baseUrl, options.path, options.query);
+    const maxAttempts =
+      policy.retry === "never" ? 1 : Math.max(1, policy.maxRetries + 1);
+
+    let lastError: ApiError | undefined;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await this.attemptParent(url, options, policy);
+      } catch (error) {
+        if (!(error instanceof ApiError)) {
+          throw error;
+        }
+        if (error.kind === "cancelled" || !error.isTransient) {
+          throw error;
+        }
+        lastError = error;
+        if (attempt < maxAttempts) {
+          await this.sleep(backoffMs(attempt));
+        }
+      }
+    }
+    throw lastError ?? malformedResponseError();
+  }
+
+  private async attemptParent<T extends z.ZodTypeAny>(
+    url: string,
+    options: ParentRequestOptions<T>,
+    policy: RequestPolicy,
+  ): Promise<z.infer<T>> {
+    if (options.signal?.aborted) {
+      throw cancelledError();
+    }
+
+    const controller = new AbortController();
+    const onCallerAbort = () => controller.abort();
+    options.signal?.addEventListener("abort", onCallerAbort, { once: true });
+
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, policy.timeoutMs);
+
+    try {
+      const headers: Record<string, string> = {
+        Accept: "application/json",
+        ...options.headers,
+      };
+      if (options.body !== undefined) {
+        headers["Content-Type"] = "application/json";
+      }
+
+      const response = await this.fetchImpl(url, {
+        method: options.method,
+        headers,
+        body:
+          options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal: controller.signal,
+      });
+
+      const raw: unknown = await response.json().catch(() => undefined);
+
+      if (!response.ok) {
+        const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
+        const parsed = parentErrorSchema.safeParse(raw);
+        throw parsed.success
+          ? fromParentError(response.status, parsed.data, retryAfter)
+          : fromUnparseableResponse(response.status);
+      }
+
+      // The whole body is validated -- there is no envelope to unwrap.
+      const parsed = options.schema.safeParse(raw);
+      if (!parsed.success) {
+        // Issues are deliberately dropped: they quote the offending
+        // values, which may be tender or proposal content (REQ-8).
+        throw malformedResponseError();
+      }
+      return parsed.data;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      if (isAbortError(error)) {
+        throw timedOut ? timeoutError(policy.timeoutMs) : cancelledError();
+      }
+      throw offlineError();
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", onCallerAbort);
+    }
   }
 
   private async attempt<T extends z.ZodTypeAny>(

@@ -278,6 +278,38 @@ Carried forward from the handoff and re-affirmed:
 
 ---
 
+## 7a. Phase 2 re-verification (TASK-2.1) — 2026-07-29
+
+Phase 2's TASK-2.1 requires re-verifying the audited contract against parent source at a current
+baseline before any implementation, because this audit is a point-in-time artifact and commit
+`9fd93b2` demonstrated in-scope parent routes moving within days.
+
+**Result: the parent has not moved. The audit baseline is still current.**
+
+| Check | Result |
+|-------|--------|
+| Parent tree readable | yes — 9794 tracked files, worktree clean |
+| `origin/aws-production-app` tip | `8ff2e4c2b2b5597dc6d8107f628ffe72c9a89bc1` |
+| Commits since the audit baseline | **0** — the tip *is* the baseline |
+| The 15 files cited by `auth-subscription-contract.md` | all **unchanged** |
+
+Because the SHA is identical the files are byte-identical by definition, but the 18 load-bearing
+behavioural claims were nonetheless re-asserted directly against source rather than inferred from
+the SHA — Bearer precedence and its guarding parent test, the login body token and
+`sameSite: 'strict'` cookie, the 10-per-15-minute IP-keyed rate limit, the three
+status-indistinguishable 401s, `/me`'s 200-with-`user: null` and token re-minting and lower-cased
+tier overlay, the absence of any revocation primitive, the 7-day expiry, CSRF being validated by
+exactly one route and not by middleware, `/api/auth/me` being on the public allowlist while the
+subscription routes are not, the synthesised free plan with `id: null`, `feature-access`'s
+`hasAccess: false` inside its 500, and the absence of CORS on every needed route.
+
+**All 18 confirmed.** One check reported a failure on first run — the synthesised-free-plan
+assertion — which turned out to be a too-narrow `grep -A3` window rather than a contract change;
+`id: null` sits four lines in. The finding stands; the check was wrong.
+
+**No revision to the Phase 2 specification is required.** Implementation proceeds against
+`8ff2e4c2`.
+
 ## 8. Status
 
 | Item | Status |

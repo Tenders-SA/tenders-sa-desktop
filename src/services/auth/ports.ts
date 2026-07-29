@@ -29,20 +29,42 @@ export interface Credentials {
 /**
  * Why a login attempt failed, as a closed union so the UI cannot
  * confuse "wrong password" with "the feature is switched off".
+ *
+ * Extended by TASK-2.5 (REQ-A5). Phase 0 defined four kinds before the
+ * parent contract was audited; the audited contract produces three more,
+ * and collapsing them into `invalid-credentials` would walk real users
+ * into dead ends. Telling someone with an unverified email address to
+ * check their password is the clearest example -- there is no password
+ * they can type that will work.
  */
 export type AuthFailureKind =
   | "disabled" // production auth is gated off (REQ-4)
-  | "invalid-credentials"
+  | "invalid-credentials" // wrong password, unknown user, or no password set
+  | "account-inactive" // accountStatus !== 'ACTIVE'; needs email verification
+  | "rate-limited" // 429; see AuthError.retryAfterSeconds
+  | "server-error" // 5xx or an unparseable response
   | "network"
   | "contract-unconfirmed"; // the audited contract does not exist yet
 
 export class AuthError extends Error {
   readonly kind: AuthFailureKind;
+  /**
+   * Only set for `rate-limited`, from the parent's `Retry-After` header.
+   * The limiter is IP-keyed, allows 10 attempts per 15 minutes, and is
+   * deliberately not reset on success, so the UI must show the real wait
+   * rather than invite an immediate retry (REQ-A6).
+   */
+  readonly retryAfterSeconds?: number;
 
-  constructor(kind: AuthFailureKind, message: string) {
+  constructor(
+    kind: AuthFailureKind,
+    message: string,
+    options?: { retryAfterSeconds?: number },
+  ) {
     super(message);
     this.name = "AuthError";
     this.kind = kind;
+    this.retryAfterSeconds = options?.retryAfterSeconds;
   }
 }
 

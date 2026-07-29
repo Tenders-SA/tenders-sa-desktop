@@ -39,30 +39,38 @@ verifies, or inspects the JWT — INT-1 forbids reimplementing parent signing/va
 desktop has no access to the secret regardless. Expiry is learned from responses, not from
 reading `exp`.
 
-### 2. API requests are issued from Rust, not from webview `fetch`
+### 2. API requests are issued from Rust via `tauri-plugin-http`
+
+Transport uses `tauri-plugin-http`, which performs the request in Rust.
 
 **Why — two independent reasons, and the second is not a preference.**
 
-- *Security*: the Bearer token never enters webview JavaScript, so it cannot leak via XSS,
-  devtools, or an accidentally logged request object.
 - *Functional*: the parent sets **no CORS headers** on any route the desktop needs. Only three
   route files in `src/app/api` set `Access-Control-Allow-Origin`, all public embed/widget/beacon
   surfaces; there is none in middleware or `next.config.ts`. A webview `fetch` from a
-  `tauri://localhost` origin would be blocked on every auth, subscription, tender, application,
-  and workspace route.
+  `tauri://localhost` origin is blocked on every auth, subscription, tender, application, and
+  workspace route. Native HTTP from Rust is not subject to browser CORS.
+- *Security*: the token is at rest **only in the OS keychain** and is never persisted anywhere
+  the webview can read later.
 
-This resolves design.md §Authentication Design Gate question 6. Native HTTP from Rust is not
-subject to browser CORS.
+This resolves design.md §Authentication Design Gate question 6.
 
-**Consequence for Phase 0's transport.** `src/services/api/**` remains correct and fully tested
-as the *policy* layer — envelope handling, timeout, cancellation, bounded retry, error
-normalisation — but its `fetch` transport must be swapped for a Rust-backed adapter before it
-can reach the parent. TASK-0.7 built an injectable transport seam precisely so this is an
-adapter swap rather than a rewrite. A pleasant side effect: CSP `connect-src` never needs
-widening.
+**Where the token lives.** The plugin takes request headers from the caller, so `Authorization`
+is assembled in TypeScript and the token is present in webview memory for the duration of a
+single request. It is read from the keychain per request and retained in no variable
+(SEC-A1). The paths by which a compromised webview could send it anywhere are closed and
+**tested** (SEC-A2): the plugin's URL allow-list contains exactly one origin, `script-src` is
+`'self'` so no remote script can load, and `connect-src` is local so ordinary `fetch` cannot
+reach an external host. `src/tests/capability-scope.test.ts` fails if any of the three is
+widened.
+
+**Consequence for Phase 0's transport.** `src/services/api/**` remains correct as the *policy*
+layer — envelope handling, timeout, cancellation, bounded retry, error normalisation. Only its
+`fetch` implementation is swapped, via the injectable seam TASK-0.7 built. CSP `connect-src`
+never needs widening, because the plugin does not use the webview network stack.
 
 **Rejected**: adding a CORS allowance for the desktop origin. That widens the parent's
-browser-facing attack surface to solve a problem the desktop can solve on its own side, and the
+browser-facing attack surface to solve a problem the desktop solves on its own side, and the
 parent's auth module is frozen.
 
 ### 3. `/api/auth/me` is both session check and renewal

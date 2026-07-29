@@ -26,6 +26,9 @@ keyring = "4"
 aes-gcm = "0.10"
 base64 = "0.22"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+# HTTP transport (TASK-2.2). Default features only: `dangerous-settings` and
+# `unsafe-headers` are deliberately NOT enabled -- see SPEC_CONTRACT KEY CONSTRAINTS.
+tauri-plugin-http = { version = "2", default-features = false }
 
 [dev-dependencies]
 rusqlite = { version = "0.32", features = ["bundled"] }
