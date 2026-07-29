@@ -100,11 +100,25 @@ describe("AppLayout", () => {
   });
 });
 
-describe("CommandCentre placeholder", () => {
-  it("says plainly that no data is loaded rather than showing mock widgets", () => {
+describe("CommandCentre", () => {
+  it("stays honest about what is not connected rather than showing mock widgets", () => {
+    // COPY UPDATED BY TASK-2.9. Phase 0's version asserted "nothing to show
+    // yet", which was true then and is no longer: the plan panel is real
+    // data. The *intent* is unchanged and is what this still checks -- the
+    // page must not imply that tender or workspace features work.
     render(<CommandCentre />);
-    expect(screen.getByText(/nothing to show yet/i)).toBeVisible();
-    expect(screen.getByText(/no data source is connected/i)).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: /not connected yet/i }),
+    ).toBeVisible();
+    // Appears in both the intro and the panel, so assert at least one.
+    expect(
+      screen.getAllByText(/later, separately approved phases/i).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("shows no plan panel when there is no session to read one for", () => {
+    render(<CommandCentre />);
+    expect(screen.queryByText("Your plan")).toBeNull();
   });
 });
 
