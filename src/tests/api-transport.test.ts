@@ -1,3 +1,28 @@
+/**
+ * Policy-layer tests for `ApiTransport.get()` (TASK-0.7, retargeted by
+ * TASK-2.4).
+ *
+ * WHAT THIS FILE TESTS: retry bounds, timeout, cancellation, error
+ * normalisation, and success-envelope unwrapping.
+ *
+ * WHAT IT DOES **NOT** IMPLY: that the desktop talks to the public
+ * Tenders-SA Developer API. It does not (REQ-A14). These fixtures
+ * originally used `https://api.tenders-sa.org` with `?limit`/`?cursor`
+ * pagination, which is the Developer API's convention and matches **no**
+ * main-application route -- gap PA-1. A contributor reading them as the
+ * contract would have built the wrong client, so they now use the
+ * main-application base URL, `/api/*` paths, and `page`/`limit`
+ * pagination. `endpoint-parity.test.ts` fails if the Developer API
+ * reappears anywhere in source.
+ *
+ * The `{success, data}` envelope asserted below is real: it is parent
+ * shape #1, the one `POST /api/auth/login` returns. It is *not* universal
+ * -- the parent-internal API has nine top-level shapes -- which is why
+ * parent-internal calls use `ApiTransport.request()` with a per-endpoint
+ * schema instead. `get()` has no production caller after Phase 2;
+ * whether to keep it is a cleanup decision recorded for TASK-2.11.
+ */
+
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { ApiTransport } from "../services/api/transport";
@@ -17,8 +42,8 @@ function makeTransport(
   overrides: Partial<ConstructorParameters<typeof ApiTransport>[0]> = {},
 ) {
   return new ApiTransport({
-    baseUrl: "https://api.tenders-sa.org",
-    getApiKey: () => "tsa_prod_test_key",
+    baseUrl: "http://localhost:3000",
+    getApiKey: () => "session-token-placeholder",
     fetchImpl,
     // Deterministic: no real backoff waiting in tests.
     sleep: () => Promise.resolve(),
@@ -46,7 +71,7 @@ describe("ApiTransport", () => {
     ) as unknown as typeof fetch;
 
     const result = await makeTransport(fetchImpl).get({
-      path: "/v2/tenders/t1",
+      path: "/api/tenders/t1",
       schema: dataSchema,
     });
 
@@ -59,18 +84,16 @@ describe("ApiTransport", () => {
     ) as unknown as typeof fetch;
 
     await makeTransport(fetchImpl).get({
-      path: "/v2/tenders",
-      query: { limit: 20, cursor: "abc", omitted: undefined },
+      path: "/api/tenders",
+      query: { page: 1, limit: 20, omitted: undefined },
       schema: dataSchema,
     });
 
     const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
       .calls[0];
-    expect(url).toBe(
-      "https://api.tenders-sa.org/v2/tenders?limit=20&cursor=abc",
-    );
+    expect(url).toBe("http://localhost:3000/api/tenders?page=1&limit=20");
     expect((init as RequestInit).headers).toMatchObject({
-      Authorization: "Bearer tsa_prod_test_key",
+      Authorization: "Bearer session-token-placeholder",
     });
   });
 
@@ -80,7 +103,7 @@ describe("ApiTransport", () => {
     ) as unknown as typeof fetch;
 
     await makeTransport(fetchImpl, { getApiKey: () => undefined }).get({
-      path: "/v2/meta/status",
+      path: "/api/health",
       schema: dataSchema,
     });
 
@@ -103,7 +126,10 @@ describe("ApiTransport", () => {
     ) as unknown as typeof fetch;
 
     const error = await expectApiError(
-      makeTransport(fetchImpl).get({ path: "/v2/tenders", schema: dataSchema }),
+      makeTransport(fetchImpl).get({
+        path: "/api/tenders",
+        schema: dataSchema,
+      }),
     );
 
     expect(error).toBeInstanceOf(ApiError);
@@ -119,7 +145,10 @@ describe("ApiTransport", () => {
     ) as unknown as typeof fetch;
 
     const error = await expectApiError(
-      makeTransport(fetchImpl).get({ path: "/v2/tenders", schema: dataSchema }),
+      makeTransport(fetchImpl).get({
+        path: "/api/tenders",
+        schema: dataSchema,
+      }),
     );
 
     expect(error.kind).toBe("forbidden");
@@ -141,7 +170,7 @@ describe("ApiTransport", () => {
     ) as unknown as typeof fetch;
 
     const error = (await makeTransport(fetchImpl)
-      .get({ path: "/v2/tenders", schema: dataSchema })
+      .get({ path: "/api/tenders", schema: dataSchema })
       .catch((e: unknown) => e)) as ApiError;
 
     expect(error.kind).toBe("rate-limited");
@@ -154,7 +183,10 @@ describe("ApiTransport", () => {
     ) as unknown as typeof fetch;
 
     const error = await expectApiError(
-      makeTransport(fetchImpl).get({ path: "/v2/tenders", schema: dataSchema }),
+      makeTransport(fetchImpl).get({
+        path: "/api/tenders",
+        schema: dataSchema,
+      }),
     );
 
     expect(error.kind).toBe("server");
@@ -169,7 +201,7 @@ describe("ApiTransport", () => {
 
     await makeTransport(fetchImpl)
       .get({
-        path: "/v2/tenders",
+        path: "/api/tenders",
         schema: dataSchema,
         policy: { retry: "never" },
       })
@@ -185,7 +217,7 @@ describe("ApiTransport", () => {
 
     const error = await expectApiError(
       makeTransport(fetchImpl).get({
-        path: "/v2/tenders/x",
+        path: "/api/tenders/x",
         schema: dataSchema,
       }),
     );
@@ -201,7 +233,7 @@ describe("ApiTransport", () => {
 
     const error = await expectApiError(
       makeTransport(fetchImpl).get({
-        path: "/v2/tenders/t1",
+        path: "/api/tenders/t1",
         schema: dataSchema,
       }),
     );
@@ -215,7 +247,10 @@ describe("ApiTransport", () => {
     ) as unknown as typeof fetch;
 
     const error = await expectApiError(
-      makeTransport(fetchImpl).get({ path: "/v2/tenders", schema: dataSchema }),
+      makeTransport(fetchImpl).get({
+        path: "/api/tenders",
+        schema: dataSchema,
+      }),
     );
 
     expect(error.kind).toBe("server");
@@ -229,7 +264,7 @@ describe("ApiTransport", () => {
 
     const error = await expectApiError(
       makeTransport(fetchImpl).get({
-        path: "/v2/tenders",
+        path: "/api/tenders",
         schema: dataSchema,
         policy: { retry: "never" },
       }),
@@ -253,7 +288,7 @@ describe("ApiTransport", () => {
 
     const error = await expectApiError(
       makeTransport(fetchImpl).get({
-        path: "/v2/tenders",
+        path: "/api/tenders",
         schema: dataSchema,
         policy: { timeoutMs: 5, retry: "never" },
       }),
@@ -278,7 +313,7 @@ describe("ApiTransport", () => {
 
     const error = await expectApiError(
       makeTransport(fetchImpl).get({
-        path: "/v2/tenders",
+        path: "/api/tenders",
         schema: dataSchema,
         signal: controller.signal,
       }),
@@ -295,7 +330,7 @@ describe("ApiTransport", () => {
 
     const error = await expectApiError(
       makeTransport(fetchImpl).get({
-        path: "/v2/tenders",
+        path: "/api/tenders",
         schema: dataSchema,
         signal: controller.signal,
       }),
@@ -314,7 +349,7 @@ describe("ApiTransport", () => {
     const error = await expectApiError(
       makeTransport(fetchImpl, {
         getApiKey: () => secretKey,
-      }).get({ path: "/v2/tenders", schema: dataSchema }),
+      }).get({ path: "/api/tenders", schema: dataSchema }),
     );
 
     const rendered = `${error.message} ${JSON.stringify(error.toLogFields())}`;
