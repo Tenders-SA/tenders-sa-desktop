@@ -140,9 +140,11 @@ describe("endpoint parity — allowed main-application paths", () => {
       "`/api/v1/applications/${encodeURIComponent(id)}/assist`",
       "`/api/v1/applications/${encodeURIComponent(id)}/assist/compliance-gaps`",
       "`/api/v1/applications/${encodeURIComponent(id)}/assist/research`",
+      "`/api/v1/applications/${encodeURIComponent(id)}/assist/additional-info`",
       '"/api/v1/applications/workspace/summary"',
       "`/api/v1/applications/${encodeURIComponent(id)}/workspace`",
       '"PATCH"',
+      '"PUT"',
     ];
     for (const fragment of expected) {
       expect(source, fragment).toContain(fragment);

@@ -20,6 +20,7 @@ import { ChecklistPanel } from "./workspace/ChecklistPanel";
 import { EventsPanel } from "./workspace/EventsPanel";
 import { ComplianceGapsPanel } from "./workspace/ComplianceGapsPanel";
 import { ResearchPanel } from "./workspace/ResearchPanel";
+import { AdditionalInfoPanel } from "./workspace/AdditionalInfoPanel";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
@@ -247,6 +248,10 @@ function WorkspaceBody({
           applicationId={applicationId}
         />
         <ResearchPanel endpoint={endpoint} applicationId={applicationId} />
+        <AdditionalInfoPanel
+          endpoint={endpoint}
+          applicationId={applicationId}
+        />
       </div>
 
       {application.notes && (

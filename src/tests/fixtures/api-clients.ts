@@ -47,6 +47,8 @@ export function stubApiClients(
       getResearch: idle(),
       getWorkspaceStage: idle(),
       updateWorkspace: idle(),
+      getAdditionalInfo: idle(),
+      saveAdditionalInfo: idle(),
     },
     company: {
       getProfile: idle(),

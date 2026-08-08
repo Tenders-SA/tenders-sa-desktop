@@ -746,6 +746,99 @@ describe("applications endpoint — workspace cockpit", () => {
   });
 });
 
+describe("applications endpoint — additional-info Q&A", () => {
+  it("parses the live-verified additional-info payload", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        values: { bidContactPerson: "Sipho Dlamini" },
+        fields: [
+          {
+            id: "bidContactPerson",
+            label: "Bid contact person",
+            type: "text",
+            required: true,
+            placeholder: "Full name of the person responsible for this bid",
+          },
+          {
+            id: "deliveryAddress",
+            label: "Delivery / branch address (North West)",
+            type: "textarea",
+            required: true,
+            placeholder: "Address from which you will deliver / operate",
+          },
+          {
+            id: "declarationsAccepted",
+            label: "I confirm the declarations for this bid",
+            type: "checkbox",
+            required: true,
+          },
+        ],
+        unfilledRequired: 3,
+      }),
+    );
+    const info = await endpoint.getAdditionalInfo("a1");
+    expect(lastCall(fetchImpl)[0]).toContain("/assist/additional-info");
+    expect(info.values).toEqual({ bidContactPerson: "Sipho Dlamini" });
+    expect(info.fields).toHaveLength(3);
+    expect(info.fields?.[0].type).toBe("text");
+    expect(info.fields?.[2].type).toBe("checkbox");
+    expect(info.unfilledRequired).toBe(3);
+  });
+
+  it("defaults missing values to an empty record", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ fields: [], unfilledRequired: 0 }),
+    );
+    await expect(endpoint.getAdditionalInfo("a1")).resolves.toMatchObject({
+      values: {},
+    });
+  });
+
+  it("PUTs the values with the exact body and method", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ persisted: true, unfilledRequired: 1 }),
+    );
+    const values = {
+      bidContactEmail: "sipho@acme.co.za",
+      declarationsAccepted: true,
+    };
+    await endpoint.saveAdditionalInfo("a1", values);
+    const [url, init] = lastCall(fetchImpl);
+    expect(url).toContain("/a1/assist/additional-info");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(String(init.body))).toEqual({ values });
+  });
+
+  it("never retries a save", async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      throw new TypeError("Failed to fetch");
+    });
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+    await expect(
+      endpoint.saveAdditionalInfo("a1", { bidContactPerson: "Sipho" }),
+    ).rejects.toBeDefined();
+    expect(calls).toBe(1);
+  });
+
+  it("surfaces a 400 `Invalid values` as a validation problem", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Invalid values" }, 400),
+    );
+    await expect(endpoint.saveAdditionalInfo("a1", {})).rejects.toMatchObject({
+      kind: "validation",
+    });
+  });
+});
+
 describe("company endpoint", () => {
   it("treats a 404 as 'no profile yet' rather than an error", async () => {
     // The normal state for a new account, and the reason Tender Radar is

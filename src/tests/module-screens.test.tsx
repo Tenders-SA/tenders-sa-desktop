@@ -252,6 +252,8 @@ describe("Application workspace", () => {
       getResearch: vi.fn(() => new Promise<never>(() => {})),
       getWorkspaceStage: vi.fn(() => new Promise<never>(() => {})),
       updateWorkspace: vi.fn(() => new Promise<never>(() => {})),
+      getAdditionalInfo: vi.fn(() => new Promise<never>(() => {})),
+      saveAdditionalInfo: vi.fn(() => new Promise<never>(() => {})),
       ...overrides,
     } as unknown as ApplicationsEndpoint;
   }
@@ -318,162 +320,168 @@ describe("Application workspace", () => {
   });
 });
 
-describe("ApplicationWorkspace — workspace cockpit", () => {
-  const detail = {
-    id: "a1",
-    tenderId: "t1",
-    status: "DRAFT",
-    submittedAt: null,
-    createdAt: "2026-07-01T00:00:00.000Z",
-    updatedAt: "2026-07-02T00:00:00.000Z",
-    notes: null,
-    isArchived: false,
-    tender: {
-      id: "t1",
-      title: "Security services",
-      referenceNumber: "RFQ-3",
-      sourceOrganization: "Dept of Health",
-      closingDate: "2099-01-01T00:00:00.000Z",
-      estimatedValue: 900_000,
-      province: "Gauteng",
-      requirements: ["Tax clearance", "CIDB 4"],
-    },
-    company: { id: "c1", name: "Acme", bbbeeLevel: 2 },
-  };
+const workspaceDetail = {
+  id: "a1",
+  tenderId: "t1",
+  status: "DRAFT",
+  submittedAt: null,
+  createdAt: "2026-07-01T00:00:00.000Z",
+  updatedAt: "2026-07-02T00:00:00.000Z",
+  notes: null,
+  isArchived: false,
+  tender: {
+    id: "t1",
+    title: "Security services",
+    referenceNumber: "RFQ-3",
+    sourceOrganization: "Dept of Health",
+    closingDate: "2099-01-01T00:00:00.000Z",
+    estimatedValue: 900_000,
+    province: "Gauteng",
+    requirements: ["Tax clearance", "CIDB 4"],
+  },
+  company: { id: "c1", name: "Acme", bbbeeLevel: 2 },
+};
 
-  const cockpit = {
-    application: { id: "a1", status: "DRAFT", readinessScore: 80 },
-    tender: {
-      id: "t1",
-      title: "Security services",
-      closingDate: "2026-08-25T10:00:00.000Z",
+const workspaceCockpit = {
+  application: { id: "a1", status: "DRAFT", readinessScore: 80 },
+  tender: {
+    id: "t1",
+    title: "Security services",
+    closingDate: "2026-08-25T10:00:00.000Z",
+  },
+  company: {
+    id: "c1",
+    name: "Acme",
+    profileCompleteness: 100,
+    hasProfile: true,
+  },
+  matching: null,
+  readiness: {
+    score: 80,
+    overall: "ready",
+    factors: [{ name: "Company profile", score: 100, status: "good" }],
+  },
+  urgency: {
+    level: "normal",
+    color: "#eab308",
+    pulsing: false,
+    daysRemaining: 17,
+    hoursRemaining: 408,
+    percentageRemaining: 20,
+    message: "Closes 25 August 2026",
+  },
+  generationStatus: null,
+  qualityChecks: [
+    {
+      id: "q1",
+      category: "compliance",
+      status: "pass",
+      message: "Tax clearance valid",
     },
-    company: {
+  ],
+  valueEstimate: {
+    estimatedMin: 450_000,
+    estimatedMax: 720_000,
+    estimatedMedian: 581_900,
+    confidenceScore: 82,
+    confidenceLevel: "high",
+    methodology: "award-history",
+    currency: "ZAR",
+    sampleSize: 4,
+  },
+  analysisStatus: {
+    status: "complete",
+    progress: 100,
+    message: "Analysis complete",
+  },
+  checklistState: [
+    {
       id: "c1",
-      name: "Acme",
-      profileCompleteness: 100,
-      hasProfile: true,
+      label: "Company profile",
+      completed: true,
+      category: "Profile",
     },
-    matching: null,
-    readiness: {
-      score: 80,
-      overall: "ready",
-      factors: [{ name: "Company profile", score: 100, status: "good" }],
+    {
+      id: "c2",
+      label: "Tax clearance",
+      completed: false,
+      category: "Compliance",
     },
-    urgency: {
-      level: "normal",
-      color: "#eab308",
-      pulsing: false,
-      daysRemaining: 17,
-      hoursRemaining: 408,
-      percentageRemaining: 20,
-      message: "Closes 25 August 2026",
+  ],
+  events: [
+    {
+      id: "e1",
+      title: "Site visit",
+      eventDate: "2026-08-12T09:00:00.000Z",
+      eventType: "SITE_VISIT",
+      isCompleted: false,
+      source: "tender",
     },
-    generationStatus: null,
-    qualityChecks: [
-      {
-        id: "q1",
-        category: "compliance",
-        status: "pass",
-        message: "Tax clearance valid",
-      },
-    ],
-    valueEstimate: {
-      estimatedMin: 450_000,
-      estimatedMax: 720_000,
-      estimatedMedian: 581_900,
-      confidenceScore: 82,
-      confidenceLevel: "high",
-      methodology: "award-history",
-      currency: "ZAR",
-      sampleSize: 4,
-    },
-    analysisStatus: {
-      status: "complete",
-      progress: 100,
-      message: "Analysis complete",
-    },
-    checklistState: [
-      {
-        id: "c1",
-        label: "Company profile",
-        completed: true,
-        category: "Profile",
-      },
-      {
-        id: "c2",
-        label: "Tax clearance",
-        completed: false,
-        category: "Compliance",
-      },
-    ],
-    events: [
-      {
-        id: "e1",
-        title: "Site visit",
-        eventDate: "2026-08-12T09:00:00.000Z",
-        eventType: "SITE_VISIT",
-        isCompleted: false,
-        source: "tender",
-      },
-    ],
-    documentState: [],
-  };
+  ],
+  documentState: [],
+};
 
-  const gaps = {
-    gaps: [
-      {
-        id: "g1",
-        category: "Finance",
-        severity: "important",
-        label: "B-BBEE certificate missing",
-        detail: "Required for evaluation",
-        tenderRequirement: "B-BBEE",
-        companyStatus: "missing",
-        canAutoFix: false,
-      },
-    ],
-    summary: { blocking: 0, important: 1, strengths: 5, info: 0, score: 100 },
-  };
+const workspaceGaps = {
+  gaps: [
+    {
+      id: "g1",
+      category: "Finance",
+      severity: "important",
+      label: "B-BBEE certificate missing",
+      detail: "Required for evaluation",
+      tenderRequirement: "B-BBEE",
+      companyStatus: "missing",
+      canAutoFix: false,
+    },
+  ],
+  summary: { blocking: 0, important: 1, strengths: 5, info: 0, score: 100 },
+};
 
-  const research = {
-    organisation: {
-      id: "o1",
-      name: "Msinsi Holding (SOC)",
-      organizationType: "State-owned company",
-      tenderCount: 14,
-      activeTenderCount: 3,
-      awardCount: 6,
-      csdNumber: "M123456789",
-    },
-    competitors: [
-      { supplierName: "BridgeCo", totalValue: 12_000_000, awardCount: 4 },
-      { supplierName: "Structura", totalValue: 8_000_000, awardCount: 2 },
-    ],
-    provinceHealth: {
-      province: "North West",
-      score: 50,
-      activityLevel: "CAUTION",
-    },
-    eligibility: {
-      cidb: { status: "pass", detail: "Grade 4" },
-      taxClearance: { status: "fail", detail: "Expired" },
-    },
-  };
+const workspaceResearch = {
+  organisation: {
+    id: "o1",
+    name: "Msinsi Holding (SOC)",
+    organizationType: "State-owned company",
+    tenderCount: 14,
+    activeTenderCount: 3,
+    awardCount: 6,
+    csdNumber: "M123456789",
+  },
+  competitors: [
+    { supplierName: "BridgeCo", totalValue: 12_000_000, awardCount: 4 },
+    { supplierName: "Structura", totalValue: 8_000_000, awardCount: 2 },
+  ],
+  provinceHealth: {
+    province: "North West",
+    score: 50,
+    activityLevel: "CAUTION",
+  },
+  eligibility: {
+    cidb: { status: "pass", detail: "Grade 4" },
+    taxClearance: { status: "fail", detail: "Expired" },
+  },
+};
 
+describe("ApplicationWorkspace — workspace cockpit", () => {
   function endpoint(overrides: Partial<Record<string, unknown>> = {}) {
     return {
-      get: vi.fn(async () => detail),
+      get: vi.fn(async () => workspaceDetail),
       validate: vi.fn(async () => ({
         ready: false,
         blockers: [],
         warnings: [],
       })),
-      getCockpit: vi.fn(async () => cockpit),
-      getComplianceGaps: vi.fn(async () => gaps),
-      getResearch: vi.fn(async () => research),
+      getCockpit: vi.fn(async () => workspaceCockpit),
+      getComplianceGaps: vi.fn(async () => workspaceGaps),
+      getResearch: vi.fn(async () => workspaceResearch),
       getWorkspaceStage: vi.fn(async () => "add_information"),
       updateWorkspace: vi.fn(async () => ({ success: true })),
+      getAdditionalInfo: vi.fn(async () => ({
+        values: {},
+        fields: [],
+        unfilledRequired: 0,
+      })),
+      saveAdditionalInfo: vi.fn(async () => ({ persisted: true })),
       ...overrides,
     } as unknown as ApplicationsEndpoint;
   }
@@ -569,6 +577,190 @@ describe("ApplicationWorkspace — workspace cockpit", () => {
     wrap(<ApplicationWorkspace endpoint={endpoint()} applicationId="a1" />);
     await screen.findByText(/add information/i);
     expect(screen.queryByRole("button", { name: /restore/i })).toBeNull();
+  });
+});
+
+describe("ApplicationWorkspace — additional-information panel", () => {
+  const fields = [
+    {
+      id: "bidContactPerson",
+      label: "Bid contact person",
+      type: "text",
+      required: true,
+    },
+    {
+      id: "declarationsAccepted",
+      label: "I confirm the declarations for this bid",
+      type: "checkbox",
+      required: true,
+    },
+    {
+      id: "deliveryAddress",
+      label: "Delivery / branch address (North West)",
+      type: "textarea",
+      required: true,
+    },
+    {
+      id: "pricingBasis",
+      label: "Fixed price / escalation basis",
+      type: "email",
+      required: false,
+    },
+    {
+      id: "bidContactPhone",
+      label: "Bid contact phone",
+      type: "tel",
+      required: false,
+    },
+    {
+      id: "futureField",
+      label: "A field the parent may add later",
+      type: "newType",
+      required: false,
+    },
+  ];
+
+  const info = {
+    values: { bidContactPerson: "Sipho Dlamini", declarationsAccepted: false },
+    fields,
+    unfilledRequired: 2,
+  };
+
+  function endpoint(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      get: vi.fn(async () => workspaceDetail),
+      validate: vi.fn(async () => ({
+        ready: false,
+        blockers: [],
+        warnings: [],
+      })),
+      getCockpit: vi.fn(async () => workspaceCockpit),
+      getComplianceGaps: vi.fn(async () => workspaceGaps),
+      getResearch: vi.fn(async () => workspaceResearch),
+      getWorkspaceStage: vi.fn(async () => "add_information"),
+      updateWorkspace: vi.fn(async () => ({ success: true })),
+      getAdditionalInfo: vi.fn(async () => info),
+      saveAdditionalInfo: vi.fn(async () => ({
+        persisted: true,
+        unfilledRequired: 1,
+      })),
+      ...overrides,
+    } as unknown as ApplicationsEndpoint;
+  }
+
+  it("renders the live-verified fields with their persisted values", async () => {
+    wrap(<ApplicationWorkspace endpoint={endpoint()} applicationId="a1" />);
+    const contact = await screen.findByLabelText(/bid contact person/i);
+    expect(contact).toBeInstanceOf(HTMLInputElement);
+    expect(contact).toHaveValue("Sipho Dlamini");
+    expect(
+      screen.getByRole("checkbox", { name: /confirm the declarations/i }),
+    ).not.toBeChecked();
+    expect(screen.getByLabelText(/delivery \/ branch address/i)).toBeInstanceOf(
+      HTMLTextAreaElement,
+    );
+    expect(
+      screen.getByLabelText(/fixed price \/ escalation basis/i),
+    ).toBeInstanceOf(HTMLInputElement);
+    expect(screen.getByLabelText(/bid contact phone/i)).toBeInstanceOf(
+      HTMLInputElement,
+    );
+    expect(screen.getByLabelText(/may add later/i)).toBeInstanceOf(
+      HTMLInputElement,
+    );
+    expect(screen.getByText(/1\/3 required/i)).toBeVisible();
+  });
+
+  it("sends the exact values and shows the saved badge — and never auto-saves", async () => {
+    const save = vi.fn(async () => ({ persisted: true, unfilledRequired: 1 }));
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ saveAdditionalInfo: save })}
+        applicationId="a1"
+      />,
+    );
+    await screen.findByLabelText(/bid contact person/i);
+    expect(save).not.toHaveBeenCalled();
+
+    await userEvent.type(
+      screen.getByLabelText(/bid contact phone/i),
+      "082 555 1234",
+    );
+    expect(save).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save answers" }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save).toHaveBeenCalledWith("a1", {
+      bidContactPerson: "Sipho Dlamini",
+      declarationsAccepted: false,
+      bidContactPhone: "082 555 1234",
+    });
+    expect(await screen.findByText(/saved · 1 required left/i)).toBeVisible();
+  });
+
+  it("keeps the answers and explains when the save fails", async () => {
+    const save = vi.fn(async () => {
+      throw new ApiError({ kind: "validation", message: "Invalid values" });
+    });
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ saveAdditionalInfo: save })}
+        applicationId="a1"
+      />,
+    );
+    await screen.findByLabelText(/bid contact person/i);
+    await userEvent.type(
+      screen.getByLabelText(/bid contact phone/i),
+      "082 555 1234",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save answers" }));
+    // A 400 on this route is the parent's "company profile required" signal —
+    // the platform never shows the server's developer-facing error string.
+    expect(
+      await screen.findByText(
+        /add your company profile to see the additional information/i,
+      ),
+    ).toBeVisible();
+    expect(screen.getByLabelText(/bid contact phone/i)).toHaveValue(
+      "082 555 1234",
+    );
+  });
+
+  it("explains pre-migration answers survive on this device only", async () => {
+    const save = vi.fn(async () => ({ persisted: false }));
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ saveAdditionalInfo: save })}
+        applicationId="a1"
+      />,
+    );
+    await screen.findByLabelText(/bid contact person/i);
+    await userEvent.type(
+      screen.getByLabelText(/bid contact phone/i),
+      "082 555 1234",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save answers" }));
+    expect(
+      await screen.findByText(/not saved — kept on this device/i),
+    ).toBeVisible();
+  });
+
+  it("degrades only this panel when its route fails", async () => {
+    const ep = endpoint({
+      getAdditionalInfo: vi.fn(async () => {
+        throw new ApiError({
+          kind: "server",
+          message: "additional-info route is down",
+        });
+      }),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByText(
+        /could not load the additional information right now/i,
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Msinsi Holding (SOC)")).toBeVisible();
   });
 });
 

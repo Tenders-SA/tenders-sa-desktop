@@ -538,6 +538,44 @@ const workspaceUpdateSchema = z
   })
   .passthrough();
 
+/**
+ * Additional-info contracts (desktop-workspace-additional-info design.md).
+ * `type` is a string so a field type the client does not know yet degrades to
+ * a text input instead of failing the panel (R-A-5); `values` is a passthrough
+ * record because the parent persists arbitrary flat answer keys.
+ */
+const additionalInfoFieldSchema = z
+  .object({
+    id: z.string().optional(),
+    label: z.string().optional(),
+    type: z.string().optional(),
+    required: z.boolean().optional(),
+    placeholder: z.string().optional(),
+    help: z.string().optional(),
+  })
+  .passthrough();
+
+const additionalInfoSchema = z
+  .object({
+    values: z.record(z.string(), z.unknown()).default({}),
+    fields: z.array(additionalInfoFieldSchema).optional(),
+    unfilledRequired: z.number().optional(),
+  })
+  .passthrough();
+
+const additionalInfoSaveSchema = z
+  .object({
+    persisted: z.boolean().optional(),
+    unfilledRequired: z.number().optional(),
+  })
+  .passthrough();
+
+export type AdditionalInfo = z.infer<typeof additionalInfoSchema>;
+export type AdditionalInfoField = z.infer<typeof additionalInfoFieldSchema>;
+/** Answer values the desktop sends: strings and checkboxes only, no undefined. */
+export type AdditionalInfoValues = Record<string, string | boolean>;
+export type AdditionalInfoSaveResult = z.infer<typeof additionalInfoSaveSchema>;
+
 export class ApplicationsEndpoint extends AuthenticatedEndpoint {
   async list(
     query: ApplicationsQuery = {},
@@ -769,6 +807,54 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
       path: `/api/v1/applications/${encodeURIComponent(id)}/workspace`,
       body: { action, ...body },
       schema: workspaceUpdateSchema,
+      headers: await this.authHeaders(),
+      policy: { retry: "never" },
+      signal,
+    });
+  }
+
+  /**
+   * Tender-specific additional-information Q&A
+   * (`GET .../assist/additional-info`, desktop-workspace-additional-info R-A-1).
+   *
+   * Live-verified 2026-08-08: `values` holds the user's persisted answers as
+   * flat keys, `fields` is the detected per-tender schema (5 base fields +
+   * conditional commitments + a declarations checkbox), `unfilledRequired`
+   * counts required fields still blank. Permissive: an unknown field `type`
+   * renders as a text input rather than failing the panel (R-A-5).
+   */
+  async getAdditionalInfo(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<AdditionalInfo> {
+    const body = await this.transport.request({
+      method: "GET",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist/additional-info`,
+      schema: additionalInfoSchema,
+      headers: await this.authHeaders(),
+      signal,
+    });
+    return body;
+  }
+
+  /**
+   * Persists the Q&A answers (`PUT .../assist/additional-info`, R-A-2).
+   *
+   * The parent merges these answers additively over its `__`-namespaced
+   * workspace state, so the desktop sends exactly its form state and never a
+   * reserved key (R-A-6). Never retried: there is no idempotency key, and a
+   * replay could duplicate a save the user already saw succeed.
+   */
+  async saveAdditionalInfo(
+    id: string,
+    values: AdditionalInfoValues,
+    signal?: AbortSignal,
+  ): Promise<AdditionalInfoSaveResult> {
+    return this.transport.request({
+      method: "PUT",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist/additional-info`,
+      body: { values },
+      schema: additionalInfoSaveSchema,
       headers: await this.authHeaders(),
       policy: { retry: "never" },
       signal,
