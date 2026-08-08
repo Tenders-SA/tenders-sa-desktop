@@ -50,6 +50,8 @@ export function stubApiClients(
       getAdditionalInfo: idle(),
       saveAdditionalInfo: idle(),
       getResponseBlueprint: idle(),
+      generateResponseDocument: idle(),
+      saveResponseDocument: idle(),
     },
     company: {
       getProfile: idle(),

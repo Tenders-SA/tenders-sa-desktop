@@ -666,6 +666,28 @@ const blueprintPayloadSchema = z
   })
   .passthrough();
 
+/**
+ * Response-document authoring contracts (desktop-workspace-response-doc-authoring).
+ * Both mutation routes answer small, permissive shapes; unknown fields pass
+ * through (R-A-5). `generateResponseDocSchema` is the immediate 202 answer —
+ * the actual result arrives later via the blueprint GET's
+ * `responseDocs`/`responseDocStatus` (R-A-1).
+ */
+const generateResponseDocSchema = z
+  .object({
+    key: z.string().optional(),
+    title: z.string().optional(),
+    status: z.string().optional(),
+  })
+  .passthrough();
+
+const responseDocSaveSchema = z
+  .object({
+    ok: z.boolean().optional(),
+    key: z.string().optional(),
+  })
+  .passthrough();
+
 export type BlueprintPayload = z.infer<typeof blueprintPayloadSchema>;
 export type ResponseBlueprint = z.infer<typeof blueprintSchema>;
 export type RequiredUserDocument = z.infer<typeof requiredUserDocumentSchema>;
@@ -674,6 +696,10 @@ export type BlueprintStep = z.infer<typeof blueprintStepSchema>;
 export type BlueprintSubmission = z.infer<typeof blueprintSubmissionSchema>;
 export type ResponseDocStatus = z.infer<typeof responseDocStatusSchema>;
 export type ResponseDocStatusMap = Record<string, ResponseDocStatus>;
+export type GenerateResponseDocResult = z.infer<
+  typeof generateResponseDocSchema
+>;
+export type ResponseDocSaveResult = z.infer<typeof responseDocSaveSchema>;
 
 export class ApplicationsEndpoint extends AuthenticatedEndpoint {
   async list(
@@ -983,6 +1009,64 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
       path: `/api/v1/applications/${encodeURIComponent(id)}/assist/response-blueprint`,
       schema: blueprintPayloadSchema,
       headers: await this.authHeaders(),
+      signal,
+    });
+  }
+
+  /**
+   * Start generation of a response document
+   * (`POST .../assist/generate-response-doc`,
+   * desktop-workspace-response-doc-authoring R-A-1).
+   *
+   * The parent answers 202 immediately and generates asynchronously; the
+   * result lands in the blueprint GET's `responseDocs`/`responseDocStatus`
+   * (R-A-3). Gated server-side: 402 `SUBSCRIPTION_REQUIRED` (any active/trial
+   * subscription) and 409 `PRECONDITIONS_NOT_MET` (unfilled required
+   * additional info). A mutation that starts a server-side AI job — the
+   * transport must never auto-retry it (R-A-6); the parent's 202-idempotency
+   * covers a double press.
+   */
+  async generateResponseDocument(
+    id: string,
+    key: string,
+    prompt?: string,
+    signal?: AbortSignal,
+  ): Promise<GenerateResponseDocResult> {
+    const body: Record<string, string> = { key };
+    if (prompt) body.prompt = prompt;
+    return this.transport.request({
+      method: "POST",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist/generate-response-doc`,
+      schema: generateResponseDocSchema,
+      headers: await this.authHeaders(),
+      body,
+      policy: { retry: "never" },
+      signal,
+    });
+  }
+
+  /**
+   * Save an edited response document
+   * (`PUT .../assist/response-doc`,
+   * desktop-workspace-response-doc-authoring R-A-2).
+   *
+   * Synchronous (`{ok: true, key}`); base docs also mirror to the legacy
+   * generated_* columns server-side. No subscription gate. A mutation — the
+   * transport must never auto-retry it (R-A-6, mirrors `saveAdditionalInfo`).
+   */
+  async saveResponseDocument(
+    id: string,
+    key: string,
+    content: string,
+    signal?: AbortSignal,
+  ): Promise<ResponseDocSaveResult> {
+    return this.transport.request({
+      method: "PUT",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist/response-doc`,
+      schema: responseDocSaveSchema,
+      headers: await this.authHeaders(),
+      body: { key, content },
+      policy: { retry: "never" },
       signal,
     });
   }

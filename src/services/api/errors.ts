@@ -8,6 +8,7 @@ import type { ApiErrorEnvelope } from "./envelope";
 export type ApiErrorKind =
   | "unauthorized" // 401 -- missing/invalid/revoked key
   | "forbidden" // 403 -- authenticated but not entitled
+  | "payment-required" // 402 -- authenticated but needs a paid plan
   | "not-found" // 404
   | "rate-limited" // 429
   | "validation" // 4xx with a request-shaped problem
@@ -93,6 +94,7 @@ export class ApiError extends Error {
 
 function kindForStatus(status: number): ApiErrorKind {
   if (status === 401) return "unauthorized";
+  if (status === 402) return "payment-required";
   if (status === 403) return "forbidden";
   if (status === 404) return "not-found";
   if (status === 429) return "rate-limited";

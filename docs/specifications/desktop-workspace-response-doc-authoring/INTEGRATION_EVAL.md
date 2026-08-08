@@ -1,17 +1,15 @@
 # Desktop Workspace — Response Document Authoring — INTEGRATION_EVAL (Slice 4)
 
-- **Status**: pending
-- **Spec**: `desktop-workspace-response-doc-authoring/` (requirements
-  R-A-1..R-A-6, design, tasks)
+- **Status**: pending (T1–T3 verified 2026-08-08; T4 awaiting user)
 
 ## Gates
 
 | Gate | Task | Evidence | Date |
 |---|---|---|---|
-| Endpoint contract tests | T1 | `vitest module-endpoints` — new methods against live-verified shapes | — |
-| Panel tests | T2 | `vitest module-screens` — generate/save/regenerate/402/409/poll-stop | — |
-| Full suite + static gates | T3 | `vitest` (all), `tsc --noEmit`, `eslint .`, `prettier --check .` — 0 errors | — |
-| Capability/parity | T3 | `vitest capability-scope endpoint-parity` | — |
+| Endpoint contract tests | T1 | `vitest module-endpoints` — new methods against live-verified shapes (71/71) | 2026-08-08 |
+| Panel tests | T2 | `vitest module-screens` — generate/save/regenerate/402/409/poll-stop (59/59) | 2026-08-08 |
+| Full suite + static gates | T3 | `vitest` (all) 599/599, `tsc --noEmit`, `eslint .`, `prettier --check .` — 0 errors | 2026-08-08 |
+| Capability/parity | T3 | `vitest capability-scope endpoint-parity` — both literals pinned | 2026-08-08 |
 | Live human verification | T4 | user live-verifies Generate → Saved, Edit → Save persistence, no loading flash, 402/409 copy | — |
 
 ## Live contract evidence (2026-08-08)

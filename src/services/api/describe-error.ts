@@ -56,6 +56,15 @@ export function describeApiError(
         retryable: false,
       };
 
+    case "payment-required":
+      // 402 -- the parent gates AI generation behind a subscription
+      // (`SUBSCRIPTION_REQUIRED`). Retrying cannot help; upgrading can.
+      return {
+        message: `Generating ${subject} needs a paid plan.`,
+        kind: error.kind,
+        retryable: false,
+      };
+
     case "not-found":
       return {
         message: `${capitalise(subject)} could not be found.`,

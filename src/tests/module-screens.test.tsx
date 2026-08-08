@@ -11,7 +11,13 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { ApiError } from "../services/api/errors";
@@ -925,6 +931,14 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
           },
         },
       })),
+      generateResponseDocument: vi.fn(async () => ({
+        key: "cover_letter",
+        status: "generating",
+      })),
+      saveResponseDocument: vi.fn(async () => ({
+        ok: true,
+        key: "cover_letter",
+      })),
       ...overrides,
     } as unknown as ApplicationsEndpoint;
   }
@@ -945,7 +959,8 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
   it("shows per-key document state: saved, generating, and none", async () => {
     wrap(<ApplicationWorkspace endpoint={endpoint()} applicationId="a1" />);
     expect(await screen.findByText("Saved")).toBeVisible();
-    expect(screen.getByText("Generating…")).toBeVisible();
+    // The chip and the disabled action button both say it (R-A-1).
+    expect(screen.getAllByText("Generating…").length).toBeGreaterThan(0);
   });
 
   it("shows a failed generation with its error", async () => {
@@ -1005,6 +1020,289 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
     });
     wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
     expect(await screen.findByText("AI-tailored")).toBeVisible();
+  });
+
+  it("generates on an explicit press: 202 → Generating… → poll → Saved, no loading flash", async () => {
+    const getBlueprint = vi
+      .fn()
+      .mockResolvedValueOnce({
+        blueprint,
+        responseDocs: {},
+        responseDocStatus: {},
+      })
+      .mockResolvedValueOnce({
+        blueprint,
+        responseDocs: { cover_letter: "# Generated draft" },
+        responseDocStatus: {
+          cover_letter: { state: "ready", startedAt: 1, updatedAt: 1 },
+        },
+      });
+    const generate = vi.fn(async () => ({
+      key: "cover_letter",
+      title: "Cover Letter",
+      status: "generating",
+    }));
+    vi.useFakeTimers();
+    const ep = endpoint({
+      getResponseBlueprint: getBlueprint,
+      generateResponseDocument: generate,
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    await act(async () => {});
+    await act(async () => {});
+    expect(
+      screen.getByRole("button", { name: "Generate Cover Letter" }),
+    ).toBeVisible();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Generate Cover Letter" }),
+    );
+    await act(async () => {});
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(generate).toHaveBeenCalledWith("a1", "cover_letter");
+    // Chip + disabled action button both read "Generating…".
+    expect(screen.getAllByText("Generating…").length).toBeGreaterThan(0);
+    // The follow-up refresh fetches directly: the panel never flashes loading.
+    expect(screen.queryByText(/loading the response blueprint/i)).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(4000);
+    });
+    await act(async () => {});
+    expect(getBlueprint).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Saved")).toBeVisible();
+    expect(screen.queryByText(/loading the response blueprint/i)).toBeNull();
+
+    // No further ticks once nothing is generating.
+    await act(async () => {
+      vi.advanceTimersByTime(8000);
+    });
+    expect(getBlueprint).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it("stops the follow-up refresh after the bounded tick budget", async () => {
+    const generatingPayload = {
+      blueprint,
+      responseDocs: {},
+      responseDocStatus: {
+        cover_letter: { state: "generating", startedAt: 1, updatedAt: 1 },
+      },
+    };
+    const getBlueprint = vi
+      .fn()
+      .mockResolvedValueOnce({
+        blueprint,
+        responseDocs: {},
+        responseDocStatus: {},
+      })
+      .mockResolvedValue(generatingPayload);
+    vi.useFakeTimers();
+    const ep = endpoint({
+      getResponseBlueprint: getBlueprint,
+      generateResponseDocument: vi.fn(async () => ({
+        key: "cover_letter",
+        status: "generating",
+      })),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    await act(async () => {});
+    await act(async () => {});
+    fireEvent.click(
+      screen.getByRole("button", { name: "Generate Cover Letter" }),
+    );
+    await act(async () => {});
+    expect(getBlueprint).toHaveBeenCalledTimes(1);
+
+    // 15 ticks ≈ 60 s is the whole budget; the 16th window is silent.
+    await act(async () => {
+      vi.advanceTimersByTime(4000 * 15);
+    });
+    await act(async () => {});
+    expect(getBlueprint).toHaveBeenCalledTimes(16);
+    await act(async () => {
+      vi.advanceTimersByTime(4000);
+    });
+    expect(getBlueprint).toHaveBeenCalledTimes(16);
+    vi.useRealTimers();
+  });
+
+  it("explains a 402 as needing a paid plan, not a profile", async () => {
+    const generate = vi.fn(async () => {
+      throw new ApiError({
+        kind: "payment-required",
+        status: 402,
+        code: "SUBSCRIPTION_REQUIRED",
+        message: "Subscription required",
+      });
+    });
+    const ep = endpoint({
+      generateResponseDocument: generate,
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint,
+        responseDocs: {},
+        responseDocStatus: {},
+      })),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByRole("button", { name: "Generate Cover Letter" }),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Generate Cover Letter" }),
+    );
+    expect(
+      await screen.findByText(/generating this document needs a paid plan/i),
+    ).toBeVisible();
+    expect(screen.queryByText("Generating…")).toBeNull();
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains a 409 as incomplete additional information", async () => {
+    const generate = vi.fn(async () => {
+      throw new ApiError({
+        kind: "validation",
+        status: 409,
+        code: "PRECONDITIONS_NOT_MET",
+        message: "Generation preconditions not met",
+      });
+    });
+    const ep = endpoint({
+      generateResponseDocument: generate,
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint,
+        responseDocs: {},
+        responseDocStatus: {},
+      })),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByRole("button", { name: "Generate Cover Letter" }),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Generate Cover Letter" }),
+    );
+    expect(
+      await screen.findByText(
+        /complete the required additional information before generating/i,
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText("Generating…")).toBeNull();
+  });
+
+  it("saves an edited document and shows Saved immediately", async () => {
+    const save = vi.fn(async () => ({ ok: true, key: "cover_letter" }));
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ saveResponseDocument: save })}
+        applicationId="a1"
+      />,
+    );
+    expect(await screen.findByText("Saved")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Cover Letter" }));
+    const textarea = screen.getByRole("textbox", {
+      name: /edit cover letter/i,
+    });
+    expect(textarea).toHaveValue("# Draft");
+    fireEvent.change(textarea, { target: { value: "# Rewritten" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Cover Letter" }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save).toHaveBeenCalledWith("a1", "cover_letter", "# Rewritten");
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getAllByText("Saved").length).toBeGreaterThan(0);
+  });
+
+  it("cancelling an edit discards the draft without saving", async () => {
+    const save = vi.fn(async () => ({ ok: true, key: "cover_letter" }));
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ saveResponseDocument: save })}
+        applicationId="a1"
+      />,
+    );
+    expect(await screen.findByText("Saved")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Cover Letter" }));
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /edit cover letter/i }),
+      { target: { value: "# Discarded" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancel editing Cover Letter" }),
+    );
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("keeps the editor open and explains when a save fails", async () => {
+    const save = vi.fn(async () => {
+      throw new ApiError({ kind: "server", message: "boom" });
+    });
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ saveResponseDocument: save })}
+        applicationId="a1"
+      />,
+    );
+    expect(await screen.findByText("Saved")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Cover Letter" }));
+    fireEvent.change(
+      screen.getByRole("textbox", { name: /edit cover letter/i }),
+      { target: { value: "# Rewritten" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save Cover Letter" }));
+    expect(
+      await screen.findByText(/could not load this document right now/i),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: /edit cover letter/i }),
+    ).toHaveValue("# Rewritten");
+  });
+
+  it("offers Regenerate on a saved document and starts the same flow", async () => {
+    const generate = vi.fn(async () => ({
+      key: "cover_letter",
+      status: "generating",
+    }));
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ generateResponseDocument: generate })}
+        applicationId="a1"
+      />,
+    );
+    expect(await screen.findByText("Saved")).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Regenerate Cover Letter" }),
+    );
+    await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+    expect(generate).toHaveBeenCalledWith("a1", "cover_letter");
+  });
+
+  it("retries a failed generation", async () => {
+    const generate = vi.fn(async () => ({
+      key: "cover_letter",
+      status: "generating",
+    }));
+    const ep = endpoint({
+      generateResponseDocument: generate,
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint,
+        responseDocs: {},
+        responseDocStatus: {
+          cover_letter: {
+            state: "failed",
+            startedAt: 1,
+            updatedAt: 1,
+            error: "AI service was busy",
+          },
+        },
+      })),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByRole("button", { name: "Retry Cover Letter" }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Retry Cover Letter" }));
+    await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
   });
 });
 

@@ -68,7 +68,10 @@ reference requirements R-A-1..R-A-6 and the live-verified contracts in `design.m
 
 ## Status (2026-08-08)
 
-- T1: OPEN.
-- T2: OPEN.
-- T3: OPEN.
-- T4: OPEN.
+- T1: DONE — `payment-required` kind + describe copy merged; both methods merged;
+  contract tests green (71/71 in module-endpoints).
+- T2: DONE — row actions + inline editor merged; screen tests green (59/59 in
+  module-screens).
+- T3: DONE — fixtures + parity literals pinned; full suite 599/599,
+  tsc/lint/prettier clean.
+- T4: OPEN — human live verification, records in INTEGRATION_EVAL.md.

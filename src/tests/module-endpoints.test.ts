@@ -1235,3 +1235,195 @@ describe("applications endpoint — response blueprint", () => {
     ).rejects.toMatchObject({ kind: "not-found" });
   });
 });
+
+describe("applications endpoint — response document authoring", () => {
+  it("POSTs the key and answers the 202 generating shape", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
+      jsonResponse(
+        { key: "cover_letter", title: "Cover Letter", status: "generating" },
+        202,
+      ),
+    );
+    const result = await endpoint.generateResponseDocument(
+      "a1",
+      "cover_letter",
+    );
+    const [url, init] = lastCall(fetchImpl);
+    expect(url).toContain("/a1/assist/generate-response-doc");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ key: "cover_letter" });
+    expect(result).toMatchObject({
+      key: "cover_letter",
+      title: "Cover Letter",
+      status: "generating",
+    });
+  });
+
+  it("includes a prompt when one is given and omits it otherwise", async () => {
+    const withPrompt = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ key: "email", status: "generating" }, 202),
+    );
+    await withPrompt.endpoint.generateResponseDocument(
+      "a1",
+      "email",
+      "Keep it under 300 words.",
+    );
+    expect(JSON.parse(String(lastCall(withPrompt.fetchImpl)[1].body))).toEqual({
+      key: "email",
+      prompt: "Keep it under 300 words.",
+    });
+  });
+
+  it("surfaces 402 as payment-required (SUBSCRIPTION_REQUIRED)", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse(
+        {
+          error: "Subscription required",
+          code: "SUBSCRIPTION_REQUIRED",
+          message: "AI document generation requires an active subscription",
+          upgradeUrl: "/pricing",
+        },
+        402,
+      ),
+    );
+    await expect(
+      endpoint.generateResponseDocument("a1", "cover_letter"),
+    ).rejects.toMatchObject({
+      kind: "payment-required",
+      code: "SUBSCRIPTION_REQUIRED",
+    });
+  });
+
+  it("surfaces 409 with the PRECONDITIONS_NOT_MET code preserved", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse(
+        {
+          error: "Generation preconditions not met",
+          code: "PRECONDITIONS_NOT_MET",
+          blockedReason:
+            "Complete before generating: 2 required information field(s).",
+          preconditions: {
+            infoNeeded: 2,
+            missingMandatoryDocs: 0,
+            blockingIssues: 0,
+          },
+        },
+        409,
+      ),
+    );
+    await expect(
+      endpoint.generateResponseDocument("a1", "cover_letter"),
+    ).rejects.toMatchObject({
+      kind: "validation",
+      code: "PRECONDITIONS_NOT_MET",
+      status: 409,
+    });
+  });
+
+  it("rejects a missing key and an unknown key as validation problems", async () => {
+    const missingKey = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "A response document key is required" }, 400),
+    );
+    await expect(
+      missingKey.endpoint.generateResponseDocument("a1", ""),
+    ).rejects.toMatchObject({ kind: "validation" });
+
+    const unknownKey = harness(ApplicationsEndpoint, () =>
+      jsonResponse(
+        {
+          error: "Unknown response document: brief",
+          code: "UNKNOWN_RESPONSE_DOC",
+        },
+        400,
+      ),
+    );
+    await expect(
+      unknownKey.endpoint.generateResponseDocument("a1", "brief"),
+    ).rejects.toMatchObject({
+      kind: "validation",
+      code: "UNKNOWN_RESPONSE_DOC",
+    });
+  });
+
+  it("never retries a generation request", async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      throw new TypeError("Failed to fetch");
+    });
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+    await expect(
+      endpoint.generateResponseDocument("a1", "cover_letter"),
+    ).rejects.toBeDefined();
+    expect(calls).toBe(1);
+  });
+
+  it("PUTs the edited content with the exact body and method", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ ok: true, key: "cover_letter" }),
+    );
+    const result = await endpoint.saveResponseDocument(
+      "a1",
+      "cover_letter",
+      "# Edited",
+    );
+    const [url, init] = lastCall(fetchImpl);
+    expect(url).toContain("/a1/assist/response-doc");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(String(init.body))).toEqual({
+      key: "cover_letter",
+      content: "# Edited",
+    });
+    expect(result).toMatchObject({ ok: true, key: "cover_letter" });
+  });
+
+  it("never retries a save", async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      throw new TypeError("Failed to fetch");
+    });
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+    await expect(
+      endpoint.saveResponseDocument("a1", "cover_letter", "# Edited"),
+    ).rejects.toBeDefined();
+    expect(calls).toBe(1);
+  });
+
+  it("maps save errors exactly like the other mutation routes", async () => {
+    const forbidden = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Forbidden" }, 403),
+    );
+    await expect(
+      forbidden.endpoint.saveResponseDocument("a1", "cover_letter", "x"),
+    ).rejects.toMatchObject({ kind: "forbidden" });
+
+    const missing = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Application not found" }, 404),
+    );
+    await expect(
+      missing.endpoint.saveResponseDocument("a1", "cover_letter", "x"),
+    ).rejects.toMatchObject({ kind: "not-found" });
+
+    const noContent = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "key and content are required" }, 400),
+    );
+    await expect(
+      noContent.endpoint.saveResponseDocument("a1", "cover_letter", ""),
+    ).rejects.toMatchObject({ kind: "validation" });
+  });
+});

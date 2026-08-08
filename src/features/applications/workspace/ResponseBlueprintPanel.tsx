@@ -1,24 +1,38 @@
 /**
- * Tender-driven Response Blueprint (Slice 3, R-B-1..R-B-6).
+ * Tender-driven Response Blueprint (Slice 3, R-B-1..R-B-6; Slice 4
+ * authoring, R-A-1..R-A-5).
  *
  * Renders the parent's plan for this tender: which response documents to
  * generate, which documents the user must have, the steps/milestones, the
- * submission method, risks, and confidence. Purely read-only (R-B-2) — no
- * mutation controls, no timers, no polling. Generation status shown is
- * whatever the last GET returned; the panel reloads only when the workspace
- * does.
+ * submission method, risks, and confidence. Since Slice 4 the panel also
+ * carries the authoring actions — Generate, Edit/Save, Regenerate, Retry —
+ * each an explicit human press (R-W-7). After a Generate 202 the panel runs
+ * a bounded follow-up refresh (R-A-3); steady state stays timer-free.
  *
  * `blueprint: null` is not an error: the parent answers that before its
  * analysis exists, and the panel must say so honestly (R-B-5).
  */
 
+import { useEffect, useState } from "react";
 import { AsyncSection, Panel } from "../../../components/common/AsyncSection";
 import { useAsync } from "../../../hooks/use-async";
 import type {
   BlueprintPayload,
+  GenerateResponseDocResult,
   ResponseBlueprint,
-  ResponseBlueprintDoc,
+  ResponseDocSaveResult,
 } from "../../../services/api/endpoints/applications";
+import { ResponseBlueprintDocRow } from "./ResponseBlueprintDocRow";
+
+/** Follow-up refresh cadence after a Generate 202 (R-A-3). */
+const POLL_INTERVAL_MS = 4000;
+const POLL_MAX_TICKS = 15;
+
+/** Panel-local results merged over the fetched payload until the next natural read. */
+interface Overlay {
+  docs?: Record<string, string>;
+  status?: Record<string, { state?: string; error?: string }>;
+}
 
 export interface ResponseBlueprintPanelProps {
   endpoint: {
@@ -26,6 +40,18 @@ export interface ResponseBlueprintPanelProps {
       id: string,
       signal?: AbortSignal,
     ) => Promise<BlueprintPayload>;
+    generateResponseDocument: (
+      id: string,
+      key: string,
+      prompt?: string,
+      signal?: AbortSignal,
+    ) => Promise<GenerateResponseDocResult>;
+    saveResponseDocument: (
+      id: string,
+      key: string,
+      content: string,
+      signal?: AbortSignal,
+    ) => Promise<ResponseDocSaveResult>;
   };
   applicationId: string;
 }
@@ -38,6 +64,52 @@ export function ResponseBlueprintPanel({
     (signal) => endpoint.getResponseBlueprint(applicationId, signal),
     [endpoint, applicationId],
   );
+  const [overlay, setOverlay] = useState<Overlay>({});
+  const [pendingKeys, setPendingKeys] = useState<string[]>([]);
+
+  // Bounded follow-up refresh (R-A-3): after a Generate 202 the panel fetches
+  // the blueprint directly (never reload() — no loading flash) and merges the
+  // fresh status into the overlay. It stops once no pending key is generating
+  // and is bounded to POLL_MAX_TICKS; a failed tick just keeps polling within
+  // the bound.
+  useEffect(() => {
+    if (pendingKeys.length === 0) return;
+    let remaining = POLL_MAX_TICKS;
+    const interval = setInterval(() => {
+      remaining -= 1;
+      void endpoint
+        .getResponseBlueprint(applicationId)
+        .then((fresh) => {
+          setOverlay((prev) => ({
+            docs: { ...prev.docs, ...(fresh.responseDocs ?? {}) },
+            status: { ...prev.status, ...(fresh.responseDocStatus ?? {}) },
+          }));
+          const stillGenerating = pendingKeys.some(
+            (key) => fresh.responseDocStatus?.[key]?.state === "generating",
+          );
+          if (!stillGenerating || remaining <= 0) setPendingKeys([]);
+        })
+        .catch(() => {
+          // Ignored: the loop is bounded and the chip keeps the last state.
+        });
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [endpoint, applicationId, pendingKeys]);
+
+  function acceptGenerate(key: string) {
+    setOverlay((prev) => ({
+      ...prev,
+      status: { ...prev.status, [key]: { state: "generating" } },
+    }));
+    setPendingKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  }
+
+  function acceptSaved(key: string, content: string) {
+    setOverlay((prev) => ({
+      ...prev,
+      docs: { ...prev.docs, [key]: content },
+    }));
+  }
 
   return (
     <AsyncSection
@@ -59,6 +131,11 @@ export function ResponseBlueprintPanel({
           enriched={payload.enriched === true}
           responseDocs={payload.responseDocs ?? {}}
           responseDocStatus={payload.responseDocStatus ?? {}}
+          overlay={overlay}
+          endpoint={endpoint}
+          applicationId={applicationId}
+          onGenerateAccepted={acceptGenerate}
+          onSaved={acceptSaved}
         />
       )}
     </AsyncSection>
@@ -70,6 +147,11 @@ function BlueprintView({
   enriched,
   responseDocs,
   responseDocStatus,
+  overlay,
+  endpoint,
+  applicationId,
+  onGenerateAccepted,
+  onSaved,
 }: {
   blueprint: ResponseBlueprint;
   enriched: boolean;
@@ -78,6 +160,11 @@ function BlueprintView({
     string,
     { state?: string; error?: string; isFallback?: boolean }
   >;
+  overlay: Overlay;
+  endpoint: ResponseBlueprintPanelProps["endpoint"];
+  applicationId: string;
+  onGenerateAccepted: (key: string) => void;
+  onSaved: (key: string, content: string) => void;
 }) {
   const aiTailored = blueprint.generatedBy === "ai" || enriched;
 
@@ -105,18 +192,27 @@ function BlueprintView({
             Response documents
           </h4>
           <ul className="space-y-2">
-            {(blueprint.responseDocuments ?? []).map((doc, index) => (
-              <ResponseDocRow
-                key={doc.key ?? `doc-${index}`}
-                doc={doc}
-                status={
-                  responseDocStatus[doc.key ?? ""] ?? {
-                    state: responseDocs[doc.key ?? ""] ? "ready" : undefined,
-                  }
-                }
-                hasContent={Boolean(responseDocs[doc.key ?? ""])}
-              />
-            ))}
+            {(blueprint.responseDocuments ?? []).map((doc, index) => {
+              const key = doc.key ?? `doc-${index}`;
+              const content = overlay.docs?.[key] ?? responseDocs[key];
+              const status =
+                overlay.status?.[key] ??
+                responseDocStatus[key] ??
+                (content ? { state: "ready" as const } : { state: undefined });
+              return (
+                <ResponseBlueprintDocRow
+                  key={key}
+                  doc={doc}
+                  status={status}
+                  hasContent={Boolean(content)}
+                  content={content}
+                  endpoint={endpoint}
+                  applicationId={applicationId}
+                  onGenerateAccepted={onGenerateAccepted}
+                  onSaved={onSaved}
+                />
+              );
+            })}
           </ul>
         </section>
       )}
@@ -203,57 +299,6 @@ function BlueprintView({
       )}
     </Panel>
   );
-}
-
-function ResponseDocRow({
-  doc,
-  status,
-  hasContent,
-}: {
-  doc: ResponseBlueprintDoc;
-  status: { state?: string; error?: string; isFallback?: boolean };
-  hasContent: boolean;
-}) {
-  const chip = docStatusChip(status, hasContent);
-  return (
-    <li className="rounded border border-border p-2.5">
-      <span className="flex flex-wrap items-baseline gap-2 text-sm text-foreground">
-        {doc.title ?? "Response document"}
-        {doc.mandatory && <span className="text-destructive">*</span>}
-        {chip && <span className={chip.className}>{chip.label}</span>}
-      </span>
-      {doc.brief && (
-        <span className="block text-xs text-muted-foreground">{doc.brief}</span>
-      )}
-      {doc.requiredBy && (
-        <span className="block text-xs text-muted-foreground">
-          Required by: {doc.requiredBy}
-        </span>
-      )}
-      {status.error && (
-        <span className="block text-xs text-destructive">{status.error}</span>
-      )}
-    </li>
-  );
-}
-
-function docStatusChip(
-  status: { state?: string; error?: string; isFallback?: boolean },
-  hasContent: boolean,
-): { label: string; className: string } | undefined {
-  if (status.state === "generating") {
-    return { label: "Generating…", className: "text-xs text-muted-foreground" };
-  }
-  if (status.state === "failed") {
-    return { label: "Failed", className: "text-xs text-destructive" };
-  }
-  if (hasContent || status.state === "ready") {
-    return {
-      label: status.isFallback ? "Saved · template" : "Saved",
-      className: "text-xs text-success",
-    };
-  }
-  return undefined;
 }
 
 function ConfidenceBadge({ confidence }: { confidence: string | undefined }) {
