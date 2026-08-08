@@ -27,8 +27,6 @@ export function stubApiClients(
     subscription: { getStatus: idle(), getFeatureAccess: idle() },
     tenders: { list: idle(), get: idle() },
     dashboard: {
-      getSummary: idle(),
-      getActivity: idle(),
       getActionItems: idle(),
     },
     recommendations: {
@@ -44,6 +42,11 @@ export function stubApiClients(
       validate: idle(),
       statusForTender: idle(),
       create: idle(),
+      getCockpit: idle(),
+      getComplianceGaps: idle(),
+      getResearch: idle(),
+      getWorkspaceStage: idle(),
+      updateWorkspace: idle(),
     },
     company: {
       getProfile: idle(),

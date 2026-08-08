@@ -34,6 +34,11 @@ export class ApiError extends Error {
   readonly requestId?: string;
   /** Seconds from a `Retry-After` header, so the UI can show a real wait. */
   readonly retryAfterSeconds?: number;
+  /**
+   * From the workspace lifecycle route's 400: the status transitions the
+   * parent would accept, so the UI can offer only legal moves.
+   */
+  readonly allowed?: string[];
 
   constructor(init: {
     kind: ApiErrorKind;
@@ -42,6 +47,7 @@ export class ApiError extends Error {
     code?: string;
     requestId?: string;
     retryAfterSeconds?: number;
+    allowed?: string[];
   }) {
     super(init.message);
     this.name = "ApiError";
@@ -50,6 +56,7 @@ export class ApiError extends Error {
     this.code = init.code;
     this.requestId = init.requestId;
     this.retryAfterSeconds = init.retryAfterSeconds;
+    this.allowed = init.allowed;
   }
 
   /**
@@ -139,7 +146,7 @@ export function fromUnparseableResponse(status: number): ApiError {
  */
 export function fromParentError(
   status: number,
-  body: { error: string; message?: string; code?: string },
+  body: { error: string; message?: string; code?: string; allowed?: string[] },
   retryAfterSeconds?: number,
 ): ApiError {
   return new ApiError({
@@ -148,6 +155,7 @@ export function fromParentError(
     status,
     code: body.code,
     retryAfterSeconds,
+    allowed: body.allowed,
   });
 }
 

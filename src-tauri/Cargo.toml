@@ -26,9 +26,21 @@ keyring = "4"
 aes-gcm = "0.10"
 base64 = "0.22"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
-# HTTP transport (TASK-2.2). Default features only: `dangerous-settings` and
-# `unsafe-headers` are deliberately NOT enabled -- see SPEC_CONTRACT KEY CONSTRAINTS.
-tauri-plugin-http = { version = "2", default-features = false }
+# HTTP transport (TASK-2.2). `dangerous-settings` and `unsafe-headers` are
+# deliberately NOT enabled -- see SPEC_CONTRACT KEY CONSTRAINTS.
+#
+# `rustls-tls` is mandatory, not optional: the application origin is hard-wired
+# to https://www.tenders-sa.org, and without a TLS backend reqwest fails every
+# https request at the transport layer. Phase 2 only ever pointed at a plain
+# http localhost backend, which is why the missing TLS went undetected until
+# production pointing. `http2` and `charset` mirror the plugin's own defaults
+# for the API's transport. `cookies` and `macos-system-configuration` are
+# deliberately omitted: the desktop authenticates with bearer headers, never
+# cookies, and the product ships Windows-only.
+#
+# capability-scope.test.ts pins this: TLS must stay enabled or every request
+# to the production API fails again with "Could not reach Tenders-SA".
+tauri-plugin-http = { version = "2", default-features = false, features = ["rustls-tls", "http2", "charset"] }
 
 [dev-dependencies]
 rusqlite = { version = "0.32", features = ["bundled"] }

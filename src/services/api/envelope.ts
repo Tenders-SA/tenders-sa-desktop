@@ -61,6 +61,12 @@ export const parentErrorSchema = z.object({
   error: z.string(),
   message: z.string().optional(),
   code: z.string().optional(),
+  /**
+   * The workspace lifecycle route answers 400 with the transitions it
+   * would accept (`{error, allowed: [...]}`). Carried through so the UI
+   * can offer only legal moves instead of guessing.
+   */
+  allowed: z.array(z.string()).optional(),
 });
 
 export type ParentError = z.infer<typeof parentErrorSchema>;

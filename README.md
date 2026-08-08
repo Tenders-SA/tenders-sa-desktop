@@ -30,7 +30,7 @@ pnpm run tauri dev
 
 You also need the Rust toolchain and, on Windows, the MSVC C++ build tools — `tauri dev` compiles a native binary. See [`docs/development.md`](docs/development.md) for the full prerequisite list and every verification command.
 
-No `.env` file is needed to start. Copy `.env.example` to `.env` only to point the application somewhere other than production, for example a local backend on `http://localhost:3000`. If configuration is ever invalid the application shows a screen naming the problem rather than opening an empty window.
+No `.env` file is needed to start, and none can change where the application points: the application origin is hard-wired to the live Tenders-SA platform at `https://www.tenders-sa.org` and is never configurable. `.env` may only tune the documented non-origin settings (see `.env.example`). If configuration is ever invalid the application shows a screen naming the problem rather than opening an empty window.
 
 macOS and Linux run every check and test, but packaging for them is an explicit non-goal of the current contract.
 

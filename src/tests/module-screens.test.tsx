@@ -245,6 +245,13 @@ describe("Application workspace", () => {
         blockers: ["Missing tax clearance"],
         warnings: [],
       })),
+      // Never-settling defaults keep the pre-cockpit assertions on the
+      // header/detail content; cockpit tests override them below.
+      getCockpit: vi.fn(() => new Promise<never>(() => {})),
+      getComplianceGaps: vi.fn(() => new Promise<never>(() => {})),
+      getResearch: vi.fn(() => new Promise<never>(() => {})),
+      getWorkspaceStage: vi.fn(() => new Promise<never>(() => {})),
+      updateWorkspace: vi.fn(() => new Promise<never>(() => {})),
       ...overrides,
     } as unknown as ApplicationsEndpoint;
   }
@@ -308,6 +315,260 @@ describe("Application workspace", () => {
     // no control that commits one.
     expect(screen.queryByRole("button", { name: /^submit/i })).toBeNull();
     expect(screen.getByText(/remains a manual step/i)).toBeVisible();
+  });
+});
+
+describe("ApplicationWorkspace — workspace cockpit", () => {
+  const detail = {
+    id: "a1",
+    tenderId: "t1",
+    status: "DRAFT",
+    submittedAt: null,
+    createdAt: "2026-07-01T00:00:00.000Z",
+    updatedAt: "2026-07-02T00:00:00.000Z",
+    notes: null,
+    isArchived: false,
+    tender: {
+      id: "t1",
+      title: "Security services",
+      referenceNumber: "RFQ-3",
+      sourceOrganization: "Dept of Health",
+      closingDate: "2099-01-01T00:00:00.000Z",
+      estimatedValue: 900_000,
+      province: "Gauteng",
+      requirements: ["Tax clearance", "CIDB 4"],
+    },
+    company: { id: "c1", name: "Acme", bbbeeLevel: 2 },
+  };
+
+  const cockpit = {
+    application: { id: "a1", status: "DRAFT", readinessScore: 80 },
+    tender: {
+      id: "t1",
+      title: "Security services",
+      closingDate: "2026-08-25T10:00:00.000Z",
+    },
+    company: {
+      id: "c1",
+      name: "Acme",
+      profileCompleteness: 100,
+      hasProfile: true,
+    },
+    matching: null,
+    readiness: {
+      score: 80,
+      overall: "ready",
+      factors: [{ name: "Company profile", score: 100, status: "good" }],
+    },
+    urgency: {
+      level: "normal",
+      color: "#eab308",
+      pulsing: false,
+      daysRemaining: 17,
+      hoursRemaining: 408,
+      percentageRemaining: 20,
+      message: "Closes 25 August 2026",
+    },
+    generationStatus: null,
+    qualityChecks: [
+      {
+        id: "q1",
+        category: "compliance",
+        status: "pass",
+        message: "Tax clearance valid",
+      },
+    ],
+    valueEstimate: {
+      estimatedMin: 450_000,
+      estimatedMax: 720_000,
+      estimatedMedian: 581_900,
+      confidenceScore: 82,
+      confidenceLevel: "high",
+      methodology: "award-history",
+      currency: "ZAR",
+      sampleSize: 4,
+    },
+    analysisStatus: {
+      status: "complete",
+      progress: 100,
+      message: "Analysis complete",
+    },
+    checklistState: [
+      {
+        id: "c1",
+        label: "Company profile",
+        completed: true,
+        category: "Profile",
+      },
+      {
+        id: "c2",
+        label: "Tax clearance",
+        completed: false,
+        category: "Compliance",
+      },
+    ],
+    events: [
+      {
+        id: "e1",
+        title: "Site visit",
+        eventDate: "2026-08-12T09:00:00.000Z",
+        eventType: "SITE_VISIT",
+        isCompleted: false,
+        source: "tender",
+      },
+    ],
+    documentState: [],
+  };
+
+  const gaps = {
+    gaps: [
+      {
+        id: "g1",
+        category: "Finance",
+        severity: "important",
+        label: "B-BBEE certificate missing",
+        detail: "Required for evaluation",
+        tenderRequirement: "B-BBEE",
+        companyStatus: "missing",
+        canAutoFix: false,
+      },
+    ],
+    summary: { blocking: 0, important: 1, strengths: 5, info: 0, score: 100 },
+  };
+
+  const research = {
+    organisation: {
+      id: "o1",
+      name: "Msinsi Holding (SOC)",
+      organizationType: "State-owned company",
+      tenderCount: 14,
+      activeTenderCount: 3,
+      awardCount: 6,
+      csdNumber: "M123456789",
+    },
+    competitors: [
+      { supplierName: "BridgeCo", totalValue: 12_000_000, awardCount: 4 },
+      { supplierName: "Structura", totalValue: 8_000_000, awardCount: 2 },
+    ],
+    provinceHealth: {
+      province: "North West",
+      score: 50,
+      activityLevel: "CAUTION",
+    },
+    eligibility: {
+      cidb: { status: "pass", detail: "Grade 4" },
+      taxClearance: { status: "fail", detail: "Expired" },
+    },
+  };
+
+  function endpoint(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      get: vi.fn(async () => detail),
+      validate: vi.fn(async () => ({
+        ready: false,
+        blockers: [],
+        warnings: [],
+      })),
+      getCockpit: vi.fn(async () => cockpit),
+      getComplianceGaps: vi.fn(async () => gaps),
+      getResearch: vi.fn(async () => research),
+      getWorkspaceStage: vi.fn(async () => "add_information"),
+      updateWorkspace: vi.fn(async () => ({ success: true })),
+      ...overrides,
+    } as unknown as ApplicationsEndpoint;
+  }
+
+  it("renders the cockpit panels from live-shaped payloads", async () => {
+    wrap(<ApplicationWorkspace endpoint={endpoint()} applicationId="a1" />);
+    expect(await screen.findByText(/add information/i)).toBeVisible();
+    expect(screen.getByText(/closes 25 august 2026/i)).toBeVisible();
+    expect(screen.getByText(/17 days to close/i)).toBeVisible();
+    expect(screen.getByText("Tax clearance valid")).toBeVisible();
+    expect(screen.getByText(/R\s*581\s*900/)).toBeVisible();
+    expect(screen.getByText(/1 of 2 complete/i)).toBeVisible();
+    expect(screen.getByText("Site visit")).toBeVisible();
+    expect(
+      await screen.findByText(/b-bbee certificate missing/i),
+    ).toBeVisible();
+    expect(screen.getByText("Msinsi Holding (SOC)")).toBeVisible();
+    expect(screen.getByText("BridgeCo")).toBeVisible();
+  });
+
+  it("renders one panel's error while the others still render", async () => {
+    const ep = endpoint({
+      getComplianceGaps: vi.fn(async () => {
+        throw new ApiError({
+          kind: "server",
+          message: "gaps route is down",
+        });
+      }),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByText(/could not load the compliance gaps right now/i),
+    ).toBeVisible();
+    expect(screen.getByText("Msinsi Holding (SOC)")).toBeVisible();
+    expect(screen.queryByText(/b-bbee certificate missing/i)).toBeNull();
+  });
+
+  it("sends the exact PATCH bodies for stage move and status change", async () => {
+    const update = vi.fn(async () => ({ success: true, persisted: true }));
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ updateWorkspace: update })}
+        applicationId="a1"
+      />,
+    );
+    await screen.findByText(/add information/i);
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: /move to stage/i }),
+      "fix_readiness",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Move" }));
+    expect(update).toHaveBeenCalledWith("a1", "stage", {
+      stage: "fix_readiness",
+      baseStage: "add_information",
+    });
+
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: /change status/i }),
+      "SUBMITTED",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Set status" }));
+    expect(update).toHaveBeenCalledWith("a1", "status", {
+      status: "SUBMITTED",
+    });
+  });
+
+  it("shows the parent's error and allowed transitions verbatim on a 400", async () => {
+    const update = vi.fn(async () => {
+      throw new ApiError({
+        kind: "validation",
+        message: "Invalid status transition: DRAFT -> SUBMITTED",
+        status: 400,
+        allowed: ["DRAFT"],
+      });
+    });
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ updateWorkspace: update })}
+        applicationId="a1"
+      />,
+    );
+    await screen.findByText(/add information/i);
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: /change status/i }),
+      "SUBMITTED",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Set status" }));
+    expect(await screen.findByText(/invalid status transition/i)).toBeVisible();
+    expect(screen.getByText(/allowed transitions: draft/i)).toBeVisible();
+  });
+
+  it("offers no restore control, because the parent restore action is broken", async () => {
+    wrap(<ApplicationWorkspace endpoint={endpoint()} applicationId="a1" />);
+    await screen.findByText(/add information/i);
+    expect(screen.queryByRole("button", { name: /restore/i })).toBeNull();
   });
 });
 

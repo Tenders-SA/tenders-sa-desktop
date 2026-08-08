@@ -125,6 +125,30 @@ describe("endpoint parity — allowed main-application paths", () => {
     expect(/["'`]\/v[12]\//.test(stripComments(sample))).toBe(false);
   });
 
+  it("keeps the workspace cockpit routes on the parent /api/v1 surface", () => {
+    // Explicit coverage for the cockpit routes added in
+    // desktop-workspace-cockpit T1/T4: they are application-scoped and live
+    // on ApplicationsEndpoint, so a future contributor cannot quietly re-home
+    // them to another host or a parallel client without this test objecting.
+    const source = stripComments(
+      readFileSync(
+        resolve(srcRoot, "services/api/endpoints/applications.ts"),
+        "utf8",
+      ),
+    );
+    const expected = [
+      "`/api/v1/applications/${encodeURIComponent(id)}/assist`",
+      "`/api/v1/applications/${encodeURIComponent(id)}/assist/compliance-gaps`",
+      "`/api/v1/applications/${encodeURIComponent(id)}/assist/research`",
+      '"/api/v1/applications/workspace/summary"',
+      "`/api/v1/applications/${encodeURIComponent(id)}/workspace`",
+      '"PATCH"',
+    ];
+    for (const fragment of expected) {
+      expect(source, fragment).toContain(fragment);
+    }
+  });
+
   it("still catches a bare /v2 path", () => {
     const sample = `const p = "/v2/tenders";`;
     expect(/["'`]\/v[12]\//.test(stripComments(sample))).toBe(true);
@@ -150,8 +174,8 @@ describe("endpoint parity — allowed main-application paths", () => {
   });
 
   it("still strips a comment trailing a URL", () => {
-    const sample = `const ok = "http://localhost:3000/api"; // not the dev api`;
-    expect(stripComments(sample)).not.toContain("not the dev api");
+    const sample = `const ok = "http://localhost:3000/api"; // just a comment`;
+    expect(stripComments(sample)).not.toContain("just a comment");
     expect(stripComments(sample)).toContain("localhost:3000");
   });
 });

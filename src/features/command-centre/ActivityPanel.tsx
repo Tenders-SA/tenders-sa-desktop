@@ -1,21 +1,31 @@
 import { AsyncSection, Panel } from "../../components/common/AsyncSection";
 import { useAsync } from "../../hooks/use-async";
-import type { DashboardEndpoint } from "../../services/api/endpoints/dashboard";
+import {
+  describeApplicationStatus,
+  type ApplicationsEndpoint,
+} from "../../services/api/endpoints/applications";
 import { describeActivityType, formatTimestamp } from "./activity-format";
 
 /**
  * Activity feed (brief §6.1).
  *
- * The parent returns each entry with an `href` and an `icon` — but those are
- * the **web** application's routes and icon names. Following an `href` here
- * would be a broken link, so the desktop routes on `type` instead and ignores
- * both. That is why the feed renders as text rather than as links: a
- * plausible-looking link that goes nowhere is worse than plain text.
+ * The web application's own "recent activity" feed answers `{}` from
+ * `/api/v1/dashboard/activity` on the running site, and the web dashboard
+ * therefore feeds its activity-equivalent card from `/api/v1/applications`
+ * (its "Recent applications" panel). The desktop does the same: the most
+ * recently updated applications, newest first, are this feed.
+ *
+ * Each entry is an application: the status change is the activity, the
+ * tender title is what it happened to, and the update time is when.
  */
-export function ActivityPanel({ endpoint }: { endpoint: DashboardEndpoint }) {
+export function ActivityPanel({
+  applications,
+}: {
+  applications: ApplicationsEndpoint;
+}) {
   const state = useAsync(
-    (signal) => endpoint.getActivity(10, signal),
-    [endpoint],
+    (signal) => applications.list({ limit: 10 }, signal),
+    [applications],
   );
 
   return (
@@ -29,25 +39,24 @@ export function ActivityPanel({ endpoint }: { endpoint: DashboardEndpoint }) {
             No activity in your account yet.
           </p>
         }
+        isEmpty={(result) => result.applications.length === 0}
       >
-        {(activities) => (
+        {({ applications: apps }) => (
           <ul className="flex flex-col gap-3">
-            {activities.map((activity) => (
-              <li key={activity.id}>
+            {apps.map((application) => (
+              <li key={application.id}>
                 <p className="text-sm text-card-foreground">
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {describeActivityType(activity.type)}
+                    {describeActivityType("application")}
                   </span>
                   <br />
-                  {activity.title}
+                  {`Application ${describeApplicationStatus(application.status)}`}
                 </p>
-                {activity.description && (
-                  <p className="truncate text-sm text-muted-foreground">
-                    {activity.description}
-                  </p>
-                )}
+                <p className="truncate text-sm text-muted-foreground">
+                  {application.tender?.title ?? "Unknown tender"}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  {formatTimestamp(activity.timestamp)}
+                  {formatTimestamp(application.updatedAt)}
                 </p>
               </li>
             ))}

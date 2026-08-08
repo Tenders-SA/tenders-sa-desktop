@@ -17,11 +17,11 @@ export interface CommandCentreProps {
  * Command Centre (brief §6.1) — the post-login default screen.
  *
  * The brief asks for deadlines, pipeline value, missing mandatory items,
- * pending approvals and an activity feed. Those come from three parent
- * routes, and each panel below owns one of them so that **one failing panel
- * does not blank the dashboard**. A single combined request would mean an
- * action-centre outage hides the user's closing deadlines, which is exactly
- * the information they cannot afford to lose.
+ * pending approvals and an activity feed. Each panel below owns one live
+ * parent route so that **one failing panel does not blank the dashboard**.
+ * A combined request would mean an action-centre outage hides the user's
+ * closing deadlines, which is exactly the information they cannot afford
+ * to lose.
  */
 export function CommandCentre({ clients }: CommandCentreProps) {
   return (
@@ -42,13 +42,16 @@ export function CommandCentre({ clients }: CommandCentreProps) {
       {clients && (
         <>
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <DeadlinePanel endpoint={clients.dashboard} />
+            <DeadlinePanel
+              applications={clients.applications}
+              documents={clients.documents}
+            />
             <SubscriptionPanel endpoint={clients.subscription} />
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <ActionPanel endpoint={clients.dashboard} />
-            <ActivityPanel endpoint={clients.dashboard} />
+            <ActivityPanel applications={clients.applications} />
           </div>
         </>
       )}

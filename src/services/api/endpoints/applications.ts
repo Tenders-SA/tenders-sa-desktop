@@ -22,6 +22,7 @@
  */
 
 import { z } from "zod";
+import { ApiError } from "../errors";
 import { AuthenticatedEndpoint } from "./base";
 
 /** Parent `ApplicationStatus`, kept as a string: new values must not break the list. */
@@ -44,7 +45,10 @@ const applicationSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   notes: z.string().nullable(),
-  isArchived: z.boolean(),
+  // The detail route omits this field while the list route returns it
+  // (verified against the live site on 2026-08-07). One shared schema,
+  // so the workspace reads an absent `isArchived` as "not archived".
+  isArchived: z.boolean().default(false),
   tender: applicationTenderSchema,
 });
 
@@ -172,6 +176,368 @@ export interface TenderApplicationStatus {
   status?: string;
 }
 
+/**
+ * The parent's workspace board stages (Workspace Cockpit). Kept as strings
+ * so a new parent stage cannot break the client; the stepper only renders
+ * stages it knows.
+ */
+export const WORKSPACE_STAGES = [
+  "suggested",
+  "needs_analysis",
+  "review_requirements",
+  "fix_readiness",
+  "add_information",
+  "generate_documents",
+  "ready_to_submit",
+  "submitted",
+] as const;
+
+export type WorkspaceStage = (typeof WORKSPACE_STAGES)[number];
+
+export const WORKSPACE_STAGE_LABELS: Record<WorkspaceStage, string> = {
+  suggested: "Suggested",
+  needs_analysis: "Needs analysis",
+  review_requirements: "Review requirements",
+  fix_readiness: "Fix readiness",
+  add_information: "Add information",
+  generate_documents: "Generate documents",
+  ready_to_submit: "Ready to submit",
+  submitted: "Submitted",
+};
+
+export type WorkspaceAction = "status" | "stage" | "remove";
+
+/*
+ * Cockpit contracts (desktop-workspace-cockpit design.md). All permissive:
+ * recognised fields are typed, everything else passes through, and the
+ * nullable spots the live payload actually has stay nullable.
+ */
+const cockpitSchema = z
+  .object({
+    application: z
+      .object({
+        id: z.string().optional(),
+        status: z.string().optional(),
+        currentStep: z.string().optional(),
+        progressPercentage: z.number().optional(),
+        readinessScore: z.number().optional(),
+        notes: z.string().nullable().optional(),
+        createdAt: z.string().optional(),
+        updatedAt: z.string().optional(),
+        submittedAt: z.string().nullable().optional(),
+        generatedCoverLetter: z.string().nullable().optional(),
+        generatedCapability: z.string().nullable().optional(),
+        generatedMethodology: z.string().nullable().optional(),
+        generatedEmail: z.string().nullable().optional(),
+        finalProposalUrl: z.string().nullable().optional(),
+      })
+      .passthrough(),
+    tender: z
+      .object({
+        id: z.string().optional(),
+        title: z.string().optional(),
+        referenceNumber: z.string().nullable().optional(),
+        sourceOrganization: z.string().nullable().optional(),
+        description: z.string().nullable().optional(),
+        closingDate: z.string().nullable().optional(),
+        briefingDate: z.string().nullable().optional(),
+        province: z.string().nullable().optional(),
+        estimatedValue: z.number().nullable().optional(),
+        timeline: z.unknown().optional(),
+      })
+      .passthrough(),
+    company: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+        profileCompleteness: z.number().optional(),
+        hasProfile: z.boolean().optional(),
+        experienceCount: z.number().optional(),
+        personnelCount: z.number().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    matching: z.unknown().nullable().optional(),
+    readiness: z
+      .object({
+        score: z.number().optional(),
+        overall: z.string().optional(),
+        factors: z
+          .array(
+            z
+              .object({
+                name: z.string().optional(),
+                score: z.number().optional(),
+                status: z.string().optional(),
+              })
+              .passthrough(),
+          )
+          .optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    urgency: z
+      .object({
+        level: z.string().optional(),
+        color: z.string().optional(),
+        pulsing: z.boolean().optional(),
+        daysRemaining: z.number().optional(),
+        hoursRemaining: z.number().optional(),
+        percentageRemaining: z.number().optional(),
+        message: z.string().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    generationStatus: z.unknown().nullable().optional(),
+    qualityChecks: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            category: z.string().optional(),
+            status: z.string().optional(),
+            message: z.string().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+    valueEstimate: z
+      .object({
+        estimatedMin: z.number().optional(),
+        estimatedMax: z.number().optional(),
+        estimatedMedian: z.number().optional(),
+        confidenceScore: z.number().optional(),
+        confidenceLevel: z.string().optional(),
+        methodology: z.string().optional(),
+        dataSources: z.array(z.string()).optional(),
+        warnings: z.array(z.string()).optional(),
+        currency: z.string().optional(),
+        sampleSize: z.number().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    analysisStatus: z
+      .object({
+        status: z.string().optional(),
+        message: z.string().optional(),
+        progress: z.number().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    checklistState: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            label: z.string().optional(),
+            completed: z.boolean().optional(),
+            category: z.string().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+    events: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            title: z.string().optional(),
+            description: z.string().optional(),
+            eventDate: z.string().optional(),
+            eventType: z.string().optional(),
+            isCompleted: z.boolean().optional(),
+            source: z.string().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+    documentState: z.array(z.unknown()).optional(),
+  })
+  .passthrough();
+
+export type CockpitPayload = z.infer<typeof cockpitSchema>;
+
+export interface CockpitQualityCheck {
+  id?: string;
+  category?: string;
+  status?: string;
+  message?: string;
+}
+
+export interface CockpitChecklistItem {
+  id?: string;
+  label?: string;
+  completed?: boolean;
+  category?: string;
+}
+
+export interface CockpitEvent {
+  id?: string;
+  title?: string;
+  description?: string;
+  eventDate?: string;
+  eventType?: string;
+  isCompleted?: boolean;
+  source?: string;
+}
+
+const complianceGapsSchema = z
+  .object({
+    gaps: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            category: z.string().optional(),
+            severity: z.string().optional(),
+            label: z.string().optional(),
+            detail: z.string().optional(),
+            tenderRequirement: z.string().optional(),
+            companyStatus: z.string().optional(),
+            fixLink: z.string().optional(),
+            canAutoFix: z.boolean().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+    summary: z
+      .object({
+        blocking: z.number().optional(),
+        important: z.number().optional(),
+        strengths: z.number().optional(),
+        info: z.number().optional(),
+        score: z.number().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+  })
+  .passthrough();
+
+/** Contract types are derived from the permissive schemas, never duplicated. */
+export type ComplianceGaps = z.infer<typeof complianceGapsSchema>;
+export type ComplianceGap = NonNullable<ComplianceGaps["gaps"]>[number];
+export type ResearchPayload = z.infer<typeof researchSchema>;
+export type ResearchCompetitor = NonNullable<
+  ResearchPayload["competitors"]
+>[number];
+export type WorkspaceUpdateResult = z.infer<typeof workspaceUpdateSchema>;
+type WorkspaceSummary = z.infer<typeof workspaceSummarySchema>;
+
+const researchSchema = z
+  .object({
+    organisation: z
+      .object({
+        id: z.string().optional(),
+        name: z.string().optional(),
+        slug: z.string().optional(),
+        organizationType: z.string().optional(),
+        contactEmail: z.string().nullable().optional(),
+        contactPhone: z.string().nullable().optional(),
+        website: z.string().nullable().optional(),
+        physicalAddress: z.string().nullable().optional(),
+        registrationNumber: z.string().nullable().optional(),
+        bbbeeLevel: z.string().nullable().optional(),
+        provincesOperating: z.string().nullable().optional(),
+        googleRating: z.number().nullable().optional(),
+        csdNumber: z.string().nullable().optional(),
+        enrichmentSources: z.array(z.string()).optional(),
+        tenderCount: z.number().optional(),
+        activeTenderCount: z.number().optional(),
+        noticeCount: z.number().optional(),
+        awardCount: z.number().optional(),
+        closedTenderCount: z.number().optional(),
+        cancellationCount: z.number().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    competitors: z
+      .array(
+        z
+          .object({
+            supplierName: z.string().optional(),
+            totalValue: z.number().optional(),
+            awardCount: z.number().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+    provinceHealth: z
+      .object({
+        province: z.string().optional(),
+        score: z.number().optional(),
+        activityLevel: z.string().optional(),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
+    eligibility: z.unknown().nullable().optional(),
+    intelItems: z.array(z.unknown()).optional(),
+    valueBenchmark: z.unknown().nullable().optional(),
+    referenceMaterials: z.unknown().nullable().optional(),
+    jvSuggestion: z.unknown().nullable().optional(),
+  })
+  .passthrough();
+
+export interface ResearchPayloadOrganisation {
+  id?: string;
+  name?: string;
+  slug?: string;
+  organizationType?: string;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  website?: string | null;
+  physicalAddress?: string | null;
+  registrationNumber?: string | null;
+  bbbeeLevel?: string | null;
+  provincesOperating?: string | null;
+  googleRating?: number | null;
+  csdNumber?: string | null;
+  enrichmentSources?: string[];
+  tenderCount?: number;
+  activeTenderCount?: number;
+  noticeCount?: number;
+  awardCount?: number;
+  closedTenderCount?: number;
+  cancellationCount?: number;
+}
+
+const workspaceSummarySchema = z
+  .object({
+    applications: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            applicationId: z.string().optional(),
+            stage: z.string().optional(),
+            status: z.string().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
+    autoArchived: z.boolean().optional(),
+    hasMore: z.boolean().optional(),
+  })
+  .passthrough();
+
+const workspaceUpdateSchema = z
+  .object({
+    success: z.boolean().optional(),
+    status: z.string().optional(),
+    submittedAt: z.string().nullable().optional(),
+    persisted: z.boolean().optional(),
+    stageOverride: z.unknown().nullable().optional(),
+    isArchived: z.boolean().optional(),
+  })
+  .passthrough();
+
 export class ApplicationsEndpoint extends AuthenticatedEndpoint {
   async list(
     query: ApplicationsQuery = {},
@@ -291,6 +657,122 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
     return (
       body.id ?? body.applicationId ?? body.application?.id ?? body.data?.id
     );
+  }
+
+  /**
+   * The workspace cockpit payload (`GET /api/v1/applications/[id]/assist`).
+   *
+   * Live-verified 2026-08-08: readiness, urgency, qualityChecks,
+   * valueEstimate, analysisStatus, checklistState, events and documentState
+   * all arrive; `matching` can be null. Every panel schema below is
+   * permissive — recognised fields typed, everything else passthrough — so a
+   * moved parent shape degrades one panel to its error state instead of
+   * failing the whole workspace (spec: desktop-workspace-cockpit R-W-6).
+   */
+  async getCockpit(id: string, signal?: AbortSignal): Promise<CockpitPayload> {
+    const body = await this.transport.request({
+      method: "GET",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist`,
+      schema: cockpitSchema,
+      headers: await this.authHeaders(),
+      signal,
+    });
+    return body;
+  }
+
+  /**
+   * Compliance gaps for the cockpit (`GET .../assist/compliance-gaps`).
+   */
+  async getComplianceGaps(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<ComplianceGaps> {
+    const body = await this.transport.request({
+      method: "GET",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist/compliance-gaps`,
+      schema: complianceGapsSchema,
+      headers: await this.authHeaders(),
+      signal,
+    });
+    return body;
+  }
+
+  /** Market research for the cockpit (`GET .../assist/research`). */
+  async getResearch(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<ResearchPayload> {
+    const body = await this.transport.request({
+      method: "GET",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist/research`,
+      schema: researchSchema,
+      headers: await this.authHeaders(),
+      signal,
+    });
+    return body;
+  }
+
+  /**
+   * The workspace board stage for one application
+   * (`GET /api/v1/applications/workspace/summary`).
+   *
+   * The route is admin-gated in the parent; when it answers 403 the caller
+   * still sees `undefined` rather than an error, and the stage bar falls
+   * back to a status-derived stage. `undefined` is "stage unknown", never a
+   * failure.
+   */
+  async getWorkspaceStage(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<WorkspaceStage | undefined> {
+    let body: WorkspaceSummary;
+    try {
+      body = await this.transport.request({
+        method: "GET",
+        path: "/api/v1/applications/workspace/summary",
+        schema: workspaceSummarySchema,
+        headers: await this.authHeaders(),
+        signal,
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.kind === "forbidden") {
+        return undefined;
+      }
+      throw error;
+    }
+    const card = (body.applications ?? []).find(
+      (entry) => entry.id === id || entry.applicationId === id,
+    );
+    if (!card?.stage) return undefined;
+    return WORKSPACE_STAGES.includes(card.stage as WorkspaceStage)
+      ? (card.stage as WorkspaceStage)
+      : undefined;
+  }
+
+  /**
+   * One workspace lifecycle action (`PATCH .../workspace`, R-W-4).
+   *
+   * Explicit human actions only: `{action:'status', status}`,
+   * `{action:'stage', stage, baseStage}` (or `stage: null` to clear the
+   * override) and `{action:'remove'}`. The parent validates; an invalid
+   * status transition arrives as a 400 whose `error` and `allowed` list
+   * surface verbatim. Never retried (the parent has no idempotency key).
+   */
+  async updateWorkspace(
+    id: string,
+    action: WorkspaceAction,
+    body: Record<string, unknown>,
+    signal?: AbortSignal,
+  ): Promise<WorkspaceUpdateResult> {
+    return this.transport.request({
+      method: "PATCH",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/workspace`,
+      body: { action, ...body },
+      schema: workspaceUpdateSchema,
+      headers: await this.authHeaders(),
+      policy: { retry: "never" },
+      signal,
+    });
   }
 }
 

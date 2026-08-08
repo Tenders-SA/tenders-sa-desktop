@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  ConfigError,
-  loadConfig,
-  type RawEnv,
-} from "../app/config/load-config";
+import { loadConfig, type RawEnv } from "../app/config/load-config";
+
+const PRODUCTION_ORIGIN = "https://www.tenders-sa.org";
 
 const validEnv: RawEnv = {
-  VITE_APP_ENV: "development",
-  VITE_API_BASE_URL: "http://localhost:3000",
-  VITE_ALLOWED_ORIGINS: "http://localhost:3000, http://localhost:1420",
   VITE_FEATURE_DESKTOP_AUTH: "false",
   VITE_TELEMETRY_ENABLED: "false",
   VITE_TELEMETRY_REDACTION_MODE: "strict",
@@ -33,17 +28,13 @@ describe("loadConfig with no environment at all", () => {
     expect(() => loadConfig({})).not.toThrow();
   });
 
-  it("defaults to the live Tenders-SA application, not localhost", () => {
-    // A packaged build with no .env is a release build. Defaulting to
-    // localhost would ship an app that can only talk to a dev server.
+  it("points at the live Tenders-SA application, unconditionally", () => {
+    // Production pointing is not a default that an environment can override:
+    // the origin is hard-wired, so there is nothing left to condition on.
     const config = loadConfig({});
-    expect(config.apiBaseUrl).toBe("https://www.tenders-sa.org");
+    expect(config.apiBaseUrl).toBe(PRODUCTION_ORIGIN);
     expect(config.environment).toBe("production");
-  });
-
-  it("derives allowedOrigins from the API base URL so the two cannot disagree", () => {
-    const config = loadConfig({ VITE_API_BASE_URL: "http://localhost:3000" });
-    expect(config.allowedOrigins).toEqual(["http://localhost:3000"]);
+    expect(config.allowedOrigins).toEqual([PRODUCTION_ORIGIN]);
   });
 
   it("has authentication on and sane request policy by default", () => {
@@ -52,34 +43,34 @@ describe("loadConfig with no environment at all", () => {
     expect(config.request.timeoutMs).toBe(10_000);
     expect(config.request.maxSafeRetries).toBe(2);
   });
-
-  it("still rejects a value that IS supplied but malformed", () => {
-    // Defaults remove "absent" as a failure mode, not "wrong". A typo in a
-    // real .env must still fail loudly rather than being silently replaced.
-    expect(() => loadConfig({ VITE_API_BASE_URL: "not-a-url" })).toThrow();
-  });
-
-  it("still refuses a plaintext production endpoint", () => {
-    // The security rule that matters most here survives the defaults: a
-    // production build must not put the bearer token on the wire in the clear.
-    expect(() =>
-      loadConfig({
-        VITE_APP_ENV: "production",
-        VITE_API_BASE_URL: "http://tenders-sa.example",
-      }),
-    ).toThrow();
-  });
 });
 
 describe("loadConfig", () => {
   it("loads a fully valid environment", () => {
     const config = loadConfig(validEnv);
-    expect(config.environment).toBe("development");
-    expect(config.allowedOrigins).toEqual([
-      "http://localhost:3000",
-      "http://localhost:1420",
-    ]);
+    expect(config.environment).toBe("production");
+    expect(config.allowedOrigins).toEqual([PRODUCTION_ORIGIN]);
     expect(config.request).toEqual({ timeoutMs: 10000, maxSafeRetries: 2 });
+  });
+
+  it("ignores any supplied API base URL, valid or malformed", () => {
+    // Pointing at production is never conditional, so origin env values are
+    // not read at all -- neither accepted nor validated nor forwarded.
+    const config = loadConfig({
+      ...validEnv,
+      VITE_API_BASE_URL: "http://localhost:3000",
+      VITE_ALLOWED_ORIGINS: "http://localhost:3000, http://localhost:1420",
+      VITE_APP_ENV: "development",
+    });
+    expect(config.apiBaseUrl).toBe(PRODUCTION_ORIGIN);
+    expect(config.environment).toBe("production");
+    expect(config.allowedOrigins).toEqual([PRODUCTION_ORIGIN]);
+  });
+
+  it("ignores a malformed API base URL rather than failing on it", () => {
+    expect(() =>
+      loadConfig({ ...validEnv, VITE_API_BASE_URL: "not-a-url" }),
+    ).not.toThrow();
   });
 
   it("defaults authentication ON, because it is the normal operating mode", () => {
@@ -100,49 +91,6 @@ describe("loadConfig", () => {
       VITE_FEATURE_DESKTOP_AUTH: "false",
     });
     expect(config.featureFlags.desktopAuth).toBe(false);
-  });
-
-  it("fills a missing value from a default instead of failing closed", () => {
-    // REVERSED DELIBERATELY. This asserted a throw when `VITE_APP_ENV` was
-    // absent, which was defensible while the app was a developer-only shell.
-    // It is wrong for a shipped desktop application: `.env` is gitignored, so
-    // EVERY packaged installer had no env at all and threw at module scope,
-    // opening a completely blank window with no message. Failing closed on an
-    // absent value made the product unusable rather than safe.
-    //
-    // "Fails closed" now applies to values that are supplied and wrong — see
-    // the two tests below, both of which still throw.
-    const env = { ...validEnv };
-    delete env.VITE_APP_ENV;
-    const config = loadConfig(env);
-    // validEnv points at localhost, so the environment is inferred as
-    // development rather than being defaulted to production and then rejected
-    // for not being https.
-    expect(config.environment).toBe("development");
-  });
-
-  it("fails closed when apiBaseUrl is not a valid URL", () => {
-    const env = { ...validEnv, VITE_API_BASE_URL: "not-a-url" };
-    expect(() => loadConfig(env)).toThrow(ConfigError);
-  });
-
-  it("fails closed on a non-https production API base URL", () => {
-    const env = {
-      ...validEnv,
-      VITE_APP_ENV: "production",
-      VITE_API_BASE_URL: "http://api.example.com",
-    };
-    expect(() => loadConfig(env)).toThrow(ConfigError);
-  });
-
-  it("accepts a production https API base URL", () => {
-    const env = {
-      ...validEnv,
-      VITE_APP_ENV: "production",
-      VITE_API_BASE_URL: "https://api.example.com",
-      VITE_ALLOWED_ORIGINS: "https://app.example.com",
-    };
-    expect(() => loadConfig(env)).not.toThrow();
   });
 
   it("never forwards unrelated env values, including secret-shaped ones, into the config", () => {

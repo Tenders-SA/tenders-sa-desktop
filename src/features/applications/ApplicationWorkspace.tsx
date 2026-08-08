@@ -1,16 +1,25 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AsyncSection, Panel } from "../../components/common/AsyncSection";
-import { useAsync } from "../../hooks/use-async";
+import { useAsync, type AsyncState } from "../../hooks/use-async";
 import {
   describeApplicationStatus,
   type ApplicationDetail,
   type ApplicationsEndpoint,
+  type CockpitPayload,
   type SubmissionReadiness,
 } from "../../services/api/endpoints/applications";
 import { describeApiError } from "../../services/api/describe-error";
 import { ClosingLabel } from "../tenders/ClosingLabel";
 import { describeJsonField } from "../tenders/tender-fields";
+import { StageBar } from "./workspace/StageBar";
+import { UrgencyBanner } from "./workspace/UrgencyBanner";
+import { AnalysisStatusPanel } from "./workspace/AnalysisStatusPanel";
+import { ValueEstimatePanel } from "./workspace/ValueEstimatePanel";
+import { ChecklistPanel } from "./workspace/ChecklistPanel";
+import { EventsPanel } from "./workspace/EventsPanel";
+import { ComplianceGapsPanel } from "./workspace/ComplianceGapsPanel";
+import { ResearchPanel } from "./workspace/ResearchPanel";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
@@ -47,6 +56,14 @@ export function ApplicationWorkspace({
     [endpoint, applicationId],
   );
 
+  // One cockpit request shared by every panel that renders the assist
+  // payload (R-W-5): a changed parent shape then degrades one panel to its
+  // own error state instead of failing the whole workspace.
+  const cockpitState = useAsync(
+    (signal) => endpoint.getCockpit(applicationId, signal),
+    [endpoint, applicationId],
+  );
+
   return (
     <section aria-labelledby="workspace-heading" className="max-w-4xl">
       <Link
@@ -67,6 +84,8 @@ export function ApplicationWorkspace({
               application={application}
               endpoint={endpoint}
               applicationId={applicationId}
+              cockpitState={cockpitState}
+              onDetailReload={state.reload}
             />
           )}
         </AsyncSection>
@@ -79,10 +98,14 @@ function WorkspaceBody({
   application,
   endpoint,
   applicationId,
+  cockpitState,
+  onDetailReload,
 }: {
   application: ApplicationDetail;
   endpoint: ApplicationsEndpoint;
   applicationId: string;
+  cockpitState: AsyncState<CockpitPayload>;
+  onDetailReload: () => void;
 }) {
   const { tender, company } = application;
 
@@ -117,6 +140,18 @@ function WorkspaceBody({
             Ref {tender.referenceNumber}
           </span>
         )}
+      </div>
+
+      <div className="mt-4 flex flex-col gap-4">
+        <Panel title="Workspace stage">
+          <StageBar
+            endpoint={endpoint}
+            applicationId={applicationId}
+            applicationStatus={application.status}
+            onChanged={onDetailReload}
+          />
+        </Panel>
+        <UrgencyBanner state={cockpitState} />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -200,6 +235,18 @@ function WorkspaceBody({
 
       <div className="mt-4">
         <ReadinessPanel endpoint={endpoint} applicationId={applicationId} />
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <AnalysisStatusPanel state={cockpitState} />
+        <ValueEstimatePanel state={cockpitState} />
+        <ChecklistPanel state={cockpitState} />
+        <EventsPanel state={cockpitState} />
+        <ComplianceGapsPanel
+          endpoint={endpoint}
+          applicationId={applicationId}
+        />
+        <ResearchPanel endpoint={endpoint} applicationId={applicationId} />
       </div>
 
       {application.notes && (

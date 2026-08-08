@@ -62,31 +62,30 @@ describe("http plugin scope", () => {
     expect(Array.isArray(httpPermission?.allow)).toBe(true);
   });
 
-  it("allows exactly the two origins the product runs against", () => {
+  it("allows exactly the one origin the product runs against", () => {
     // A second origin is a second place the token can be sent, so this can
-    // never grow silently. It is TWO deliberately, and here is why:
+    // never grow silently. It is exactly ONE, and here is why:
     //
     //   - the runtime API base URL is unusable unless its origin appears here,
-    //     so a packaged build listing only localhost would have every request
-    //     denied by the plugin -- the app would install, open, and fail every
-    //     read with no way for configuration to fix it;
-    //   - and local development points at localhost:3000.
+    //     so a packaged build with no entry would have every request denied
+    //     by the plugin -- the app would install, open, and fail every read
+    //     with no way for configuration to fix it;
+    //   - and production pointing is unconditional, so no localhost or
+    //     third-party origin exists for the plugin to reach.
     //
-    // Adding a third means updating this test and stating the reason.
-    expect(httpPermission?.allow).toHaveLength(2);
+    // Adding a second means updating this test and stating the reason.
+    expect(httpPermission?.allow).toHaveLength(1);
     const urls = (httpPermission?.allow ?? []).map((entry) => entry.url);
     expect(urls).toContain("https://www.tenders-sa.org/api/*");
-    expect(urls).toContain("http://localhost:3000/api/*");
+    expect(urls).not.toContain("http://localhost:3000/api/*");
   });
 
-  it("keeps the production origin on https", () => {
-    // A plaintext production origin would put the bearer token on the wire.
-    const production = (httpPermission?.allow ?? [])
-      .map((entry) => entry.url)
-      .filter((url) => !url.includes("localhost"));
-    expect(production.length).toBeGreaterThan(0);
-    for (const url of production) {
-      expect(url.startsWith("https://")).toBe(true);
+  it("keeps every origin on https", () => {
+    // A plaintext origin would put the bearer token on the wire.
+    const urls = httpPermission?.allow ?? [];
+    expect(urls.length).toBeGreaterThan(0);
+    for (const entry of urls) {
+      expect(entry.url.startsWith("https://")).toBe(true);
     }
   });
 
@@ -113,6 +112,27 @@ describe("http plugin scope", () => {
     // The desktop consumes the main application's parent-internal API only.
     for (const entry of httpPermission?.allow ?? []) {
       expect(entry.url).not.toContain("api.tenders-sa.org");
+    }
+  });
+
+  it("keeps every workspace route inside the permitted API origin path", () => {
+    // The workspace cockpit added application-scoped routes under /api/v1/.
+    // The http-plugin allow-list is `https://www.tenders-sa.org/api/*`, so
+    // any future route must stay under /api/ or it will need a new origin
+    // entry — which this test forbids silently by asserting the route
+    // literals themselves carry no host and no path outside /api/v1/.
+    const source = readFileSync(
+      resolve(root, "src/services/api/endpoints/applications.ts"),
+      "utf8",
+    );
+    const routeLiterals =
+      source.match(
+        /"\/api\/v1\/applications[^"]*"|`\/api\/v1\/applications[^`]*`/g,
+      ) ?? [];
+    expect(routeLiterals.length).toBeGreaterThan(0);
+    for (const literal of routeLiterals) {
+      expect(literal).toMatch(/^["`]\/api\/v1\/applications/);
+      expect(literal).not.toContain("http");
     }
   });
 
@@ -164,6 +184,16 @@ describe("plugin feature flags", () => {
 
   it("declares the http plugin", () => {
     expect(line).not.toBe("");
+  });
+
+  it("keeps a TLS backend enabled for the https-only application origin", () => {
+    // Regression: the plugin was declared `default-features = false` with no
+    // replacement TLS feature, so reqwest had no TLS backend and EVERY https
+    // request to the production API failed at the transport layer -- surfaced
+    // to the user as "Could not reach Tenders-SA". Plain-http localhost dev
+    // never exercised it. The application origin is https-only (hard-wired),
+    // so rustls or native-tls must remain enabled.
+    expect(line).toMatch(/rustls-tls|native-tls/);
   });
 
   it("does not enable dangerous-settings or unsafe-headers", () => {

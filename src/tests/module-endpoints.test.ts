@@ -65,67 +65,49 @@ function lastCall(fetchImpl: ReturnType<typeof vi.fn>) {
 }
 
 describe("dashboard endpoint", () => {
-  const summaryBody = {
+  const actionCenterBody = {
     success: true,
     data: {
-      upcomingDeadlines: {
-        count: 2,
-        soonest: "2026-08-01T00:00:00.000Z",
-        applications: [
-          {
-            id: "a1",
-            title: "Roadworks",
-            closingDate: "2026-08-01T00:00:00.000Z",
-          },
-        ],
-      },
-      documentAlerts: { count: 3 },
-      pipelineValue: { total: 18_400_000, applicationCount: 5 },
+      tenders: [],
+      nextSteps: [
+        {
+          id: "renew-expired-documents",
+          title: "Renew your expired compliance documents",
+          why: "Expired certificates disqualify a bid",
+          priority: 1,
+          external: true,
+        },
+      ],
+      radarSubscriptions: [],
+      unreadMatchNotifications: 0,
+      hasCompanyProfile: true,
     },
   };
 
-  it("unwraps the successResponse envelope this route uses", async () => {
-    // `/api/tenders` returns a bare domain key; these dashboard routes wrap in
-    // {success, data}. Assuming one envelope for both would fail on one.
+  it("normalises the service-shaped action centre into actionable items", async () => {
+    // The route's `data` is produced by a service, not pinned by the
+    // desktop's types; `nextSteps` is the human-actionable part and must
+    // survive the normalisation.
     const { endpoint } = harness(DashboardEndpoint, () =>
-      jsonResponse(summaryBody),
+      jsonResponse(actionCenterBody),
     );
-    const summary = await endpoint.getSummary();
-    expect(summary.pipelineValue.total).toBe(18_400_000);
-    expect(summary.upcomingDeadlines.count).toBe(2);
-  });
-
-  it("tolerates an application with no closing date", async () => {
-    // The parent explicitly returns null here when the tender has none.
-    const { endpoint } = harness(DashboardEndpoint, () =>
-      jsonResponse({
-        ...summaryBody,
-        data: {
-          ...summaryBody.data,
-          upcomingDeadlines: {
-            count: 1,
-            soonest: null,
-            applications: [{ id: "a1", title: "No date", closingDate: null }],
-          },
-        },
-      }),
-    );
-    await expect(endpoint.getSummary()).resolves.toBeDefined();
-  });
-
-  it("sends an explicit activity limit (PERF-3)", async () => {
-    const { endpoint, fetchImpl } = harness(DashboardEndpoint, () =>
-      jsonResponse({ success: true, data: { activities: [] } }),
-    );
-    await endpoint.getActivity();
-    expect(lastCall(fetchImpl)[0]).toContain("limit=10");
+    const items = await endpoint.getActionItems();
+    expect(items).toEqual([
+      {
+        id: "renew-expired-documents",
+        title: "Renew your expired compliance documents",
+        detail: "Expired certificates disqualify a bid",
+        count: undefined,
+        severity: undefined,
+      },
+    ]);
   });
 
   it("attaches the Bearer token", async () => {
     const { endpoint, fetchImpl } = harness(DashboardEndpoint, () =>
-      jsonResponse(summaryBody),
+      jsonResponse(actionCenterBody),
     );
-    await endpoint.getSummary();
+    await endpoint.getActionItems();
     const headers = lastCall(fetchImpl)[1].headers as Record<string, string>;
     expect(headers.Authorization).toBe("Bearer tok");
   });
@@ -136,10 +118,10 @@ describe("dashboard endpoint", () => {
     // would be a different and more confusing failure.
     const { endpoint, fetchImpl } = harness(
       DashboardEndpoint,
-      () => jsonResponse(summaryBody),
+      () => jsonResponse(actionCenterBody),
       null,
     );
-    await endpoint.getSummary();
+    await endpoint.getActionItems();
     const headers = lastCall(fetchImpl)[1].headers as Record<string, string>;
     expect(headers.Authorization).toBeUndefined();
   });
@@ -436,6 +418,40 @@ describe("applications endpoint", () => {
     expect(detail.tender.requirements).toEqual(["Tax clearance"]);
   });
 
+  it("reads the detail response even though it omits isArchived", async () => {
+    // Verified against the live site on 2026-08-07: the detail route returns
+    // every application field except `isArchived`, which only the list route
+    // includes. That used to fail validation ("could not be read in a format
+    // this version understands"); an absent flag must read as "not archived".
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        application: {
+          id: "a1",
+          tenderId: "t1",
+          status: "DRAFT",
+          submittedAt: null,
+          createdAt: "2026-07-01T00:00:00.000Z",
+          updatedAt: "2026-07-02T00:00:00.000Z",
+          notes: null,
+          tender: {
+            id: "t1",
+            title: "Security services",
+            referenceNumber: "RFQ-3",
+            sourceOrganization: "Dept of Health",
+            closingDate: "2026-09-01T00:00:00.000Z",
+            estimatedValue: 900_000,
+            province: "Gauteng",
+            industryCategories: ["Security"],
+          },
+          company: { id: "c1", name: "Acme", bbbeeLevel: 2 },
+        },
+      }),
+    );
+    const detail = await endpoint.get("a1");
+    expect(detail.isArchived).toBe(false);
+    expect(detail.tender.title).toBe("Security services");
+  });
+
   it("is not ready when anything is blocking, whatever the flag says", async () => {
     // A server that reported `valid: true` alongside errors must not be read
     // as submittable. The blocker list wins.
@@ -477,6 +493,256 @@ describe("applications endpoint", () => {
       "Missing B-BBEE certificate",
       "Company registration",
     ]);
+  });
+});
+
+describe("applications endpoint — workspace cockpit", () => {
+  it("parses the cockpit payload from the live-verified assist route", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        application: {
+          id: "a1",
+          status: "DRAFT",
+          progressPercentage: 60,
+          readinessScore: 80,
+        },
+        tender: {
+          id: "t1",
+          title: "Msinsi dam maintenance",
+          referenceNumber: "RFQ-4",
+          closingDate: "2026-08-25T10:00:00.000Z",
+          estimatedValue: 3_500_000,
+        },
+        company: { id: "c1", name: "Acme" },
+        matching: null,
+        readiness: {
+          score: 80,
+          overall: "ready",
+          factors: [{ name: "Company profile", score: 100, status: "good" }],
+        },
+        urgency: {
+          level: "normal",
+          color: "#eab308",
+          pulsing: false,
+          daysRemaining: 17,
+          hoursRemaining: 408,
+          percentageRemaining: 20,
+          message: "Closes 25 August 2026",
+        },
+        generationStatus: null,
+        qualityChecks: [
+          {
+            id: "q1",
+            category: "compliance",
+            status: "passed",
+            message: "Tax clearance valid",
+          },
+        ],
+        valueEstimate: {
+          estimatedMin: 450_000,
+          estimatedMax: 720_000,
+          estimatedMedian: 581_900,
+          confidenceScore: 82,
+          confidenceLevel: "high",
+          methodology: "award-history",
+          currency: "ZAR",
+          sampleSize: 4,
+        },
+        analysisStatus: { status: "complete", progress: 100 },
+        checklistState: [
+          {
+            id: "c1",
+            label: "Company profile",
+            completed: true,
+            category: "Profile",
+          },
+        ],
+        events: [
+          {
+            id: "e1",
+            title: "Site visit",
+            eventDate: "2026-08-12T09:00:00.000Z",
+            eventType: "SITE_VISIT",
+            isCompleted: false,
+            source: "tender",
+          },
+        ],
+        documentState: [],
+      }),
+    );
+    const cockpit = await endpoint.getCockpit("a1");
+    expect(lastCall(fetchImpl)[0]).toContain("/assist");
+    expect(cockpit.readiness?.score).toBe(80);
+    expect(cockpit.urgency?.daysRemaining).toBe(17);
+    expect(cockpit.analysisStatus?.status).toBe("complete");
+    expect(cockpit.checklistState?.[0].completed).toBe(true);
+    expect(cockpit.valueEstimate?.currency).toBe("ZAR");
+    expect(cockpit.matching).toBeNull();
+  });
+
+  it("parses the compliance gaps payload", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        gaps: [
+          {
+            id: "g1",
+            category: "Finance",
+            severity: "important",
+            label: "B-BBEE certificate missing",
+            detail: "Required for evaluation",
+            tenderRequirement: "B-BBEE",
+            companyStatus: "missing",
+            canAutoFix: false,
+          },
+        ],
+        summary: {
+          blocking: 0,
+          important: 1,
+          strengths: 5,
+          info: 0,
+          score: 100,
+        },
+      }),
+    );
+    const gaps = await endpoint.getComplianceGaps("a1");
+    expect(gaps.gaps?.[0].severity).toBe("important");
+    expect(gaps.summary?.score).toBe(100);
+  });
+
+  it("parses the market research payload", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        organisation: {
+          name: "Msinsi Holding (SOC)",
+          tenderCount: 14,
+          activeTenderCount: 3,
+          awardCount: 6,
+          csdNumber: "M123456789",
+        },
+        competitors: [
+          { supplierName: "BridgeCo", totalValue: 12_000_000, awardCount: 4 },
+        ],
+        provinceHealth: {
+          province: "North West",
+          score: 50,
+          activityLevel: "CAUTION",
+        },
+        eligibility: null,
+      }),
+    );
+    const research = await endpoint.getResearch("a1");
+    expect(research.organisation?.name).toBe("Msinsi Holding (SOC)");
+    expect(research.competitors?.[0].totalValue).toBe(12_000_000);
+    expect(research.provinceHealth?.activityLevel).toBe("CAUTION");
+  });
+
+  it("finds the board stage by application id", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        applications: [
+          {
+            id: "a1",
+            applicationId: "a1",
+            stage: "add_information",
+            status: "DRAFT",
+          },
+        ],
+        autoArchived: false,
+        hasMore: false,
+      }),
+    );
+    await expect(endpoint.getWorkspaceStage("a1")).resolves.toBe(
+      "add_information",
+    );
+  });
+
+  it("matches by applicationId when the card id differs", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        applications: [
+          { id: "other", applicationId: "a1", stage: "needs_analysis" },
+        ],
+      }),
+    );
+    await expect(endpoint.getWorkspaceStage("a1")).resolves.toBe(
+      "needs_analysis",
+    );
+  });
+
+  it("treats a 403 on the admin-gated summary as 'stage unknown', not a failure", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Forbidden" }, 403),
+    );
+    await expect(endpoint.getWorkspaceStage("a1")).resolves.toBeUndefined();
+  });
+
+  it("returns undefined for a stage the client does not know yet", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        applications: [{ id: "a1", applicationId: "a1", stage: "ai_stage_9" }],
+      }),
+    );
+    await expect(endpoint.getWorkspaceStage("a1")).resolves.toBeUndefined();
+  });
+
+  it("PATCHes the lifecycle action merged with its body to the workspace route", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        success: true,
+        persisted: true,
+        stageOverride: "fix_readiness",
+      }),
+    );
+    await endpoint.updateWorkspace("a1", "stage", {
+      stage: "fix_readiness",
+      baseStage: "add_information",
+    });
+    const [url, init] = lastCall(fetchImpl);
+    expect(url).toContain("/a1/workspace");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(String(init.body))).toEqual({
+      action: "stage",
+      stage: "fix_readiness",
+      baseStage: "add_information",
+    });
+  });
+
+  it("never retries a lifecycle mutation", async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      throw new TypeError("Failed to fetch");
+    });
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+    await expect(
+      endpoint.updateWorkspace("a1", "remove", {}),
+    ).rejects.toBeDefined();
+    expect(calls).toBe(1);
+  });
+
+  it("surfaces the parent's 400 `allowed` list on the error", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse(
+        {
+          error: "Invalid status transition: DRAFT -> SUBMITTED",
+          allowed: ["DRAFT", "SUBMITTED"],
+        },
+        400,
+      ),
+    );
+    await expect(
+      endpoint.updateWorkspace("a1", "status", { status: "SUBMITTED" }),
+    ).rejects.toMatchObject({
+      kind: "validation",
+      allowed: ["DRAFT", "SUBMITTED"],
+    });
   });
 });
 

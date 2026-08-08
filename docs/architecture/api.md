@@ -20,7 +20,7 @@ or two is itself a Phase 1 finding."*
 
 | | Main application API — **the target** | Developer API — **not the target** |
 |---|---|---|
-| Host | the application host (`VITE_API_BASE_URL`) | `api.tenders-sa.org` |
+| Host | `https://www.tenders-sa.org` — hard-wired, never configurable (`load-config.ts` exports `API_BASE_URL`) | `api.tenders-sa.org` |
 | Routes | `/api/auth/*`, `/api/tenders`, `/api/v1/applications`, `/api/v1/company/profile`, `/api/subscription/*` | `/v1/*`, `/v2/*` |
 | Auth | session JWT, `Authorization: Bearer` | API key |
 | Pagination | `page`/`limit`, or `limit`/`offset` | `limit`/`cursor` |
@@ -42,7 +42,8 @@ Reasons, from the audit rather than preference:
 | "This transport targets the **Tenders-SA Developer API**" | **Superseded.** It targets the main application API. |
 | "the auth port it exposes is a bearer-key hook, **not** the audited native session contract" | **Superseded.** TASK-1.3 audited the session contract; the adapter is Phase 2 work. |
 | "Whether the desktop client ultimately consumes one upstream or two is itself a Phase 1 finding" | **Resolved: one upstream.** |
-| CSP `connect-src` "must be widened to `https://api.tenders-sa.org`" | **Superseded twice over.** The API host is configuration, not a constant — and Phase 1 found the parent sets **no CORS headers**, so requests are issued from Rust and `connect-src` never needs widening at all. |
+| CSP `connect-src` "must be widened to `https://api.tenders-sa.org`" | **Superseded twice over.** Requests are issued from Rust, so `connect-src` never needs widening at all. |
+| "The API host is configuration, not a constant" | **Superseded 2026-08-07.** Production pointing is unconditional: the host is the constant `API_BASE_URL` in `src/app/config/load-config.ts`, and `VITE_API_BASE_URL`/`VITE_ALLOWED_ORIGINS` are no longer read. |
 | The verified envelope, retry, timeout, cancellation and error-normalisation design | **Still valid.** These are transport-policy decisions and survive the retarget. |
 
 ### Still-open consequences, tracked
@@ -55,6 +56,12 @@ Reasons, from the audit rather than preference:
   injectable seam before any live call can succeed.
 - The pinned `tenders-sa-developer-api-v2.1.0-openapi.json` is retained **only** as INT-6 drift
   evidence. It is not a source of desktop types.
+- **2026-08-07 — dashboard routes**: the live deployment answers `{}` for
+  `/api/v1/dashboard/summary` and `/api/v1/dashboard/activity` (verified with a live
+  session). The Command Centre deadline/activity panels therefore consume
+  `/api/v1/applications` + `/api/v1/documents/stats`, like the web dashboard does. The
+  two broken routes are dead to the desktop; `docs/specifications/dashboard-live-data.md`
+  records the retarget and the exact derivations.
 
 Everything from §"Which API this is" onward is preserved as the original Phase 0 record.
 
