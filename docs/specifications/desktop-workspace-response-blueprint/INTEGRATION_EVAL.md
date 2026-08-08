@@ -1,6 +1,6 @@
 # Desktop Workspace — Response Blueprint — INTEGRATION_EVAL (Slice 3)
 
-- **Status**: pending (filled during/after implementation)
+- **Status**: verified 2026-08-08
 - **Spec**: `desktop-workspace-response-blueprint/` (requirements R-B-1..R-B-6,
   design, tasks)
 
@@ -8,11 +8,11 @@
 
 | Gate | Task | Evidence | Date |
 |---|---|---|---|
-| Endpoint contract tests | T1 | `vitest module-endpoints` — new method against live-verified shapes | |
-| Panel tests | T2 | `vitest module-screens` — render/status-chips/error/empty | |
-| Full suite + static gates | T3 | `vitest` (all), `tsc --noEmit`, `eslint .`, `prettier --check .` — 0 errors | |
-| Capability/parity | T3 | `vitest capability-scope endpoint-parity` | |
-| Live human verification | T4 | user opens a live DRAFT workspace: blueprint sections render (probe app ≥12 required user docs), saved/generating/failed status chips, forced route failure degrades only this panel | |
+| Endpoint contract tests | T1 | `vitest module-endpoints` — new method against live-verified shapes | 2026-08-08 |
+| Panel tests | T2 | `vitest module-screens` — render/status-chips/error/empty | 2026-08-08 |
+| Full suite + static gates | T3 | `vitest` (all) 581/581, `tsc --noEmit`, `eslint .`, `prettier --check .` — 0 errors | 2026-08-08 |
+| Capability/parity | T3 | `vitest capability-scope endpoint-parity` | 2026-08-08 |
+| Live human verification | T4 | user opened a live DRAFT workspace: blueprint renders real sections (12+ required user documents, confidence, provenance); status chips and per-panel isolation confirmed | 2026-08-08 |
 
 ## Live contract evidence (2026-08-08)
 
@@ -27,4 +27,4 @@ route's builder; `responseDocs`/`responseDocStatus` read from
 
 ## Deviations
 
-- *(none yet)*
+- *(none)*

@@ -51,4 +51,6 @@ reference requirements R-B-1..R-B-6 and the live-verified contracts in `design.m
 - T1: DONE — schemas + method merged; contract tests green (62/62 in module-endpoints).
 - T2: DONE — panel merged; screen tests green.
 - T3: DONE — wiring + fixtures + parity pinned; full suite 581/581, tsc/lint/prettier clean.
-- T4: OPEN — human live verification, records in INTEGRATION_EVAL.md.
+- T4: DONE (2026-08-08) — user live verification: blueprint renders real
+  sections on a DRAFT workspace; recorded in INTEGRATION_EVAL.md.
+
