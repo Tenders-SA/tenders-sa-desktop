@@ -21,6 +21,7 @@ import { EventsPanel } from "./workspace/EventsPanel";
 import { ComplianceGapsPanel } from "./workspace/ComplianceGapsPanel";
 import { ResearchPanel } from "./workspace/ResearchPanel";
 import { AdditionalInfoPanel } from "./workspace/AdditionalInfoPanel";
+import { ResponseBlueprintPanel } from "./workspace/ResponseBlueprintPanel";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
@@ -249,6 +250,10 @@ function WorkspaceBody({
         />
         <ResearchPanel endpoint={endpoint} applicationId={applicationId} />
         <AdditionalInfoPanel
+          endpoint={endpoint}
+          applicationId={applicationId}
+        />
+        <ResponseBlueprintPanel
           endpoint={endpoint}
           applicationId={applicationId}
         />

@@ -576,6 +576,105 @@ export type AdditionalInfoField = z.infer<typeof additionalInfoFieldSchema>;
 export type AdditionalInfoValues = Record<string, string | boolean>;
 export type AdditionalInfoSaveResult = z.infer<typeof additionalInfoSaveSchema>;
 
+/**
+ * Response-blueprint contracts (desktop-workspace-response-blueprint design.md).
+ * Every section is optional (R-B-5): the parent may omit `blueprint` entirely
+ * before analysis, and unknown `kind`/`category`/`source`/`confidence` values
+ * pass through as strings so the panel renders them as plain text rather than
+ * failing. `responseDocs`/`responseDocStatus` are the per-key saved-content
+ * and async-generation state the panel reflects (R-B-3).
+ */
+const requiredUserDocumentSchema = z
+  .object({
+    name: z.string().optional(),
+    canonicalType: z.string().optional(),
+    source: z.string().optional(),
+    mandatory: z.boolean().optional(),
+    note: z.string().optional(),
+  })
+  .passthrough();
+
+const responseBlueprintDocSchema = z
+  .object({
+    key: z.string().optional(),
+    title: z.string().optional(),
+    kind: z.string().optional(),
+    brief: z.string().optional(),
+    requiredBy: z.string().optional(),
+    mandatory: z.boolean().optional(),
+  })
+  .passthrough();
+
+const blueprintStepSchema = z
+  .object({
+    key: z.string().optional(),
+    title: z.string().optional(),
+    detail: z.string().optional(),
+    dueDate: z.string().nullable().optional(),
+    category: z.string().optional(),
+    mandatory: z.boolean().optional(),
+    source: z.string().optional(),
+  })
+  .passthrough();
+
+const blueprintSubmissionSchema = z
+  .object({
+    method: z.string().optional(),
+    address: z.string().optional(),
+    portalUrl: z.string().optional(),
+    deadline: z.string().nullable().optional(),
+    contact: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .passthrough();
+
+const blueprintSchema = z
+  .object({
+    tenderId: z.string().optional(),
+    industry: z
+      .object({ id: z.string().optional(), name: z.string().optional() })
+      .nullable()
+      .optional(),
+    requiredUserDocuments: z.array(requiredUserDocumentSchema).optional(),
+    responseDocuments: z.array(responseBlueprintDocSchema).optional(),
+    steps: z.array(blueprintStepSchema).optional(),
+    submission: blueprintSubmissionSchema.optional(),
+    risks: z.array(z.string()).optional(),
+    confidence: z.string().optional(),
+    generatedBy: z.string().optional(),
+  })
+  .passthrough();
+
+const responseDocStatusSchema = z
+  .object({
+    state: z.string().optional(),
+    startedAt: z.number().optional(),
+    updatedAt: z.number().optional(),
+    isFallback: z.boolean().optional(),
+    error: z.string().optional(),
+    unresolvedPlaceholders: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
+const blueprintPayloadSchema = z
+  .object({
+    blueprint: blueprintSchema.nullable().optional(),
+    hasAnalysis: z.boolean().optional(),
+    enriched: z.boolean().optional(),
+    responseDocs: z.record(z.string(), z.string()).optional(),
+    responseDocStatus: z.record(z.string(), responseDocStatusSchema).optional(),
+  })
+  .passthrough();
+
+export type BlueprintPayload = z.infer<typeof blueprintPayloadSchema>;
+export type ResponseBlueprint = z.infer<typeof blueprintSchema>;
+export type RequiredUserDocument = z.infer<typeof requiredUserDocumentSchema>;
+export type ResponseBlueprintDoc = z.infer<typeof responseBlueprintDocSchema>;
+export type BlueprintStep = z.infer<typeof blueprintStepSchema>;
+export type BlueprintSubmission = z.infer<typeof blueprintSubmissionSchema>;
+export type ResponseDocStatus = z.infer<typeof responseDocStatusSchema>;
+export type ResponseDocStatusMap = Record<string, ResponseDocStatus>;
+
 export class ApplicationsEndpoint extends AuthenticatedEndpoint {
   async list(
     query: ApplicationsQuery = {},
@@ -857,6 +956,33 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
       schema: additionalInfoSaveSchema,
       headers: await this.authHeaders(),
       policy: { retry: "never" },
+      signal,
+    });
+  }
+
+  /**
+   * Tender-driven Response Blueprint
+   * (`GET .../assist/response-blueprint`,
+   * desktop-workspace-response-blueprint R-B-1).
+   *
+   * Read-only: which response documents to generate, which documents the user
+   * must have, and the steps/milestones — derived by the parent from the
+   * tender's document analysis + industry profile. `responseDocs` holds
+   * saved content per doc key; `responseDocStatus` tracks async generation
+   * per key (generating/ready/failed). Permissive: `blueprint` may be null
+   * before analysis, sections may be absent, and unknown enum values pass
+   * through as strings (R-B-5). A plain GET, so it uses the default retry
+   * policy — nothing here mutates.
+   */
+  async getResponseBlueprint(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<BlueprintPayload> {
+    return this.transport.request({
+      method: "GET",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist/response-blueprint`,
+      schema: blueprintPayloadSchema,
+      headers: await this.authHeaders(),
       signal,
     });
   }

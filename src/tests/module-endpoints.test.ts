@@ -1045,3 +1045,193 @@ describe("planner endpoint (Calendar)", () => {
     expect(lastCall(fetchImpl)[0]).toContain("tenderId=t1");
   });
 });
+
+describe("applications endpoint — response blueprint", () => {
+  const liveBlueprint = {
+    tenderId: "t1",
+    industry: { id: "i1", name: "Construction" },
+    requiredUserDocuments: [
+      {
+        name: "Tax Clearance Certificate",
+        canonicalType: "tax-clearance",
+        source: "compliance",
+        mandatory: true,
+      },
+      {
+        name: "B-BBEE Certificate / Affidavit",
+        canonicalType: "b-bbee",
+        source: "compliance",
+        mandatory: true,
+      },
+    ],
+    responseDocuments: [
+      {
+        key: "cover_letter",
+        title: "Cover Letter",
+        kind: "cover_letter",
+        brief: "A professional SA business cover letter.",
+        mandatory: true,
+      },
+      {
+        key: "technical_proposal",
+        title: "Technical / Works Proposal",
+        kind: "technical",
+        brief: "Respond to the technical specifications.",
+        requiredBy: "Technical specifications",
+        mandatory: true,
+      },
+    ],
+    steps: [
+      {
+        key: "briefing-2026-08-12",
+        title: "Attend briefing / site visit",
+        detail: "Site visit — When: 12/08/2026",
+        dueDate: "2026-08-12T09:00:00.000Z",
+        category: "briefing",
+        mandatory: false,
+        source: "timeline",
+      },
+      {
+        key: "gather-returnables",
+        title: "Gather required documents & returnables",
+        detail: "Obtain and complete every mandatory returnable.",
+        category: "documents",
+        mandatory: true,
+        source: "derived",
+      },
+    ],
+    submission: {
+      method: "Electronic / portal",
+      deadline: "2026-08-25T10:00:00.000Z",
+      portalUrl: "https://portal.example.org/bids",
+      contact: "Ms P Dlamini, 012 345 6789",
+    },
+    risks: [
+      "Closing in ~2 working days — prioritise mandatory returnables immediately.",
+    ],
+    confidence: "high",
+    generatedBy: "deterministic",
+  };
+
+  it("parses the live-verified blueprint payload with all sections", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        blueprint: liveBlueprint,
+        hasAnalysis: true,
+        enriched: false,
+        responseDocs: { cover_letter: "# Cover letter draft" },
+        responseDocStatus: {
+          technical_proposal: {
+            state: "generating",
+            startedAt: 1723123456789,
+            updatedAt: 1723123456789,
+          },
+        },
+      }),
+    );
+    const payload = await endpoint.getResponseBlueprint("a1");
+    expect(lastCall(fetchImpl)[0]).toContain("/assist/response-blueprint");
+    expect(payload.hasAnalysis).toBe(true);
+    expect(payload.enriched).toBe(false);
+    expect(payload.blueprint?.requiredUserDocuments).toHaveLength(2);
+    expect(payload.blueprint?.responseDocuments?.[1].requiredBy).toBe(
+      "Technical specifications",
+    );
+    expect(payload.blueprint?.steps?.[0].category).toBe("briefing");
+    expect(payload.blueprint?.submission?.portalUrl).toContain(
+      "portal.example.org",
+    );
+    expect(payload.blueprint?.confidence).toBe("high");
+    expect(payload.responseDocs?.cover_letter).toBe("# Cover letter draft");
+    expect(payload.responseDocStatus?.technical_proposal?.state).toBe(
+      "generating",
+    );
+  });
+
+  it("tolerates a null blueprint and absent sections", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ blueprint: null }),
+    );
+    const payload = await endpoint.getResponseBlueprint("a1");
+    expect(payload.blueprint).toBeNull();
+    expect(payload.responseDocs).toBeUndefined();
+  });
+
+  it("defaults missing docs and status maps to empty records", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        blueprint: liveBlueprint,
+        responseDocs: undefined,
+        responseDocStatus: undefined,
+      }),
+    );
+    const payload = await endpoint.getResponseBlueprint("a1");
+    expect(payload.responseDocs).toBeUndefined();
+    expect(payload.responseDocStatus).toBeUndefined();
+  });
+
+  it("passes unknown enum values through as raw strings", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        blueprint: {
+          ...liveBlueprint,
+          confidence: "certain",
+          generatedBy: "oracle",
+          responseDocuments: [
+            { key: "k1", title: "T", kind: "novel_kind", brief: "b" },
+          ],
+        },
+      }),
+    );
+    const payload = await endpoint.getResponseBlueprint("a1");
+    expect(payload.blueprint?.confidence).toBe("certain");
+    expect(payload.blueprint?.generatedBy).toBe("oracle");
+    expect(payload.blueprint?.responseDocuments?.[0].kind).toBe("novel_kind");
+  });
+
+  it("retries a transient GET failure once, because it is a read", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ blueprint: liveBlueprint }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+    const payload = await endpoint.getResponseBlueprint("a1");
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(payload.blueprint?.tenderId).toBe("t1");
+  });
+
+  it("maps 401/400/404 exactly like the other read routes", async () => {
+    const unauthorized = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Unauthorized" }, 401),
+    );
+    await expect(
+      unauthorized.endpoint.getResponseBlueprint("a1"),
+    ).rejects.toMatchObject({ kind: "unauthorized" });
+
+    const noProfile = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Company profile required" }, 400),
+    );
+    await expect(
+      noProfile.endpoint.getResponseBlueprint("a1"),
+    ).rejects.toMatchObject({ kind: "validation" });
+
+    const missing = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Not found" }, 404),
+    );
+    await expect(
+      missing.endpoint.getResponseBlueprint("a1"),
+    ).rejects.toMatchObject({ kind: "not-found" });
+  });
+});

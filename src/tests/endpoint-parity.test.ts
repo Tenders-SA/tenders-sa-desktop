@@ -141,6 +141,7 @@ describe("endpoint parity — allowed main-application paths", () => {
       "`/api/v1/applications/${encodeURIComponent(id)}/assist/compliance-gaps`",
       "`/api/v1/applications/${encodeURIComponent(id)}/assist/research`",
       "`/api/v1/applications/${encodeURIComponent(id)}/assist/additional-info`",
+      "`/api/v1/applications/${encodeURIComponent(id)}/assist/response-blueprint`",
       '"/api/v1/applications/workspace/summary"',
       "`/api/v1/applications/${encodeURIComponent(id)}/workspace`",
       '"PATCH"',

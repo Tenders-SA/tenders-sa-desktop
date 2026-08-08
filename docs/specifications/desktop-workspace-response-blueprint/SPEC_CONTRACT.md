@@ -1,10 +1,10 @@
 # Desktop Workspace — Response Blueprint — SPEC_CONTRACT (Slice 3)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-08
 - **Scope**: Slice 3 — response-blueprint panel (R-B-1..R-B-6).
-- **Approved by**: *pending — user must approve before implementation*
-- **Approval date**: —
+- **Approved by**: user
+- **Approval date**: 2026-08-08
 
 ## Contract checklist (mirrors tasks.md)
 

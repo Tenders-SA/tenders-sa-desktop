@@ -45,3 +45,10 @@ reference requirements R-B-1..R-B-6 and the live-verified contracts in `design.m
   provenance), a doc with saved content shows "Saved", a `generating` status
   shows "Generating…", and a forced route failure degrades only this panel.
 - **Verification**: user sign-off; record in `INTEGRATION_EVAL.md`.
+
+## Status (2026-08-08)
+
+- T1: DONE — schemas + method merged; contract tests green (62/62 in module-endpoints).
+- T2: DONE — panel merged; screen tests green.
+- T3: DONE — wiring + fixtures + parity pinned; full suite 581/581, tsc/lint/prettier clean.
+- T4: OPEN — human live verification, records in INTEGRATION_EVAL.md.

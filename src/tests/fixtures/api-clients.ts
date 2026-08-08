@@ -49,6 +49,7 @@ export function stubApiClients(
       updateWorkspace: idle(),
       getAdditionalInfo: idle(),
       saveAdditionalInfo: idle(),
+      getResponseBlueprint: idle(),
     },
     company: {
       getProfile: idle(),

@@ -254,6 +254,7 @@ describe("Application workspace", () => {
       updateWorkspace: vi.fn(() => new Promise<never>(() => {})),
       getAdditionalInfo: vi.fn(() => new Promise<never>(() => {})),
       saveAdditionalInfo: vi.fn(() => new Promise<never>(() => {})),
+      getResponseBlueprint: vi.fn(() => new Promise<never>(() => {})),
       ...overrides,
     } as unknown as ApplicationsEndpoint;
   }
@@ -482,6 +483,7 @@ describe("ApplicationWorkspace — workspace cockpit", () => {
         unfilledRequired: 0,
       })),
       saveAdditionalInfo: vi.fn(async () => ({ persisted: true })),
+      getResponseBlueprint: vi.fn(async () => ({ blueprint: null })),
       ...overrides,
     } as unknown as ApplicationsEndpoint;
   }
@@ -644,6 +646,7 @@ describe("ApplicationWorkspace — additional-information panel", () => {
         persisted: true,
         unfilledRequired: 1,
       })),
+      getResponseBlueprint: vi.fn(async () => ({ blueprint: null })),
       ...overrides,
     } as unknown as ApplicationsEndpoint;
   }
@@ -761,6 +764,247 @@ describe("ApplicationWorkspace — additional-information panel", () => {
       ),
     ).toBeVisible();
     expect(screen.getByText("Msinsi Holding (SOC)")).toBeVisible();
+  });
+});
+
+describe("ApplicationWorkspace — response blueprint panel", () => {
+  const blueprint = {
+    tenderId: "t1",
+    industry: { id: "i1", name: "Construction" },
+    requiredUserDocuments: [
+      {
+        name: "Tax Clearance Certificate",
+        canonicalType: "tax-clearance",
+        source: "compliance",
+        mandatory: true,
+      },
+      {
+        name: "B-BBEE Certificate / Affidavit",
+        canonicalType: "b-bbee",
+        source: "compliance",
+        mandatory: true,
+      },
+      {
+        name: "CSD Registration Report",
+        canonicalType: "csd",
+        source: "compliance",
+        mandatory: true,
+      },
+      {
+        name: "CIDB Registration Certificate",
+        canonicalType: "cidb",
+        source: "compliance",
+        mandatory: true,
+      },
+      {
+        name: "Public Liability Insurance",
+        canonicalType: "other",
+        source: "industry",
+        mandatory: true,
+      },
+      {
+        name: "Company Profile",
+        canonicalType: "company-profile",
+        source: "analysis",
+        mandatory: true,
+      },
+      {
+        name: "Tax Clearance Pin",
+        canonicalType: "tax-clearance",
+        source: "analysis",
+        mandatory: false,
+      },
+      {
+        name: "Annual Financial Statements",
+        canonicalType: "financials",
+        source: "analysis",
+        mandatory: false,
+      },
+      {
+        name: "SHEQ Policy",
+        canonicalType: "sheq",
+        source: "industry",
+        mandatory: false,
+      },
+      {
+        name: "Quality Plan",
+        canonicalType: "other",
+        source: "analysis",
+        mandatory: false,
+      },
+      {
+        name: "Reference Letters",
+        canonicalType: "other",
+        source: "analysis",
+        mandatory: false,
+      },
+      {
+        name: "SARS Import/Export Code",
+        canonicalType: "other",
+        source: "industry",
+        mandatory: false,
+      },
+    ],
+    responseDocuments: [
+      {
+        key: "cover_letter",
+        title: "Cover Letter",
+        kind: "cover_letter",
+        brief: "A professional SA business cover letter.",
+        mandatory: true,
+      },
+      {
+        key: "technical_proposal",
+        title: "Technical / Works Proposal",
+        kind: "technical",
+        brief: "Respond to the technical specifications.",
+        requiredBy: "Technical specifications",
+        mandatory: true,
+      },
+    ],
+    steps: [
+      {
+        key: "gather-returnables",
+        title: "Gather required documents & returnables",
+        detail: "Obtain and complete every mandatory returnable.",
+        category: "documents",
+        mandatory: true,
+        source: "derived",
+      },
+      {
+        key: "submit",
+        title: "Submit the bid",
+        detail: "Method: Electronic / portal",
+        dueDate: "2026-08-25T10:00:00.000Z",
+        category: "submission",
+        mandatory: true,
+        source: "analysis",
+      },
+    ],
+    submission: {
+      method: "Electronic / portal",
+      deadline: "2026-08-25T10:00:00.000Z",
+      contact: "Ms P Dlamini, 012 345 6789",
+    },
+    risks: [
+      "Closing in ~2 working days — prioritise mandatory returnables immediately.",
+    ],
+    confidence: "high",
+    generatedBy: "deterministic",
+  };
+
+  function endpoint(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      get: vi.fn(async () => workspaceDetail),
+      validate: vi.fn(async () => ({
+        ready: false,
+        blockers: [],
+        warnings: [],
+      })),
+      getCockpit: vi.fn(async () => workspaceCockpit),
+      getComplianceGaps: vi.fn(async () => workspaceGaps),
+      getResearch: vi.fn(async () => workspaceResearch),
+      getWorkspaceStage: vi.fn(async () => "add_information"),
+      updateWorkspace: vi.fn(async () => ({ success: true })),
+      getAdditionalInfo: vi.fn(async () => ({
+        values: {},
+        fields: [],
+        unfilledRequired: 0,
+      })),
+      saveAdditionalInfo: vi.fn(async () => ({ persisted: true })),
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint,
+        hasAnalysis: true,
+        enriched: false,
+        responseDocs: { cover_letter: "# Draft" },
+        responseDocStatus: {
+          technical_proposal: {
+            state: "generating",
+            startedAt: 1,
+            updatedAt: 1,
+          },
+        },
+      })),
+      ...overrides,
+    } as unknown as ApplicationsEndpoint;
+  }
+
+  it("renders the blueprint sections from a live-shaped payload", async () => {
+    wrap(<ApplicationWorkspace endpoint={endpoint()} applicationId="a1" />);
+    expect(await screen.findByText("Cover Letter")).toBeVisible();
+    // The full required-document set renders (12 entries; the last proves count).
+    expect(screen.getByText("SARS Import/Export Code")).toBeVisible();
+    expect(screen.getAllByText(/tax clearance/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/gather required documents/i)).toBeVisible();
+    expect(screen.getByText("Electronic / portal")).toBeVisible();
+    expect(screen.getByText(/prioritise mandatory returnables/i)).toBeVisible();
+    expect(screen.getByText("high")).toBeVisible();
+    expect(screen.getByText("Standard plan")).toBeVisible();
+  });
+
+  it("shows per-key document state: saved, generating, and none", async () => {
+    wrap(<ApplicationWorkspace endpoint={endpoint()} applicationId="a1" />);
+    expect(await screen.findByText("Saved")).toBeVisible();
+    expect(screen.getByText("Generating…")).toBeVisible();
+  });
+
+  it("shows a failed generation with its error", async () => {
+    const ep = endpoint({
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint,
+        responseDocs: {},
+        responseDocStatus: {
+          cover_letter: {
+            state: "failed",
+            startedAt: 1,
+            updatedAt: 1,
+            error: "AI service was busy",
+          },
+        },
+      })),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(await screen.findByText("Failed")).toBeVisible();
+    expect(screen.getByText("AI service was busy")).toBeVisible();
+  });
+
+  it("shows an honest empty state for a null blueprint", async () => {
+    const ep = endpoint({
+      getResponseBlueprint: vi.fn(async () => ({ blueprint: null })),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByText(/no response blueprint for this tender yet/i),
+    ).toBeVisible();
+  });
+
+  it("degrades only this panel when its route fails", async () => {
+    const ep = endpoint({
+      getResponseBlueprint: vi.fn(async () => {
+        throw new ApiError({
+          kind: "server",
+          message: "blueprint route is down",
+        });
+      }),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByText(
+        /could not load the response blueprint right now/i,
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Msinsi Holding (SOC)")).toBeVisible();
+  });
+
+  it("marks the plan AI-tailored when the parent says it is", async () => {
+    const ep = endpoint({
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint: { ...blueprint, generatedBy: "ai" },
+        enriched: true,
+      })),
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(await screen.findByText("AI-tailored")).toBeVisible();
   });
 });
 
