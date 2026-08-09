@@ -1114,7 +1114,10 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
    * 402 with no machine code, so the panel keys its copy off the action
    * (R-E-3). A slow/failing AI pass falls back with `enriched: false` +
    * `reason` instead of failing (R-E-4). A mutation — the transport must
-   * never auto-retry it (R-E-5).
+   * never auto-retry it (R-E-5). The AI pass runs a live LLM call server-side
+   * and routinely outlives the default 10s timeout — the 120s override is
+   * what keeps "Analysing…" honest instead of dying at "Could not reach
+   * Tenders-SA.".
    */
   async enrichBlueprint(
     id: string,
@@ -1125,7 +1128,7 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
       path: `/api/v1/applications/${encodeURIComponent(id)}/assist/enrich-blueprint`,
       schema: enrichBlueprintResponseSchema,
       headers: await this.authHeaders(),
-      policy: { retry: "never" },
+      policy: { retry: "never", timeoutMs: 120_000 },
       signal,
     });
   }
@@ -1141,7 +1144,9 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
    * transport, fallback `proposal-<id>.<format>`). **409** when nothing is
    * generated yet — the panel surfaces it honestly, keyed off the action
    * (R-Ex-4). No subscription gate, synchronous, runs no AI. A mutation —
-   * the transport must never auto-retry it (R-Ex-5).
+   * the transport must never auto-retry it (R-Ex-5). Packaging many
+   * documents can outlive the default 10s timeout, so it gets the same
+   * extended budget as the AI routes.
    */
   async exportWorkspacePackage(
     id: string,
@@ -1154,7 +1159,7 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
       query: { format },
       headers: await this.authHeaders(),
       filenameFallback: `proposal-${id}.${format}`,
-      policy: { retry: "never" },
+      policy: { retry: "never", timeoutMs: 60_000 },
       signal,
     });
   }

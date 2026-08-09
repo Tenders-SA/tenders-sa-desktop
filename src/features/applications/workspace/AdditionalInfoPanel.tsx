@@ -13,7 +13,7 @@
  * survive in the panel rather than vanish.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AsyncSection, Panel } from "../../../components/common/AsyncSection";
 import { useAsync } from "../../../hooks/use-async";
 import { describeApiError } from "../../../services/api/describe-error";
@@ -95,6 +95,11 @@ function AdditionalInfoForm({
   );
   const [dirty, setDirty] = useState(false);
   const [save, setSave] = useState<SaveState>({ status: "idle" });
+  // The dirty guard lives in a ref, not in the state the reseed effect
+  // depends on: flipping `dirty` after a save must not re-run the effect,
+  // or the draft would be re-seeded from the *stale* `info.values` fetched
+  // before the save and the answers the user just saved would vanish.
+  const dirtyRef = useRef(false);
 
   const requiredFields = fields.filter((field) => field.required);
   const filledRequired = requiredFields.filter((field) =>
@@ -106,6 +111,7 @@ function AdditionalInfoForm({
       : 100;
 
   function update(id: string, value: string | boolean) {
+    dirtyRef.current = true;
     setDraft((prev) => {
       const next = { ...prev, [id]: value };
       setDirty(true);
@@ -121,6 +127,7 @@ function AdditionalInfoForm({
       .then((result) => {
         // `persisted:false` is the parent's pre-migration answer: answers are
         // not lost, but they only live on this device for now.
+        dirtyRef.current = false;
         setSave(
           result.persisted === false
             ? { status: "unavailable" }
@@ -136,9 +143,10 @@ function AdditionalInfoForm({
 
   // If the parent re-serves different answers (another device, a reload),
   // adopt them — but never while the user has unsaved edits in the panel.
+  // Keyed on `info` only: a save flips `dirty` but must not re-seed.
   useEffect(() => {
-    if (!dirty) setDraft(seeded(info.values));
-  }, [info, dirty]);
+    if (!dirtyRef.current) setDraft(seeded(info.values));
+  }, [info]);
 
   return (
     <Panel title="Additional information" aside={<SaveBadge save={save} />}>

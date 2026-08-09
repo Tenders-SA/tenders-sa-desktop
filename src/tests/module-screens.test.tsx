@@ -755,6 +755,38 @@ describe("ApplicationWorkspace — additional-information panel", () => {
     ).toBeVisible();
   });
 
+  it("keeps the typed answers visible after a successful save", async () => {
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({
+          saveAdditionalInfo: vi.fn(async () => ({
+            persisted: true,
+            unfilledRequired: 0,
+          })),
+        })}
+        applicationId="a1"
+      />,
+    );
+    await screen.findByLabelText(/bid contact person/i);
+    const phone = screen.getByLabelText(/bid contact phone/i);
+    expect(phone).toHaveValue("");
+
+    await userEvent.type(phone, "082 555 1234");
+    await userEvent.click(screen.getByRole("button", { name: "Save answers" }));
+    await screen.findByText(/saved/i);
+
+    // The saved answers must survive the save: the panel re-seeds from the
+    // pre-save fetch, never from the values the user just typed (regression:
+    // the draft was re-seeded from stale `info.values` the moment the dirty
+    // flag flipped, wiping the form).
+    expect(screen.getByLabelText(/bid contact phone/i)).toHaveValue(
+      "082 555 1234",
+    );
+    expect(screen.getByLabelText(/bid contact person/i)).toHaveValue(
+      "Sipho Dlamini",
+    );
+  });
+
   it("degrades only this panel when its route fails", async () => {
     const ep = endpoint({
       getAdditionalInfo: vi.fn(async () => {

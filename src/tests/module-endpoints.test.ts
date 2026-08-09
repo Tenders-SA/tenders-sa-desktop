@@ -1549,6 +1549,41 @@ describe("applications endpoint — deep-analyse enrichment", () => {
     await expect(endpoint.enrichBlueprint("a1")).rejects.toBeDefined();
     expect(calls).toBe(1);
   });
+
+  it("outlives the default timeout on the live AI pass", async () => {
+    // The AI pass routinely takes longer than the 10s default; the endpoint
+    // must carry its own extended budget or it dies with a timeout error
+    // ("Could not reach Tenders-SA.") while the parent is still analysing.
+    const fetchImpl = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("aborted", "AbortError"));
+          });
+          setTimeout(
+            () =>
+              resolve(
+                jsonResponse({ blueprint: mergedBlueprint, enriched: true }),
+              ),
+            10,
+          );
+        }),
+    ) as unknown as typeof fetch;
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl,
+        // A 5ms default would kill any request that outlives it; the
+        // endpoint's 120s override is what lets this resolve at 10ms.
+        defaultPolicy: { timeoutMs: 5 },
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+
+    const result = await endpoint.enrichBlueprint("a1");
+    expect(result.enriched).toBe(true);
+  });
 });
 
 describe("applications endpoint — workspace package export (Slice 6)", () => {
@@ -1660,5 +1695,29 @@ describe("applications endpoint — workspace package export (Slice 6)", () => {
       endpoint.exportWorkspacePackage("a1", "pdf"),
     ).rejects.toBeDefined();
     expect(calls).toBe(1);
+  });
+
+  it("outlives the default timeout while packaging the documents", async () => {
+    const fetchImpl = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("aborted", "AbortError"));
+          });
+          setTimeout(() => resolve(pdfResponse()), 10);
+        }),
+    ) as unknown as typeof fetch;
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl,
+        defaultPolicy: { timeoutMs: 5 },
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+
+    const result = await endpoint.exportWorkspacePackage("a1", "pdf");
+    expect(result.filename).toBe("proposal-RFQ-001.pdf");
   });
 });
