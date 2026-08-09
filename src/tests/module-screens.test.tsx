@@ -959,6 +959,38 @@ describe("ApplicationWorkspace — tender document downloads (Slice 7)", () => {
     ).toBeEnabled();
   });
 
+  it("reports an honest partial result while attempting every document", async () => {
+    const actionPort = documentActionPort({
+      chooseDirectory: vi.fn(async () => "C:\\Downloads"),
+    });
+    const downloadTenderDocument = vi.fn(async (id: string) => {
+      if (id === "d1") throw new Error("failed");
+      return {
+        bytes: pdfBytes,
+        filename: "SBD4.docx",
+        contentType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      };
+    });
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint()}
+        applicationId="a1"
+        documents={{ downloadTenderDocument }}
+        documentActionPort={actionPort}
+      />,
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Download all" }),
+    );
+
+    expect(
+      await screen.findByText("Downloaded 1 of 2 documents; 1 failed."),
+    ).toBeVisible();
+    expect(downloadTenderDocument).toHaveBeenCalledTimes(2);
+    expect(actionPort.writeBytes).toHaveBeenCalledTimes(1);
+  });
+
   it("stays silent when the save dialog is cancelled", async () => {
     const port = savePort({ saveDialog: vi.fn(async () => null) });
     wrap(

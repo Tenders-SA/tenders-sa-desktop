@@ -18,7 +18,7 @@
 | Native port + capability | T1 | 28 targeted tests, TypeScript and `cargo check` pass; HTTP origins remain exactly three; opener path is `$TEMP/tenders-sa/**` only | 2026-08-09 |
 | Open action | T2 | TenderDetail verifies scoped temp write + OS open; ApplicationWorkspace verifies `Opening…`, both actions disabled and one resolver call | 2026-08-09 |
 | Vault download | T3 | Vault screen tests verify saved bytes/path, silent cancel, safe failure and retained expiry context | 2026-08-09 |
-| Batch download | T4 | pending | — |
+| Batch download | T4 | Coordinator verifies one picker, sequential order, cancel, duplicate suffixes and continue-on-failure; both owning screens verify completion/partial summaries | 2026-08-09 |
 | Full gates | T5 | pending | — |
 | Live human verification | T6 | pending | — |
 
@@ -34,4 +34,4 @@
 ## Result
 
 - **Status**: pending
-- **Remaining issues**: implementation T4–T6
+- **Remaining issues**: implementation T5–T6

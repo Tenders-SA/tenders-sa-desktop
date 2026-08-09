@@ -23,6 +23,7 @@ import { ResearchPanel } from "./workspace/ResearchPanel";
 import { AdditionalInfoPanel } from "./workspace/AdditionalInfoPanel";
 import { ResponseBlueprintPanel } from "./workspace/ResponseBlueprintPanel";
 import { DocumentDownloadButton } from "../tenders/DocumentDownloadButton";
+import { BatchDocumentDownloadButton } from "../tenders/BatchDocumentDownloadButton";
 import type { DownloadResult } from "../../services/api/transport";
 import type { SaveDownloadPort } from "../../services/storage/save-download";
 import type { DocumentActionPort } from "../../services/storage/document-actions";
@@ -304,35 +305,46 @@ function WorkspaceBody({
           }`}
         >
           {tender.documents && tender.documents.length > 0 ? (
-            <ul className="flex flex-col gap-2">
-              {tender.documents.map((document) => (
-                <li key={document.id} className="text-sm">
-                  {documents ? (
-                    <DocumentDownloadButton
-                      endpoint={documents}
-                      documentId={document.id}
-                      documentName={[
-                        document.fileName ?? "Unnamed document",
-                        document.documentCategory,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                      savePort={savePort}
-                      documentActionPort={documentActionPort}
-                    />
-                  ) : (
-                    <>
-                      <span className="text-muted-foreground">
-                        {document.fileName ?? "Unnamed document"}
-                      </span>
-                      {document.documentCategory
-                        ? ` · ${document.documentCategory}`
-                        : ""}
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <>
+              {documents && (
+                <div className="mb-2">
+                  <BatchDocumentDownloadButton
+                    endpoint={documents}
+                    documents={tender.documents}
+                    documentActionPort={documentActionPort}
+                  />
+                </div>
+              )}
+              <ul className="flex flex-col gap-2">
+                {tender.documents.map((document) => (
+                  <li key={document.id} className="text-sm">
+                    {documents ? (
+                      <DocumentDownloadButton
+                        endpoint={documents}
+                        documentId={document.id}
+                        documentName={[
+                          document.fileName ?? "Unnamed document",
+                          document.documentCategory,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                        savePort={savePort}
+                        documentActionPort={documentActionPort}
+                      />
+                    ) : (
+                      <>
+                        <span className="text-muted-foreground">
+                          {document.fileName ?? "Unnamed document"}
+                        </span>
+                        {document.documentCategory
+                          ? ` · ${document.documentCategory}`
+                          : ""}
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
               No documents are attached to this tender.

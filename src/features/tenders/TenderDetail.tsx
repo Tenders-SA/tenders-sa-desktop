@@ -11,6 +11,7 @@ import { ClosingLabel } from "./ClosingLabel";
 import { describeJsonField } from "./tender-fields";
 import { describeTenderError } from "./tender-errors";
 import { DocumentDownloadButton } from "./DocumentDownloadButton";
+import { BatchDocumentDownloadButton } from "./BatchDocumentDownloadButton";
 
 export interface TenderDetailProps {
   endpoint: TendersEndpoint;
@@ -293,25 +294,36 @@ function DocumentsSection({
         </p>
       )}
       {tender.documents && tender.documents.length > 0 ? (
-        <ul className="mt-2 flex flex-col gap-2">
-          {tender.documents.map((document) => (
-            <li key={document.id}>
-              {documents ? (
-                <DocumentDownloadButton
-                  endpoint={documents}
-                  documentId={document.id}
-                  documentName={document.fileName ?? "Unnamed document"}
-                  savePort={savePort}
-                  documentActionPort={documentActionPort}
-                />
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  {document.fileName ?? "Unnamed document"}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          {documents && (
+            <div className="mt-2">
+              <BatchDocumentDownloadButton
+                endpoint={documents}
+                documents={tender.documents}
+                documentActionPort={documentActionPort}
+              />
+            </div>
+          )}
+          <ul className="mt-2 flex flex-col gap-2">
+            {tender.documents.map((document) => (
+              <li key={document.id}>
+                {documents ? (
+                  <DocumentDownloadButton
+                    endpoint={documents}
+                    documentId={document.id}
+                    documentName={document.fileName ?? "Unnamed document"}
+                    savePort={savePort}
+                    documentActionPort={documentActionPort}
+                  />
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    {document.fileName ?? "Unnamed document"}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">
           Document names are not yet processed for this tender.

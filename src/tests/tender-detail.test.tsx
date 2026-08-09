@@ -416,6 +416,29 @@ describe("TenderDetail — document downloads (Slice 7)", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("downloads every tender document after one folder choice", async () => {
+    const actionPort = documentActionPort({
+      chooseDirectory: vi.fn(async () => "C:\\Downloads"),
+    });
+    const documents = documentsClient();
+    render(
+      <TenderDetail
+        endpoint={endpointReturning(withDocuments)}
+        tenderId="t1"
+        documents={documents}
+        documentActionPort={actionPort}
+      />,
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Download all" }),
+    );
+    expect(await screen.findByText("Downloaded 2 documents.")).toBeVisible();
+    expect(actionPort.chooseDirectory).toHaveBeenCalledTimes(1);
+    expect(documents.downloadTenderDocument).toHaveBeenCalledTimes(2);
+    expect(actionPort.writeBytes).toHaveBeenCalledTimes(2);
+  });
+
   it("stays silent when the user cancels the save dialog", async () => {
     const port = savePort({ saveDialog: vi.fn(async () => null) });
     render(

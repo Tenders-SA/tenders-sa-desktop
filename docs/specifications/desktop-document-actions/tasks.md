@@ -9,7 +9,7 @@
 - T1: DONE — native port, saved-path outcome, opener registration and scoped capabilities verified.
 - T2: DONE — Open uses the existing resolver, scoped temp copy and per-document single-flight UI.
 - T3: DONE — Document Vault rows use the shared Download control; upload remains website-only.
-- T4: OPEN.
+- T4: DONE — shared sequential Download all control is mounted in Tender Detail and Application Workspace.
 - T5: OPEN.
 - T6: OPEN — human verification.
 
