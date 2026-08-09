@@ -11,7 +11,7 @@
 |---|---|---|
 | T1 | Native foundation — DONE | Opener plugin + shared saved-path outcome + injectable temp-open/directory port; only directory picker and `$TEMP/tenders-sa/**` write/open-path capability expansion. Evidence: 28 targeted tests, TypeScript and `cargo check` pass. |
 | T2 | Open action — DONE | Existing per-document component gains explicit Open with `Opening…`, single-flight, existing resolver, temp copy, OS viewer and safe errors. Evidence: TenderDetail and ApplicationWorkspace screen tests pass. |
-| T3 | Vault download | Existing shared Download control mounted per company document; upload remains web-only |
+| T3 | Vault download — DONE | Existing shared Download control mounted per company document; upload remains web-only. Evidence: Vault save, cancel and failure screen tests pass. |
 | T4 | Batch download | Shared sequential coordinator/button on TenderDetail + ApplicationWorkspace; one directory choice, collision safety, progress, cancel and partial-failure honesty |
 | T5 | Gates/docs | Full frontend/Rust gates plus capability/parity regression coverage; task/contract/eval synchronized |
 | T6 | Human verification | Real Open, Vault save and batch save behaviors recorded |

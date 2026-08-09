@@ -1920,6 +1920,16 @@ describe("Document vault", () => {
     daysUntilExpiry: -5,
   };
 
+  function vaultSavePort(
+    overrides: Partial<SaveDownloadPort> = {},
+  ): SaveDownloadPort {
+    return {
+      saveDialog: vi.fn(async () => "C:\\Downloads\\Tax-clearance.pdf"),
+      writeBytes: vi.fn(async () => {}),
+      ...overrides,
+    };
+  }
+
   function endpoint(documents: CompanyDocument[]): DocumentsEndpoint {
     return {
       list: vi.fn(async () => ({
@@ -1930,6 +1940,11 @@ describe("Document vault", () => {
       })),
       getStats: vi.fn(async () => ({ totalDocuments: documents.length })),
       getDownloadUrl: vi.fn(),
+      downloadTenderDocument: vi.fn(async () => ({
+        bytes: new Uint8Array([37, 80, 68, 70]),
+        filename: "Tax-clearance.pdf",
+        contentType: "application/pdf",
+      })),
     } as unknown as DocumentsEndpoint;
   }
 
@@ -1949,11 +1964,52 @@ describe("Document vault", () => {
     expect(await screen.findByText("No expiry recorded")).toBeVisible();
   });
 
-  it("does not offer a download it cannot perform (INT-4)", async () => {
-    wrap(<DocumentVault endpoint={endpoint([expiring])} />);
-    await screen.findByText("Expires in 10 days");
-    expect(screen.queryByRole("button", { name: /download/i })).toBeNull();
-    expect(screen.getByText(/done on the Tenders-SA website/i)).toBeVisible();
+  it("downloads a company document to the user-picked path", async () => {
+    const documents = endpoint([expiring]);
+    const port = vaultSavePort({
+      saveDialog: vi.fn(async () => "C:\\Downloads\\Tax-clearance.pdf"),
+    });
+    wrap(<DocumentVault endpoint={documents} savePort={port} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Download" }),
+    );
+
+    await waitFor(() =>
+      expect(port.writeBytes).toHaveBeenCalledWith(
+        "C:\\Downloads\\Tax-clearance.pdf",
+        new Uint8Array([37, 80, 68, 70]),
+      ),
+    );
+    expect(documents.downloadTenderDocument).toHaveBeenCalledWith("d1");
+    expect(screen.getByText(/uploading documents is done/i)).toBeVisible();
+  });
+
+  it("treats a cancelled Vault save as a silent no-op", async () => {
+    const port = vaultSavePort({ saveDialog: vi.fn(async () => null) });
+    wrap(<DocumentVault endpoint={endpoint([expiring])} savePort={port} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Download" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Download" })).toBeEnabled(),
+    );
+    expect(port.writeBytes).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the Vault usable and explains a download failure", async () => {
+    const documents = endpoint([expiring]);
+    documents.downloadTenderDocument = vi.fn(async () => {
+      throw new ApiError({ kind: "server", status: 500, message: "boom" });
+    });
+    wrap(<DocumentVault endpoint={documents} savePort={vaultSavePort()} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Download" }),
+    );
+    expect(
+      await screen.findByText(/could not load this document right now/i),
+    ).toBeVisible();
+    expect(screen.getByText("Expires in 10 days")).toBeVisible();
   });
 
   it("puts expired documents first, because they block a bid", () => {

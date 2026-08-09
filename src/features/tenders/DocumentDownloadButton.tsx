@@ -43,6 +43,7 @@ export interface DocumentDownloadButtonProps {
    */
   savePort?: SaveDownloadPort;
   documentActionPort?: DocumentActionPort;
+  showOpen?: boolean;
 }
 
 type DownloadState =
@@ -57,6 +58,7 @@ export function DocumentDownloadButton({
   documentName,
   savePort = createTauriSavePort(),
   documentActionPort = createTauriDocumentActionPort(),
+  showOpen = true,
 }: DocumentDownloadButtonProps) {
   const [state, setState] = useState<DownloadState>({ status: "idle" });
 
@@ -109,14 +111,16 @@ export function DocumentDownloadButton({
       >
         {state.status === "downloading" ? "Downloading…" : "Download"}
       </button>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={openDocument}
-        className="rounded border border-border px-2.5 py-1 text-xs text-foreground disabled:opacity-50"
-      >
-        {state.status === "opening" ? "Opening…" : "Open"}
-      </button>
+      {showOpen && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={openDocument}
+          className="rounded border border-border px-2.5 py-1 text-xs text-foreground disabled:opacity-50"
+        >
+          {state.status === "opening" ? "Opening…" : "Open"}
+        </button>
+      )}
       {documentName && (
         <span className="text-sm text-muted-foreground">{documentName}</span>
       )}

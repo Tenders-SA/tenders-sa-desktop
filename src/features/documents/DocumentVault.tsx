@@ -9,9 +9,12 @@ import {
   type ExpiryStatus,
 } from "../../services/api/endpoints/documents";
 import { sortByUrgency } from "./document-order";
+import { DocumentDownloadButton } from "../tenders/DocumentDownloadButton";
+import type { SaveDownloadPort } from "../../services/storage/save-download";
 
 export interface DocumentVaultProps {
   endpoint: DocumentsEndpoint;
+  savePort?: SaveDownloadPort;
 }
 
 const STATUS_FILTERS: Array<{ value: "" | ExpiryStatus; label: string }> = [
@@ -33,7 +36,7 @@ const STATUS_FILTERS: Array<{ value: "" | ExpiryStatus; label: string }> = [
  * Expiry is stated as **text**, never colour alone (A11Y-1), and expired
  * documents are listed first because they are the ones that block a bid.
  */
-export function DocumentVault({ endpoint }: DocumentVaultProps) {
+export function DocumentVault({ endpoint, savePort }: DocumentVaultProps) {
   const [status, setStatus] = useState<"" | ExpiryStatus>("");
   const [page, setPage] = useState(1);
   const statusId = useId();
@@ -136,8 +139,14 @@ export function DocumentVault({ endpoint }: DocumentVaultProps) {
                           : "Not verified by Tenders-SA"}
                       </p>
                     </div>
-                    <div className="shrink-0 text-right text-sm">
+                    <div className="flex shrink-0 flex-col items-end gap-2 text-right text-sm">
                       <ExpiryLabel document={document} />
+                      <DocumentDownloadButton
+                        endpoint={endpoint}
+                        documentId={document.id}
+                        savePort={savePort}
+                        showOpen={false}
+                      />
                     </div>
                   </li>
                 ))}
@@ -170,11 +179,8 @@ export function DocumentVault({ endpoint }: DocumentVaultProps) {
                 </nav>
               )}
 
-              {/* INT-4: downloads go through the parent's R2 flow, which this
-                  build does not wire. Stated rather than implied. */}
               <p className="mt-4 text-sm text-muted-foreground">
-                Opening and uploading documents is done on the Tenders-SA
-                website.
+                Uploading documents is done on the Tenders-SA website.
               </p>
             </>
           )}
