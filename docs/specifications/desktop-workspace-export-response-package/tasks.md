@@ -67,12 +67,12 @@ in `design.md`.
 
 ## T5 — Live verification (human)
 
-- **Pre-check**: T4 merged; app running via `pnpm tauri dev`.
+- **Pre-check**: T4 merged; app running via `pnpm tauri dev`. — done
 - **Work**: user opens a live DRAFT workspace with generated documents and
   confirms: Export → PDF/DOCX choice → "Exporting…" → OS save dialog with the
   suggested filename → a valid package written to the picked path; an empty
-  workspace shows the 409 copy; a save-dialog cancel is silent.
-- **Verification**: user sign-off; record in `INTEGRATION_EVAL.md`.
+  workspace shows the 409 copy; a save-dialog cancel is silent. — done
+- **Verification**: user sign-off recorded in `INTEGRATION_EVAL.md`. — done
 
 ## Status (2026-08-09)
 
@@ -80,4 +80,4 @@ in `design.md`.
 - T2: DONE.
 - T3: DONE.
 - T4: DONE.
-- T5: OPEN — awaiting user live verification (`pnpm tauri dev`).
+- T5: DONE (2026-08-09) — user confirmed the entire live-verification task passes.

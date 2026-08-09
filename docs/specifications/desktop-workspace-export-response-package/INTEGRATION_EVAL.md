@@ -1,6 +1,6 @@
 # Desktop Workspace — Export Response Package — INTEGRATION_EVAL (Slice 6)
 
-- **Status**: T1-T4 verified; T5 pending human sign-off
+- **Status**: complete — T1–T5 verified
 - **Spec**: `desktop-workspace-export-response-package/` (requirements
   R-Ex-1..R-Ex-6, design, tasks)
 
@@ -13,7 +13,7 @@
 | Panel tests | T3 | `vitest module-screens` — 6 new (choice opens, PDF once → Exporting… → save under parsed filename, DOCX, cancel silent, 409 copy, 500 copy) | 2026-08-09 |
 | Full suite + static gates | T4 | `vitest` (all) 643/643 · 37 files; `tsc --noEmit` 0 errors; `eslint .` 0 errors; `prettier --check .` clean | 2026-08-09 |
 | Capability/parity | T4 | `vitest capability-scope endpoint-parity` — pins the `assist/workspace-export` literal; fixtures stub gains `exportWorkspacePackage` | 2026-08-09 |
-| Live human verification | T5 | user live-verifies Export → save dialog → valid file on disk, 409 copy, silent cancel | — |
+| Live human verification | T5 | User confirmed PDF and DOCX exports are valid, the save flow works, cancellation is silent, and the 409 precondition copy is correct. | 2026-08-09 |
 
 ## Live contract evidence (2026-08-09)
 
