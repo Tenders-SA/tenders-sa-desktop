@@ -41,6 +41,7 @@ import type { PlannerEndpoint } from "../services/api/endpoints/planner";
 import type { NotificationsEndpoint } from "../services/api/endpoints/notifications";
 import type { CompanyDocument } from "../services/api/endpoints/documents";
 import type { SaveDownloadPort } from "../services/storage/save-download";
+import type { DocumentActionPort } from "../services/storage/document-actions";
 
 const wrap = (ui: React.ReactElement) =>
   render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -869,6 +870,20 @@ describe("ApplicationWorkspace — tender document downloads (Slice 7)", () => {
     };
   }
 
+  function documentActionPort(
+    overrides: Partial<DocumentActionPort> = {},
+  ): DocumentActionPort {
+    return {
+      chooseDirectory: vi.fn(async () => null),
+      tempDirectory: vi.fn(async () => "C:\\Temp"),
+      joinPath: vi.fn(async (...parts: string[]) => parts.join("\\")),
+      createDirectory: vi.fn(async () => {}),
+      writeBytes: vi.fn(async () => {}),
+      openPath: vi.fn(async () => {}),
+      ...overrides,
+    };
+  }
+
   it("lists the documents with a Download button each", async () => {
     wrap(
       <ApplicationWorkspace
@@ -905,6 +920,43 @@ describe("ApplicationWorkspace — tender document downloads (Slice 7)", () => {
       ),
     );
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps Open single-flight and restores both actions after opening", async () => {
+    let resolveOpen: (() => void) | undefined;
+    const actionPort = documentActionPort({
+      openPath: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveOpen = resolve;
+          }),
+      ),
+    });
+    const documents = documentsClient();
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint()}
+        applicationId="a1"
+        documents={documents}
+        documentActionPort={actionPort}
+      />,
+    );
+    await screen.findByText(/tender documents \(2\)/i);
+
+    const [open] = screen.getAllByRole("button", { name: "Open" });
+    await userEvent.click(open);
+    expect(screen.getByRole("button", { name: "Opening…" })).toBeDisabled();
+    expect(
+      screen.getAllByRole("button", { name: "Download" })[0],
+    ).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Opening…" }));
+    expect(documents.downloadTenderDocument).toHaveBeenCalledTimes(1);
+
+    resolveOpen?.();
+    await waitFor(() => expect(open).toBeEnabled());
+    expect(
+      screen.getAllByRole("button", { name: "Download" })[0],
+    ).toBeEnabled();
   });
 
   it("stays silent when the save dialog is cancelled", async () => {

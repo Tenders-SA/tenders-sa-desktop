@@ -20,6 +20,7 @@ import type {
 } from "../services/api/endpoints/tenders";
 import type { DownloadResult } from "../services/api/transport";
 import type { SaveDownloadPort } from "../services/storage/save-download";
+import type { DocumentActionPort } from "../services/storage/document-actions";
 
 const tender: TenderDetailData = {
   id: "t1",
@@ -282,6 +283,20 @@ describe("TenderDetail — document downloads (Slice 7)", () => {
     };
   }
 
+  function documentActionPort(
+    overrides: Partial<DocumentActionPort> = {},
+  ): DocumentActionPort {
+    return {
+      chooseDirectory: vi.fn(async () => null),
+      tempDirectory: vi.fn(async () => "C:\\Temp"),
+      joinPath: vi.fn(async (...parts: string[]) => parts.join("\\")),
+      createDirectory: vi.fn(async () => {}),
+      writeBytes: vi.fn(async () => {}),
+      openPath: vi.fn(async () => {}),
+      ...overrides,
+    };
+  }
+
   function documentsClient(rejectWith?: unknown) {
     return {
       downloadTenderDocument: rejectWith
@@ -371,6 +386,34 @@ describe("TenderDetail — document downloads (Slice 7)", () => {
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Downloading…" })).toBeNull(),
     );
+  });
+
+  it("opens a scoped temporary copy through the operating system", async () => {
+    const actionPort = documentActionPort();
+    const documents = documentsClient();
+    render(
+      <TenderDetail
+        endpoint={endpointReturning(withDocuments)}
+        tenderId="t1"
+        documents={documents}
+        documentActionPort={actionPort}
+      />,
+    );
+
+    const [open] = await screen.findAllByRole("button", { name: "Open" });
+    await userEvent.click(open);
+
+    await waitFor(() =>
+      expect(actionPort.openPath).toHaveBeenCalledWith(
+        "C:\\Temp\\tenders-sa\\d1-Advert.pdf",
+      ),
+    );
+    expect(documents.downloadTenderDocument).toHaveBeenCalledTimes(1);
+    expect(actionPort.writeBytes).toHaveBeenCalledWith(
+      "C:\\Temp\\tenders-sa\\d1-Advert.pdf",
+      pdfBytes,
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("stays silent when the user cancels the save dialog", async () => {

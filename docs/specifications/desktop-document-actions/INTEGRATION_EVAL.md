@@ -16,7 +16,7 @@
 | Gate | Task | Evidence | Date |
 |---|---|---|---|
 | Native port + capability | T1 | 28 targeted tests, TypeScript and `cargo check` pass; HTTP origins remain exactly three; opener path is `$TEMP/tenders-sa/**` only | 2026-08-09 |
-| Open action | T2 | pending | — |
+| Open action | T2 | TenderDetail verifies scoped temp write + OS open; ApplicationWorkspace verifies `Opening…`, both actions disabled and one resolver call | 2026-08-09 |
 | Vault download | T3 | pending | — |
 | Batch download | T4 | pending | — |
 | Full gates | T5 | pending | — |
@@ -34,4 +34,4 @@
 ## Result
 
 - **Status**: pending
-- **Remaining issues**: implementation T2–T6
+- **Remaining issues**: implementation T3–T6

@@ -25,6 +25,7 @@ import { ResponseBlueprintPanel } from "./workspace/ResponseBlueprintPanel";
 import { DocumentDownloadButton } from "../tenders/DocumentDownloadButton";
 import type { DownloadResult } from "../../services/api/transport";
 import type { SaveDownloadPort } from "../../services/storage/save-download";
+import type { DocumentActionPort } from "../../services/storage/document-actions";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
@@ -40,6 +41,7 @@ export interface ApplicationWorkspaceProps {
     ) => Promise<DownloadResult>;
   };
   savePort?: SaveDownloadPort;
+  documentActionPort?: DocumentActionPort;
 }
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
@@ -68,6 +70,7 @@ export function ApplicationWorkspace({
   applicationId,
   documents,
   savePort,
+  documentActionPort,
 }: ApplicationWorkspaceProps) {
   const state = useAsync(
     (signal) => endpoint.get(applicationId, signal),
@@ -106,6 +109,7 @@ export function ApplicationWorkspace({
               onDetailReload={state.reload}
               documents={documents}
               savePort={savePort}
+              documentActionPort={documentActionPort}
             />
           )}
         </AsyncSection>
@@ -122,6 +126,7 @@ function WorkspaceBody({
   onDetailReload,
   documents,
   savePort,
+  documentActionPort,
 }: {
   application: ApplicationDetail;
   endpoint: ApplicationsEndpoint;
@@ -130,6 +135,7 @@ function WorkspaceBody({
   onDetailReload: () => void;
   documents?: ApplicationWorkspaceProps["documents"];
   savePort?: SaveDownloadPort;
+  documentActionPort?: DocumentActionPort;
 }) {
   const { tender, company } = application;
 
@@ -312,6 +318,7 @@ function WorkspaceBody({
                         .filter(Boolean)
                         .join(" · ")}
                       savePort={savePort}
+                      documentActionPort={documentActionPort}
                     />
                   ) : (
                     <>

@@ -6,6 +6,7 @@ import type {
 } from "../../services/api/endpoints/tenders";
 import type { DownloadResult } from "../../services/api/transport";
 import type { SaveDownloadPort } from "../../services/storage/save-download";
+import type { DocumentActionPort } from "../../services/storage/document-actions";
 import { ClosingLabel } from "./ClosingLabel";
 import { describeJsonField } from "./tender-fields";
 import { describeTenderError } from "./tender-errors";
@@ -31,6 +32,7 @@ export interface TenderDetailProps {
     ) => Promise<DownloadResult>;
   };
   savePort?: SaveDownloadPort;
+  documentActionPort?: DocumentActionPort;
 }
 
 type State =
@@ -110,6 +112,7 @@ export function TenderDetail({
   actions,
   documents,
   savePort,
+  documentActionPort,
 }: TenderDetailProps) {
   const [state, setState] = useState<State>({ status: "loading" });
 
@@ -244,6 +247,7 @@ export function TenderDetail({
             tender={tender}
             documents={documents}
             savePort={savePort}
+            documentActionPort={documentActionPort}
           />
 
           {actions}
@@ -265,10 +269,12 @@ function DocumentsSection({
   tender,
   documents,
   savePort,
+  documentActionPort,
 }: {
   tender: TenderDetailData;
   documents?: TenderDetailProps["documents"];
   savePort?: SaveDownloadPort;
+  documentActionPort?: DocumentActionPort;
 }) {
   const stats = tender.documentStats;
   const count = stats?.total ?? tender.documentCount ?? 0;
@@ -296,6 +302,7 @@ function DocumentsSection({
                   documentId={document.id}
                   documentName={document.fileName ?? "Unnamed document"}
                   savePort={savePort}
+                  documentActionPort={documentActionPort}
                 />
               ) : (
                 <span className="text-sm text-muted-foreground">
