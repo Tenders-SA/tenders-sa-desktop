@@ -24,7 +24,9 @@
   switching back to the website or repeating one save flow per tender document.
 - **Goal**: add safe OS opening, Vault downloads, and one-action batch downloads by
   composing the existing resolver and storage ports.
-- **Non-goals**: government/source URL fallbacks, upload, preview inside the webview,
+- **Permanent non-goal**: government/source URL fallback is explicitly rejected,
+  not deferred. Do not add it to a later task without a new user decision.
+- **Other non-goals**: upload, preview inside the webview,
   ZIP creation, background downloads, retrying paid/API mutations, or parent changes.
 
 ## Functional Requirements
@@ -71,9 +73,9 @@
 
 ## Success Criteria
 
-- [ ] Open launches a real downloaded document in its OS viewer.
-- [ ] Vault Download saves a real company document.
-- [ ] Download all saves every available tender document after one folder choice,
+- [x] Open launches a real downloaded document in its OS viewer.
+- [x] Vault Download saves a real company document.
+- [x] Download all saves every available tender document after one folder choice,
   preserves duplicate filenames safely, and reports partial failures honestly.
 - [x] Existing single-download, capability, endpoint-parity, and screen tests pass.
 - [x] Full Vitest, TypeScript, ESLint, Prettier, and Rust checks pass.

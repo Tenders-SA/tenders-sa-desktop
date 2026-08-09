@@ -11,7 +11,7 @@
 - T3: DONE — Document Vault rows use the shared Download control; upload remains website-only.
 - T4: DONE — shared sequential Download all control is mounted in Tender Detail and Application Workspace.
 - T5: DONE — full frontend/Rust gates and Slice 8 traceability records are complete.
-- T6: OPEN — human verification.
+- T6: DONE — user verified all live Open, Vault Download and Download all behaviors.
 
 ## Tasks
 
