@@ -6,7 +6,7 @@
 
 ## Status
 
-- T1: OPEN.
+- T1: DONE — native port, saved-path outcome, opener registration and scoped capabilities verified.
 - T2: OPEN.
 - T3: OPEN.
 - T4: OPEN.
@@ -23,4 +23,3 @@
 | T4 | Batch download: add shared sequential coordinator/button, collision-safe filenames, one directory choice, progress and partial-failure summary; mount in TenderDetail and ApplicationWorkspace | T3 green; confirm screens use already-loaded document arrays | coordinator + both screen suites |
 | T5 | Integration gates and documentation: fixtures/parity/capability checks, full Vitest, TypeScript, ESLint, Prettier, Rust; sync tasks/contract/eval | T4 green | zero gate errors; known app-boot flake rerun alone if needed |
 | T6 | Human verification: Open launches a real document; Vault Download saves; Download all saves all files after one folder choice; duplicate names do not overwrite; cancel silent; partial failure honest | T5 shipped | recorded in `INTEGRATION_EVAL.md` |
-

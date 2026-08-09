@@ -15,7 +15,7 @@
 
 | Gate | Task | Evidence | Date |
 |---|---|---|---|
-| Native port + capability | T1 | pending | — |
+| Native port + capability | T1 | 28 targeted tests, TypeScript and `cargo check` pass; HTTP origins remain exactly three; opener path is `$TEMP/tenders-sa/**` only | 2026-08-09 |
 | Open action | T2 | pending | — |
 | Vault download | T3 | pending | — |
 | Batch download | T4 | pending | — |
@@ -34,5 +34,4 @@
 ## Result
 
 - **Status**: pending
-- **Remaining issues**: implementation T1–T6
-
+- **Remaining issues**: implementation T2–T6

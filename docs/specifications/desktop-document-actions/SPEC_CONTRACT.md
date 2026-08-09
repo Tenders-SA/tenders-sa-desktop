@@ -9,7 +9,7 @@
 
 | # | Item | Contract |
 |---|---|---|
-| T1 | Native foundation | Opener plugin + shared saved-path outcome + injectable temp-open/directory port; only directory picker and `$TEMP/tenders-sa/**` write/open-path capability expansion |
+| T1 | Native foundation — DONE | Opener plugin + shared saved-path outcome + injectable temp-open/directory port; only directory picker and `$TEMP/tenders-sa/**` write/open-path capability expansion. Evidence: 28 targeted tests, TypeScript and `cargo check` pass. |
 | T2 | Open action | Existing per-document component gains explicit Open with `Opening…`, single-flight, existing resolver, temp copy, OS viewer and safe errors |
 | T3 | Vault download | Existing shared Download control mounted per company document; upload remains web-only |
 | T4 | Batch download | Shared sequential coordinator/button on TenderDetail + ApplicationWorkspace; one directory choice, collision safety, progress, cancel and partial-failure honesty |
@@ -29,4 +29,3 @@
 
 `feat(document-actions/TN): <description>` with requirements and spec reference in
 the commit body.
-

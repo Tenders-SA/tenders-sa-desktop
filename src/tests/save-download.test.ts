@@ -49,7 +49,10 @@ describe("saveDownload", () => {
       "C:\\Exports\\proposal-RFQ-001.pdf",
       pdfResult().bytes,
     );
-    expect(outcome).toBe("saved");
+    expect(outcome).toEqual({
+      status: "saved",
+      path: "C:\\Exports\\proposal-RFQ-001.pdf",
+    });
   });
 
   it("maps the docx content type to the Word filter", async () => {
@@ -86,7 +89,7 @@ describe("saveDownload", () => {
     const port = fakePort({ saveDialog: vi.fn(async () => null) });
     const outcome = await saveDownload(port, pdfResult());
 
-    expect(outcome).toBe("cancelled");
+    expect(outcome).toEqual({ status: "cancelled" });
     expect(port.writeBytes).not.toHaveBeenCalled();
   });
 });

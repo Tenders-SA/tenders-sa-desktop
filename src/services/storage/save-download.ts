@@ -28,7 +28,8 @@ export interface SaveDownloadPort {
   writeBytes(path: string, bytes: Uint8Array): Promise<void>;
 }
 
-export type SaveOutcome = "saved" | "cancelled";
+export type SaveOutcome =
+  { status: "saved"; path: string } | { status: "cancelled" };
 
 /** The one filter the parent produces: branded PDF and DOCX packages. */
 const FORMAT_FILTERS: Record<string, SaveDialogOptions> = {
@@ -62,10 +63,10 @@ export async function saveDownload(
       };
 
   const path = await port.saveDialog(options);
-  if (!path) return "cancelled";
+  if (!path) return { status: "cancelled" };
 
   await port.writeBytes(path, result.bytes);
-  return "saved";
+  return { status: "saved", path };
 }
 
 /** Builds the real port from the Tauri plugins. */

@@ -28,8 +28,15 @@ function readJson(relative: string): Record<string, unknown> {
   return JSON.parse(readFileSync(resolve(root, relative), "utf8"));
 }
 
+type CapabilityPermission =
+  | string
+  | {
+      identifier: string;
+      allow?: Array<{ url: string } | { path: string }>;
+    };
+
 const capability = readJson("src-tauri/capabilities/default.json") as {
-  permissions: (string | { identifier: string; allow?: { url: string }[] })[];
+  permissions: CapabilityPermission[];
 };
 
 const tauriConf = readJson("src-tauri/tauri.conf.json") as {
@@ -37,9 +44,8 @@ const tauriConf = readJson("src-tauri/tauri.conf.json") as {
 };
 
 const httpPermission = capability.permissions.find(
-  (p): p is { identifier: string; allow?: { url: string }[] } =>
-    typeof p === "object" && p.identifier === "http:default",
-);
+  (p) => typeof p === "object" && p.identifier === "http:default",
+) as { identifier: string; allow?: { url: string }[] } | undefined;
 
 const csp = tauriConf.app?.security?.csp ?? "";
 
@@ -142,37 +148,58 @@ describe("http plugin scope", () => {
     }
   });
 
-  it("grants fs only as the dialog-scoped write-file command (Slice 6)", () => {
-    // Slice 6 export needs to write the downloaded package, and only to the
-    // path the user picks: the dialog plugin extends the fs scope at runtime
-    // to exactly that path, so the capability holds the write command with
-    // no static fs scope at all. Any other fs identifier (reads, recursion,
-    // scope grants) would widen this silently — each must state its reason.
+  it("grants only write + mkdir filesystem commands (Slices 6 and 8)", () => {
+    // Slice 6 export writes to the path selected by the save dialog. Slice 8
+    // additionally writes a temporary copy beneath $TEMP/tenders-sa before
+    // opening it, and creates that one directory. Any read or recursive fs
+    // command would widen this silently — each must state its reason.
     const identifiers = capability.permissions.map((p) =>
       typeof p === "string" ? p : p.identifier,
     );
     const fsIds = identifiers.filter((id) => id.startsWith("fs:"));
-    expect(fsIds).toEqual(["fs:allow-write-file"]);
+    expect(fsIds).toEqual(["fs:allow-write-file", "fs:allow-mkdir"]);
   });
 
-  it("grants dialog only as allow-save (Slice 6)", () => {
-    // The export feature needs exactly one dialog: save. `dialog:default`
-    // would also grant open/message/confirm/ask — none of which this app
-    // uses — so the narrow command is granted instead.
+  it("grants only save and directory-open dialogs", () => {
+    // Export/single download use save; batch download uses directory-open.
+    // `dialog:default` would also grant message/confirm/ask — none of which
+    // this app uses — so only the two narrow commands are granted.
     const identifiers = capability.permissions.map((p) =>
       typeof p === "string" ? p : p.identifier,
     );
     const dialogIds = identifiers.filter((id) => id.startsWith("dialog:"));
-    expect(dialogIds).toEqual(["dialog:allow-save"]);
+    expect(dialogIds).toEqual(["dialog:allow-save", "dialog:allow-open"]);
   });
 
-  it("grants no shell or opener capability alongside it", () => {
+  it("grants no shell and only the temp-scoped path opener", () => {
     const identifiers = capability.permissions.map((p) =>
       typeof p === "string" ? p : p.identifier,
     );
-    for (const forbidden of ["shell:", "opener:"]) {
-      expect(identifiers.some((id) => id.startsWith(forbidden))).toBe(false);
+    expect(identifiers.some((id) => id.startsWith("shell:"))).toBe(false);
+    expect(identifiers.filter((id) => id.startsWith("opener:"))).toEqual([
+      "opener:allow-open-path",
+    ]);
+    expect(identifiers).not.toContain("opener:allow-open-url");
+    expect(identifiers).not.toContain("opener:default");
+  });
+
+  it("scopes native temp writes and opening to $TEMP/tenders-sa only", () => {
+    const scoped = capability.permissions.filter(
+      (permission): permission is Exclude<CapabilityPermission, string> =>
+        typeof permission === "object" && "allow" in permission,
+    );
+    for (const identifier of [
+      "fs:allow-write-file",
+      "fs:allow-mkdir",
+      "opener:allow-open-path",
+    ]) {
+      const permission = scoped.find(
+        (entry) => entry.identifier === identifier,
+      );
+      expect(permission?.allow).toEqual([{ path: "$TEMP/tenders-sa/**" }]);
     }
+    expect(JSON.stringify(scoped)).not.toContain("$HOME");
+    expect(JSON.stringify(scoped)).not.toContain('"path":"**"');
   });
 });
 
