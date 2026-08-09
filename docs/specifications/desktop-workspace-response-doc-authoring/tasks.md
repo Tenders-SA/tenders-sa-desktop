@@ -56,15 +56,15 @@ reference requirements R-A-1..R-A-6 and the live-verified contracts in `design.m
 
 ## T4 — Live verification (human)
 
-- **Pre-check**: T3 merged; app running via `pnpm tauri dev`.
+- **Pre-check**: T3 merged; app running via `pnpm tauri dev`. — done
 - **Work**: user opens a DRAFT workspace and confirms: Generate on an unsaved
   response document → "Generating…" → (within the bounded window) the doc
   appears "Saved" with real content; Edit → Save persists (reload serves the
   saved text back); no loading flash during the follow-up refresh; and a
   deliberate 402/409 path (e.g. a fresh free account, or unfilled required
   additional info) shows the upgrade / preconditions copy, not "Add your
-  company profile".
-- **Verification**: user sign-off; record in `INTEGRATION_EVAL.md`.
+  company profile". — done
+- **Verification**: user sign-off recorded in `INTEGRATION_EVAL.md`. — done
 
 ## Status (2026-08-08)
 
@@ -74,4 +74,4 @@ reference requirements R-A-1..R-A-6 and the live-verified contracts in `design.m
   module-screens).
 - T3: DONE — fixtures + parity literals pinned; full suite 599/599,
   tsc/lint/prettier clean.
-- T4: OPEN — human live verification, records in INTEGRATION_EVAL.md.
+- T4: DONE (2026-08-09) — user confirmed the entire live-verification task passes.
