@@ -1,17 +1,17 @@
 # Desktop Workspace Cockpit — INTEGRATION_EVAL (Slice 1)
 
-- **Status**: pending (filled during/after implementation)
+- **Status**: complete — automated gates and live human verification passed
 - **Spec**: `desktop-workspace-cockpit/` (requirements R-W-1..R-W-7, design, tasks)
 
 ## Gates
 
 | Gate | Task | Evidence | Date |
 |---|---|---|---|
-| Endpoint contract tests | T1 | `vitest module-endpoints` — new methods against live-verified shapes | |
-| Panel tests | T2 | `vitest module-screens` — render/error/empty per panel | |
-| Full suite + static gates | T3 | `vitest` (all), `tsc --noEmit`, `eslint .`, `prettier --check .` — 0 errors | |
-| Capability/parity | T4 | `vitest capability-scope endpoint-parity` | |
-| Live human verification | T5 | user opens a live DRAFT workspace: panels render real data (stage `add_information`, 6 gaps, 20 competitors, urgency banner); stage move / status transition / archive round-trip; forced single-panel failure degrades only that panel | |
+| Endpoint contract tests | T1 | `vitest module-endpoints` — new methods against live-verified shapes | 2026-08-08 |
+| Panel tests | T2 | `vitest module-screens` — render/error/empty per panel | 2026-08-08 |
+| Full suite + static gates | T3 | `vitest` (all), `tsc --noEmit`, `eslint .`, `prettier --check .` — 0 errors | 2026-08-08 |
+| Capability/parity | T4 | `vitest capability-scope endpoint-parity` | 2026-08-08 |
+| Live human verification | T5 | User confirmed the application workspace renders correctly and is properly verified after correcting the summary decoder's `autoArchived` contract from boolean to numeric count. | 2026-08-09 |
 
 ## Live contract evidence (2026-08-08)
 
@@ -35,4 +35,7 @@ Probed with a live session against `https://www.tenders-sa.org`, app
 
 ## Deviations
 
-- *(none yet)*
+- The live summary response serializes `autoArchived` as a non-negative numeric
+  count. The desktop schema and its regression fixture originally treated it as
+  a boolean, causing only the Workspace stage panel to reject the otherwise-valid
+  response. Corrected and verified live on 2026-08-09.

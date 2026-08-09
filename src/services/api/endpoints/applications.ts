@@ -522,7 +522,7 @@ const workspaceSummarySchema = z
           .passthrough(),
       )
       .optional(),
-    autoArchived: z.boolean().optional(),
+    autoArchived: z.number().int().nonnegative().optional(),
     hasMore: z.boolean().optional(),
   })
   .passthrough();

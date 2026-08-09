@@ -1,10 +1,10 @@
 # Desktop Workspace Cockpit — SPEC_CONTRACT (Slice 1)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED — IMPLEMENTATION AND LIVE VERIFICATION COMPLETE`
 - **Date**: 2026-08-08
 - **Scope**: Slice 1 — cockpit panels + lifecycle actions (R-W-1..R-W-7).
-- **Approved by**: *(awaiting user)*
-- **Approval date**: *(awaiting user)*
+- **Approved by**: user (live workspace verification)
+- **Approval date**: 2026-08-09
 
 ## Contract checklist (mirrors tasks.md)
 

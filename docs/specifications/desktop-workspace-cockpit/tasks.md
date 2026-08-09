@@ -50,8 +50,8 @@ the live-verified contracts in `design.md`.
 
 ## T5 — Live verification (human)
 
-- **Pre-check**: T4 merged; app running via `pnpm tauri dev`.
+- **Pre-check**: T4 merged; app running via `pnpm tauri dev`. — done
 - **Work**: user opens a DRAFT application workspace and confirms: stage bar shows
   `add_information` (live), panels render live data, moving stage/status and archiving
-  work, and a forced failure degrades a single panel.
-- **Verification**: user sign-off; record in `INTEGRATION_EVAL.md`.
+  work, and a forced failure degrades a single panel. — done
+- **Verification**: user sign-off recorded in `INTEGRATION_EVAL.md`. — done

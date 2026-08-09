@@ -647,7 +647,9 @@ describe("applications endpoint — workspace cockpit", () => {
             status: "DRAFT",
           },
         ],
-        autoArchived: false,
+        // Parent serializes the number of applications auto-archived by this
+        // summary read, not a boolean flag.
+        autoArchived: 2,
         hasMore: false,
       }),
     );
