@@ -38,16 +38,16 @@ reference requirements R-A-1..R-A-6 and the live-verified contracts in `design.m
 
 ## T4 — Live verification (human)
 
-- **Pre-check**: T3 merged; app running via `pnpm tauri dev`.
+- **Pre-check**: T3 merged; app running via `pnpm tauri dev`. — done
 - **Work**: user opens a DRAFT application workspace and confirms: the Q&A renders
   the tender's fields (live: 6 for the probe app), typing + "Save answers" persists
   (`GET` afterwards shows the values), a reload shows the saved answers, and a forced
-  failure keeps the answers with a "Not saved" badge.
-- **Verification**: user sign-off; record in `INTEGRATION_EVAL.md`.
+  failure keeps the answers with a "Not saved" badge. — done
+- **Verification**: user sign-off recorded in `INTEGRATION_EVAL.md`. — done
 
 ## Status (2026-08-08)
 
 - T1: DONE — schemas + methods merged; contract tests green (56/56 in module-endpoints).
 - T2: DONE — panel merged; screen tests green.
 - T3: DONE — wiring + fixtures + parity pinned; full suite 569/569, tsc/lint/prettier clean.
-- T4: OPEN — human live verification, records in INTEGRATION_EVAL.md.
+- T4: DONE (2026-08-09) — user confirmed the entire live-verification task is complete.
