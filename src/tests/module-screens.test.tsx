@@ -24,6 +24,7 @@ import { ApiError } from "../services/api/errors";
 import { TenderRadar } from "../features/radar/TenderRadar";
 import { Opportunities } from "../features/opportunities/Opportunities";
 import { ApplicationWorkspace } from "../features/applications/ApplicationWorkspace";
+import { ResponseBlueprintPanel } from "../features/applications/workspace/ResponseBlueprintPanel";
 import { CompanyProfileScreen } from "../features/company/CompanyProfile";
 import { DocumentVault } from "../features/documents/DocumentVault";
 import { Calendar } from "../features/calendar/Calendar";
@@ -1442,6 +1443,198 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Deep-analyse" }));
     expect(
       await screen.findByText(/could not load the deep-analyse right now/i),
+    ).toBeVisible();
+    expect(screen.getByText("Cover Letter")).toBeVisible();
+  });
+});
+
+describe("ResponseBlueprintPanel — export package (Slice 6)", () => {
+  const blueprintPayload = {
+    blueprint: {
+      tenderId: "t1",
+      industry: { id: "i1", name: "Construction" },
+      responseDocuments: [
+        { key: "cover_letter", title: "Cover Letter", mandatory: true },
+      ],
+      steps: [],
+      risks: [],
+      confidence: "high",
+      generatedBy: "deterministic",
+    },
+    hasAnalysis: true,
+    enriched: false,
+    responseDocs: { cover_letter: "# Draft" },
+    responseDocStatus: {},
+  };
+
+  function panelEndpoint(
+    exportWorkspacePackage: (
+      id: string,
+      format: "pdf" | "docx",
+    ) => Promise<{
+      bytes: Uint8Array;
+      filename: string;
+      contentType: string;
+    }>,
+  ) {
+    return {
+      getResponseBlueprint: vi.fn(async () => blueprintPayload),
+      exportWorkspacePackage,
+      generateResponseDocument: vi.fn(async () => ({
+        key: "cover_letter",
+        status: "generating",
+      })),
+      saveResponseDocument: vi.fn(async () => ({
+        ok: true,
+        key: "cover_letter",
+      })),
+      enrichBlueprint: vi.fn(async () => ({
+        blueprint: blueprintPayload.blueprint,
+        enriched: true,
+      })),
+    } as unknown as Parameters<typeof ResponseBlueprintPanel>[0]["endpoint"];
+  }
+
+  const pdfResult = {
+    bytes: new Uint8Array([37, 80, 68, 70, 1, 2, 3]),
+    filename: "proposal-RFQ-001.pdf",
+    contentType: "application/pdf",
+  };
+
+  it("offers PDF and DOCX after opening the Export choice", async () => {
+    wrap(
+      <ResponseBlueprintPanel
+        endpoint={panelEndpoint(vi.fn())}
+        applicationId="a1"
+        savePort={{
+          saveDialog: vi.fn(async () => null),
+          writeBytes: vi.fn(async () => {}),
+        }}
+      />,
+    );
+    expect(await screen.findByRole("button", { name: "Export" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "PDF" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    expect(screen.getByRole("button", { name: "PDF" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "DOCX" })).toBeVisible();
+  });
+
+  it("exports once per press: PDF → Exporting… → bytes saved under the parsed filename", async () => {
+    const exportFn = vi.fn(async () => pdfResult);
+    const saveDialog = vi.fn(async () => "C:\\Exports\\proposal-RFQ-001.pdf");
+    const writeBytes = vi.fn(async () => {});
+    wrap(
+      <ResponseBlueprintPanel
+        endpoint={panelEndpoint(exportFn)}
+        applicationId="a1"
+        savePort={{ saveDialog, writeBytes }}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("button", { name: "PDF" }));
+
+    expect(await screen.findByText("Exporting…")).toBeVisible();
+    expect(exportFn).toHaveBeenCalledTimes(1);
+    expect(exportFn).toHaveBeenCalledWith("a1", "pdf");
+    expect(await screen.findByRole("button", { name: "Export" })).toBeVisible();
+    await waitFor(() =>
+      expect(writeBytes).toHaveBeenCalledWith(
+        "C:\\Exports\\proposal-RFQ-001.pdf",
+        pdfResult.bytes,
+      ),
+    );
+  });
+
+  it("sends docx when DOCX is chosen", async () => {
+    const exportFn = vi.fn(async () => ({
+      ...pdfResult,
+      filename: "proposal-RFQ-001.docx",
+      contentType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }));
+    wrap(
+      <ResponseBlueprintPanel
+        endpoint={panelEndpoint(exportFn)}
+        applicationId="a1"
+        savePort={{
+          saveDialog: vi.fn(async () => "C:\\Exports\\proposal-RFQ-001.docx"),
+          writeBytes: vi.fn(async () => {}),
+        }}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("button", { name: "DOCX" }));
+
+    await waitFor(() => expect(exportFn).toHaveBeenCalledWith("a1", "docx"));
+  });
+
+  it("treats a cancelled save dialog as a silent no-op", async () => {
+    const writeBytes = vi.fn(async () => {});
+    wrap(
+      <ResponseBlueprintPanel
+        endpoint={panelEndpoint(vi.fn(async () => pdfResult))}
+        applicationId="a1"
+        savePort={{ saveDialog: vi.fn(async () => null), writeBytes }}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("button", { name: "PDF" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Export" })).toBeVisible(),
+    );
+    expect(writeBytes).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("explains the 409 nothing-to-export gate honestly", async () => {
+    const exportFn = vi.fn(async () => {
+      throw new ApiError({
+        kind: "validation",
+        status: 409,
+        message: "Generate your proposal documents before exporting.",
+      });
+    });
+    wrap(
+      <ResponseBlueprintPanel
+        endpoint={panelEndpoint(exportFn)}
+        applicationId="a1"
+        savePort={{
+          saveDialog: vi.fn(async () => null),
+          writeBytes: vi.fn(async () => {}),
+        }}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("button", { name: "PDF" }));
+
+    expect(
+      await screen.findByText(
+        /generate your proposal documents before exporting/i,
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Cover Letter")).toBeVisible();
+  });
+
+  it("explains a server failure on export", async () => {
+    const exportFn = vi.fn(async () => {
+      throw new ApiError({ kind: "server", status: 500, message: "boom" });
+    });
+    wrap(
+      <ResponseBlueprintPanel
+        endpoint={panelEndpoint(exportFn)}
+        applicationId="a1"
+        savePort={{
+          saveDialog: vi.fn(async () => null),
+          writeBytes: vi.fn(async () => {}),
+        }}
+      />,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    fireEvent.click(await screen.findByRole("button", { name: "PDF" }));
+
+    expect(
+      await screen.findByText(/could not export right now/i),
     ).toBeVisible();
     expect(screen.getByText("Cover Letter")).toBeVisible();
   });

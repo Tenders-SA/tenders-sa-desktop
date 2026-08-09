@@ -76,8 +76,8 @@ in `design.md`.
 
 ## Status (2026-08-09)
 
-- T1: OPEN.
-- T2: OPEN.
-- T3: OPEN.
-- T4: OPEN.
-- T5: OPEN.
+- T1: DONE.
+- T2: DONE.
+- T3: DONE.
+- T4: DONE.
+- T5: OPEN — awaiting user live verification (`pnpm tauri dev`).

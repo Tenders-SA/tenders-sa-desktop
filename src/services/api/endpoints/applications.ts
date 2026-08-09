@@ -720,6 +720,19 @@ export type EnrichBlueprintResult = z.infer<
   typeof enrichBlueprintResponseSchema
 >;
 
+export type ExportPackageFormat = "pdf" | "docx";
+
+/**
+ * The result of a binary package download (Slice 6). The bytes are the raw
+ * PDF/DOCX body; `filename` is the server-suggested name parsed from
+ * `Content-Disposition` (sanitised), with a route fallback applied.
+ */
+export interface ExportPackageResult {
+  bytes: Uint8Array;
+  filename: string;
+  contentType: string;
+}
+
 export class ApplicationsEndpoint extends AuthenticatedEndpoint {
   async list(
     query: ApplicationsQuery = {},
@@ -1112,6 +1125,35 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
       path: `/api/v1/applications/${encodeURIComponent(id)}/assist/enrich-blueprint`,
       schema: enrichBlueprintResponseSchema,
       headers: await this.authHeaders(),
+      policy: { retry: "never" },
+      signal,
+    });
+  }
+
+  /**
+   * Branded proposal-package export
+   * (`POST .../assist/workspace-export?format=pdf|docx`,
+   * desktop-workspace-export-response-package R-Ex-1).
+   *
+   * Packages the generated cover letter, capability, methodology, email and
+   * every tender-specific response document into a branded PDF or DOCX; the
+   * suggested filename arrives in `Content-Disposition` (parsed by the
+   * transport, fallback `proposal-<id>.<format>`). **409** when nothing is
+   * generated yet — the panel surfaces it honestly, keyed off the action
+   * (R-Ex-4). No subscription gate, synchronous, runs no AI. A mutation —
+   * the transport must never auto-retry it (R-Ex-5).
+   */
+  async exportWorkspacePackage(
+    id: string,
+    format: ExportPackageFormat,
+    signal?: AbortSignal,
+  ): Promise<ExportPackageResult> {
+    return this.transport.download({
+      method: "POST",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist/workspace-export`,
+      query: { format },
+      headers: await this.authHeaders(),
+      filenameFallback: `proposal-${id}.${format}`,
       policy: { retry: "never" },
       signal,
     });

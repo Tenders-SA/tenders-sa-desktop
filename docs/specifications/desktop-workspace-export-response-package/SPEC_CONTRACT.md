@@ -1,10 +1,10 @@
 # Desktop Workspace — Export Response Package — SPEC_CONTRACT (Slice 6)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-09
 - **Scope**: Slice 6 — export response package (R-Ex-1..R-Ex-6).
-- **Approved by**: *(awaiting user)*
-- **Approval date**: —
+- **Approved by**: user (in-session directive, 2026-08-09)
+- **Approval date**: 2026-08-09
 
 ## Contract checklist (mirrors tasks.md)
 

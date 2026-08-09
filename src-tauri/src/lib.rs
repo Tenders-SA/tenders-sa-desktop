@@ -21,6 +21,11 @@ pub fn run() {
         // explicitly in `capabilities/default.json`. That allowlist is the security
         // boundary, and `capability-scope.test.ts` fails if it is widened.
         .plugin(tauri_plugin_http::init())
+        // Save-dialog path for exports (Slice 6, R-Ex-3). The dialog plugin
+        // extends the fs scope at runtime to exactly the path the user picks,
+        // so no broad fs scope is granted in capabilities/default.json.
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(Box::new(OsKeychain) as Box<dyn SecretStore>)
         .invoke_handler(tauri::generate_handler![
             commands::session::session_store,

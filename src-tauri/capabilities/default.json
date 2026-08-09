@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Least-privilege capability for the main window: core app/window basics, the explicit native security commands, SQL access to the single local application database, and HTTP access scoped to the Tenders-SA application API path only. No shell, filesystem, or URL-opening access is granted; those are added only by the task that needs them, scoped to what it needs. The http allow-list is a security boundary, not configuration: it bounds the set of origins the runtime API base URL may point at, and src/tests/capability-scope.test.ts fails if it is widened. It holds exactly one entry -- the production application API -- because the application origin is hard-wired to https://www.tenders-sa.org and is never configurable.",
+  "description": "Least-privilege capability for the main window: core app/window basics, the explicit native security commands, SQL access to the single local application database, HTTP access scoped to the Tenders-SA application API path only, and the save-dialog + write-file pair used by package export (Slice 6). No shell, URL-opening, or broad filesystem access is granted; those are added only by the task that needs them, scoped to what it needs. The http allow-list is a security boundary, not configuration: it bounds the set of origins the runtime API base URL may point at, and src/tests/capability-scope.test.ts fails if it is widened. It holds exactly one entry -- the production application API -- because the application origin is hard-wired to https://www.tenders-sa.org and is never configurable. The dialog plugin extends the fs scope at runtime to exactly the user-picked save path, so no static fs scope is granted.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -16,6 +16,8 @@
     {
       "identifier": "http:default",
       "allow": [{ "url": "https://www.tenders-sa.org/api/*" }]
-    }
+    },
+    "dialog:allow-save",
+    "fs:allow-write-file"
   ]
 }

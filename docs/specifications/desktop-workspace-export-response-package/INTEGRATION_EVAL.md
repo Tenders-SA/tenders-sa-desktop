@@ -1,6 +1,6 @@
 # Desktop Workspace — Export Response Package — INTEGRATION_EVAL (Slice 6)
 
-- **Status**: pending
+- **Status**: T1-T4 verified; T5 pending human sign-off
 - **Spec**: `desktop-workspace-export-response-package/` (requirements
   R-Ex-1..R-Ex-6, design, tasks)
 
@@ -8,11 +8,11 @@
 
 | Gate | Task | Evidence | Date |
 |---|---|---|---|
-| Transport + endpoint contract tests | T1 | `vitest transport-download` + `module-endpoints` — binary success, filename parse, 401/403/404/409/500 mapping, never-retry | — |
-| Capability + save service | T2 | `vitest capability-scope`; `cargo check` — scoped fs/dialog assertions pass | — |
-| Panel tests | T3 | `vitest module-screens` — button/working/success-save/cancel/409/500 | — |
-| Full suite + static gates | T4 | `vitest` (all), `tsc --noEmit`, `eslint .`, `prettier --check .` — 0 errors | — |
-| Capability/parity | T4 | `vitest capability-scope endpoint-parity` | — |
+| Transport + endpoint contract tests | T1 | `vitest transport-download` (12 new: binary passthrough, quoted/bare/missing disposition, sanitising + fallback, 409/401/403/404/500 mapping, session-loss hook, timeout, cancel, never-retry) + `module-endpoints` (6 new: query/verb, docx, 409 → `validation`, 403/404/500, never-retry) | 2026-08-09 |
+| Capability + save service | T2 | `vitest capability-scope` (scoped fs/dialog assertions) + `save-download` (6: filters, write, cancel silent, unknown content type); `cargo check` clean with tauri-plugin-dialog + tauri-plugin-fs registered | 2026-08-09 |
+| Panel tests | T3 | `vitest module-screens` — 6 new (choice opens, PDF once → Exporting… → save under parsed filename, DOCX, cancel silent, 409 copy, 500 copy) | 2026-08-09 |
+| Full suite + static gates | T4 | `vitest` (all) 643/643 · 37 files; `tsc --noEmit` 0 errors; `eslint .` 0 errors; `prettier --check .` clean | 2026-08-09 |
+| Capability/parity | T4 | `vitest capability-scope endpoint-parity` — pins the `assist/workspace-export` literal; fixtures stub gains `exportWorkspacePackage` | 2026-08-09 |
 | Live human verification | T5 | user live-verifies Export → save dialog → valid file on disk, 409 copy, silent cancel | — |
 
 ## Live contract evidence (2026-08-09)

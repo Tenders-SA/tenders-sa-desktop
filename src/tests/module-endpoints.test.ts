@@ -1550,3 +1550,115 @@ describe("applications endpoint — deep-analyse enrichment", () => {
     expect(calls).toBe(1);
   });
 });
+
+describe("applications endpoint — workspace package export (Slice 6)", () => {
+  function pdfResponse(): Response {
+    return new Response(new Uint8Array([37, 80, 68, 70, 1, 2, 3]), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": 'attachment; filename="proposal-RFQ-001.pdf"',
+      },
+    });
+  }
+
+  it("POSTs with the format in the query and returns bytes + filename", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, pdfResponse);
+
+    const result = await endpoint.exportWorkspacePackage("a1", "pdf");
+
+    const [url, init] = lastCall(fetchImpl);
+    expect(url).toContain("/a1/assist/workspace-export");
+    expect(url).toContain("format=pdf");
+    expect(init.method).toBe("POST");
+    expect(result.bytes).toEqual(new Uint8Array([37, 80, 68, 70, 1, 2, 3]));
+    expect(result.filename).toBe("proposal-RFQ-001.pdf");
+    expect(result.contentType).toBe("application/pdf");
+  });
+
+  it("sends docx when asked for docx", async () => {
+    const { endpoint, fetchImpl } = harness(
+      ApplicationsEndpoint,
+      () =>
+        new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: {
+            "Content-Type":
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "Content-Disposition":
+              'attachment; filename="proposal-RFQ-001.docx"',
+          },
+        }),
+    );
+
+    const result = await endpoint.exportWorkspacePackage("a1", "docx");
+
+    const [url] = lastCall(fetchImpl);
+    expect(url).toContain("format=docx");
+    expect(result.filename).toBe("proposal-RFQ-001.docx");
+    expect(result.contentType).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    );
+  });
+
+  it("falls back to the route filename when no disposition header arrives", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () => pdfResponse());
+    const result = await endpoint.exportWorkspacePackage("a1", "pdf");
+    expect(result.filename).toBe("proposal-RFQ-001.pdf");
+  });
+
+  it("surfaces the 409 nothing-to-export gate as validation", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse(
+        { error: "Generate your proposal documents before exporting." },
+        409,
+      ),
+    );
+    await expect(
+      endpoint.exportWorkspacePackage("a1", "pdf"),
+    ).rejects.toMatchObject({ kind: "validation" });
+  });
+
+  it("maps 401/403/404/500 exactly like the other application routes", async () => {
+    const forbidden = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Forbidden" }, 403),
+    );
+    await expect(
+      forbidden.endpoint.exportWorkspacePackage("a1", "pdf"),
+    ).rejects.toMatchObject({ kind: "forbidden" });
+
+    const missing = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Application not found" }, 404),
+    );
+    await expect(
+      missing.endpoint.exportWorkspacePackage("a1", "pdf"),
+    ).rejects.toMatchObject({ kind: "not-found" });
+
+    const down = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Internal server error" }, 500),
+    );
+    await expect(
+      down.endpoint.exportWorkspacePackage("a1", "pdf"),
+    ).rejects.toMatchObject({ kind: "server" });
+  });
+
+  it("never retries an export request", async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      throw new TypeError("Failed to fetch");
+    });
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+    await expect(
+      endpoint.exportWorkspacePackage("a1", "pdf"),
+    ).rejects.toBeDefined();
+    expect(calls).toBe(1);
+  });
+});

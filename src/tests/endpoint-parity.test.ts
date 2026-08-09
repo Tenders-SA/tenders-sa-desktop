@@ -145,6 +145,7 @@ describe("endpoint parity — allowed main-application paths", () => {
       "`/api/v1/applications/${encodeURIComponent(id)}/assist/generate-response-doc`",
       "`/api/v1/applications/${encodeURIComponent(id)}/assist/response-doc`",
       "`/api/v1/applications/${encodeURIComponent(id)}/assist/enrich-blueprint`",
+      "`/api/v1/applications/${encodeURIComponent(id)}/assist/workspace-export`",
       '"/api/v1/applications/workspace/summary"',
       "`/api/v1/applications/${encodeURIComponent(id)}/workspace`",
       '"PATCH"',

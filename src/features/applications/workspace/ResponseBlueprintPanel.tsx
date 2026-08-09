@@ -23,10 +23,17 @@ import { describeApiError } from "../../../services/api/describe-error";
 import type {
   BlueprintPayload,
   EnrichBlueprintResult,
+  ExportPackageFormat,
+  ExportPackageResult,
   GenerateResponseDocResult,
   ResponseBlueprint,
   ResponseDocSaveResult,
 } from "../../../services/api/endpoints/applications";
+import {
+  createTauriSavePort,
+  saveDownload,
+  type SaveDownloadPort,
+} from "../../../services/storage/save-download";
 import { ResponseBlueprintDocRow } from "./ResponseBlueprintDocRow";
 
 /** Follow-up refresh cadence after a Generate 202 (R-A-3). */
@@ -61,13 +68,25 @@ export interface ResponseBlueprintPanelProps {
       id: string,
       signal?: AbortSignal,
     ) => Promise<EnrichBlueprintResult>;
+    exportWorkspacePackage: (
+      id: string,
+      format: ExportPackageFormat,
+      signal?: AbortSignal,
+    ) => Promise<ExportPackageResult>;
   };
   applicationId: string;
+  /**
+   * Where the downloaded package lands. Defaults to the real Tauri
+   * save-dialog port; injectable so screens can drive the whole flow
+   * without a Tauri runtime (Slice 6, R-Ex-3).
+   */
+  savePort?: SaveDownloadPort;
 }
 
 export function ResponseBlueprintPanel({
   endpoint,
   applicationId,
+  savePort = createTauriSavePort(),
 }: ResponseBlueprintPanelProps) {
   const state = useAsync(
     (signal) => endpoint.getResponseBlueprint(applicationId, signal),
@@ -143,6 +162,7 @@ export function ResponseBlueprintPanel({
           overlay={overlay}
           endpoint={endpoint}
           applicationId={applicationId}
+          savePort={savePort}
           onGenerateAccepted={acceptGenerate}
           onSaved={acceptSaved}
           onReload={state.reload}
@@ -158,6 +178,18 @@ type EnrichState =
   | { status: "working" }
   | { status: "error"; message: string };
 
+/**
+ * Export outcomes (Slice 6, R-Ex-1/R-Ex-4): idle, the inline PDF/DOCX
+ * choice open, in flight, or a failed-pass message. A cancelled save dialog
+ * resolves silently back to idle — it is the user's decision, not an error
+ * (R-Ex-3).
+ */
+type ExportState =
+  | { status: "idle" }
+  | { status: "open" }
+  | { status: "working" }
+  | { status: "error"; message: string };
+
 function BlueprintView({
   blueprint,
   enriched,
@@ -166,6 +198,7 @@ function BlueprintView({
   overlay,
   endpoint,
   applicationId,
+  savePort,
   onGenerateAccepted,
   onSaved,
   onReload,
@@ -180,12 +213,16 @@ function BlueprintView({
   overlay: Overlay;
   endpoint: ResponseBlueprintPanelProps["endpoint"];
   applicationId: string;
+  savePort: SaveDownloadPort;
   onGenerateAccepted: (key: string) => void;
   onSaved: (key: string, content: string) => void;
   onReload: () => void;
 }) {
   const aiTailored = blueprint.generatedBy === "ai" || enriched;
   const [enrich, setEnrich] = useState<EnrichState>({ status: "idle" });
+  const [exportState, setExportState] = useState<ExportState>({
+    status: "idle",
+  });
 
   function deepAnalyse() {
     setEnrich({ status: "working" });
@@ -210,6 +247,23 @@ function BlueprintView({
       });
   }
 
+  /** One POST per press (R-Ex-1); a cancelled dialog stays silent (R-Ex-3). */
+  function exportPackage(format: ExportPackageFormat) {
+    setExportState({ status: "working" });
+    endpoint
+      .exportWorkspacePackage(applicationId, format)
+      .then((result) => saveDownload(savePort, result))
+      .then(() => setExportState({ status: "idle" }))
+      .catch((error: unknown) => {
+        setExportState({
+          status: "error",
+          message: describeExportError(error),
+        });
+      });
+  }
+
+  const exporting = exportState.status === "working";
+
   return (
     <Panel
       title="Response blueprint"
@@ -223,6 +277,40 @@ function BlueprintView({
           >
             {enrich.status === "working" ? "Analysing…" : "Deep-analyse"}
           </button>
+          <button
+            type="button"
+            onClick={() =>
+              setExportState(
+                exportState.status === "open"
+                  ? { status: "idle" }
+                  : { status: "open" },
+              )
+            }
+            disabled={exporting}
+            className="rounded border border-border px-2 py-1 text-xs text-foreground disabled:opacity-50"
+          >
+            {exporting ? "Exporting…" : "Export"}
+          </button>
+          {exportState.status === "open" && (
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => exportPackage("pdf")}
+                disabled={exporting}
+                className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground disabled:opacity-50"
+              >
+                PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => exportPackage("docx")}
+                disabled={exporting}
+                className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground disabled:opacity-50"
+              >
+                DOCX
+              </button>
+            </span>
+          )}
           <ConfidenceBadge confidence={blueprint.confidence} />
           <span className="text-xs text-muted-foreground">
             {aiTailored ? "AI-tailored" : "Standard plan"}
@@ -233,6 +321,11 @@ function BlueprintView({
       {enrich.status === "error" && (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {enrich.message}
+        </p>
+      )}
+      {exportState.status === "error" && (
+        <p role="alert" className="mb-3 text-sm text-destructive">
+          {exportState.message}
         </p>
       )}
       {blueprint.industry?.name && (
@@ -402,6 +495,27 @@ function describeEnrichReason(reason: string | undefined): string {
     default:
       return "Could not deep-analyse this application right now.";
   }
+}
+
+/**
+ * Export failure copy (Slice 6, R-Ex-4/R-Ex-5). The 409 "nothing generated
+ * yet" gate is keyed off the status — the route's `error` string is never
+ * shown verbatim. 5xx / network / local write failures get the fixed
+ * retryable copy; every other ApiError keeps the shared describe copy.
+ */
+function describeExportError(error: unknown): string {
+  if (error instanceof ApiError && error.status === 409) {
+    return "Generate your proposal documents before exporting.";
+  }
+  if (
+    !(error instanceof ApiError) ||
+    error.kind === "server" ||
+    error.kind === "offline" ||
+    error.kind === "timeout"
+  ) {
+    return "Could not export right now.";
+  }
+  return describeApiError(error, "the export").message;
 }
 
 function SubmissionBox({

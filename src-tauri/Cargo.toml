@@ -41,6 +41,12 @@ tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 # capability-scope.test.ts pins this: TLS must stay enabled or every request
 # to the production API fails again with "Could not reach Tenders-SA".
 tauri-plugin-http = { version = "2", default-features = false, features = ["rustls-tls", "http2", "charset"] }
+# Export save path (Slice 6: desktop-workspace-export-response-package R-Ex-3).
+# Least privilege: only `dialog:allow-save` and `fs:allow-write-file` are
+# granted in capabilities/default.json; the dialog plugin extends the fs scope
+# at runtime to exactly the user-picked path, so no static fs scope is granted.
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 
 [dev-dependencies]
 rusqlite = { version = "0.32", features = ["bundled"] }

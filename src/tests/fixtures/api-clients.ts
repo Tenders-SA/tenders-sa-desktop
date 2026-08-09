@@ -53,6 +53,7 @@ export function stubApiClients(
       generateResponseDocument: idle(),
       saveResponseDocument: idle(),
       enrichBlueprint: idle(),
+      exportWorkspacePackage: idle(),
     },
     company: {
       getProfile: idle(),

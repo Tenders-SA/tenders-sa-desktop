@@ -87,6 +87,42 @@ export interface ParentRequestOptions<T extends z.ZodTypeAny> {
   unauthenticatedIsExpected?: boolean;
 }
 
+/**
+ * A binary-download request (Slice 6: workspace-export).
+ *
+ * The response body is not JSON, so there is no `schema`: on success the
+ * caller receives raw bytes plus the filename parsed from
+ * `Content-Disposition` (the parent's suggested name) and the content type.
+ * Non-2xx responses keep the exact JSON error mapping of `request()` --
+ * the parent answers those in `{error, message}` JSON even on binary routes.
+ */
+export interface DownloadOptions {
+  method: HttpMethod;
+  path: string;
+  query?: Record<string, string | number | undefined>;
+  /** Serialised as JSON. Omit for GET/DELETE. */
+  body?: unknown;
+  /** Extra headers, e.g. Authorization and x-csrf-token. */
+  headers?: Record<string, string>;
+  /**
+   * Used when the response carries no `Content-Disposition` (the parent's
+   * suggested filename); the caller supplies a route-appropriate default.
+   */
+  filenameFallback?: string;
+  signal?: AbortSignal;
+  policy?: Partial<RequestPolicy>;
+  /** Same semantics as `ParentRequestOptions.unauthenticatedIsExpected`. */
+  unauthenticatedIsExpected?: boolean;
+}
+
+export interface DownloadResult {
+  bytes: Uint8Array;
+  /** From `Content-Disposition` (sanitised), else `filenameFallback`. */
+  filename: string;
+  /** `Content-Type` as sent, defaulting to `application/octet-stream`. */
+  contentType: string;
+}
+
 const DEFAULT_POLICY: RequestPolicy = {
   timeoutMs: 10_000,
   retry: "safe-idempotent",
@@ -302,6 +338,137 @@ export class ApiTransport {
     }
   }
 
+  /**
+   * Issues a binary-download request (Slice 6: `assist/workspace-export`).
+   *
+   * Shares the retry, timeout, cancellation, error-normalisation and
+   * session-loss policy with `request()` rather than reimplementing it
+   * (REQ-A2) -- only the response-parsing rule differs: a 2xx body is raw
+   * bytes, never JSON. A download is a POST in practice, so `retry`
+   * defaults to `"never"` and a caller must override explicitly.
+   */
+  async download(options: DownloadOptions): Promise<DownloadResult> {
+    try {
+      return await this.performDownload(options);
+    } catch (error) {
+      // One choke point for session loss, exactly as in `request()`: any 401
+      // on an authenticated route means the stored token is no longer usable.
+      if (
+        error instanceof ApiError &&
+        error.kind === "unauthorized" &&
+        !options.unauthenticatedIsExpected
+      ) {
+        this.onUnauthorized?.(options.path);
+      }
+      throw error;
+    }
+  }
+
+  private async performDownload(
+    options: DownloadOptions,
+  ): Promise<DownloadResult> {
+    const policy: RequestPolicy = {
+      ...this.policy,
+      retry: "never",
+      ...options.policy,
+    };
+    const url = buildUrl(this.baseUrl, options.path, options.query);
+    const maxAttempts =
+      policy.retry === "never" ? 1 : Math.max(1, policy.maxRetries + 1);
+
+    let lastError: ApiError | undefined;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await this.attemptDownload(url, options, policy);
+      } catch (error) {
+        if (!(error instanceof ApiError)) {
+          throw error;
+        }
+        if (error.kind === "cancelled" || !error.isTransient) {
+          throw error;
+        }
+        lastError = error;
+        if (attempt < maxAttempts) {
+          await this.sleep(backoffMs(attempt));
+        }
+      }
+    }
+    throw lastError ?? malformedResponseError();
+  }
+
+  private async attemptDownload(
+    url: string,
+    options: DownloadOptions,
+    policy: RequestPolicy,
+  ): Promise<DownloadResult> {
+    if (options.signal?.aborted) {
+      throw cancelledError();
+    }
+
+    const controller = new AbortController();
+    const onCallerAbort = () => controller.abort();
+    options.signal?.addEventListener("abort", onCallerAbort, { once: true });
+
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, policy.timeoutMs);
+
+    try {
+      const headers: Record<string, string> = {
+        Accept: "application/json",
+        ...options.headers,
+      };
+      if (options.body !== undefined) {
+        headers["Content-Type"] = "application/json";
+      }
+
+      const response = await this.fetchImpl(url, {
+        method: options.method,
+        headers,
+        body:
+          options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        // Error responses are JSON even on binary routes.
+        const raw: unknown = await response.json().catch(() => undefined);
+        const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
+        const parsed = parentErrorSchema.safeParse(raw);
+        throw parsed.success
+          ? fromParentError(response.status, parsed.data, retryAfter)
+          : fromUnparseableResponse(response.status);
+      }
+
+      const buffer = await response.arrayBuffer();
+      return {
+        bytes: new Uint8Array(buffer),
+        filename: sanitiseFilename(
+          filenameFromDisposition(
+            response.headers.get("Content-Disposition"),
+          ) ??
+            options.filenameFallback ??
+            "download.bin",
+        ),
+        contentType:
+          response.headers.get("Content-Type") ?? "application/octet-stream",
+      };
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      if (isAbortError(error)) {
+        throw timedOut ? timeoutError(policy.timeoutMs) : cancelledError();
+      }
+      throw offlineError();
+    } finally {
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", onCallerAbort);
+    }
+  }
+
   private async attempt<T extends z.ZodTypeAny>(
     url: string,
     schema: T,
@@ -374,4 +541,34 @@ function isAbortError(error: unknown): boolean {
     "name" in error &&
     (error as { name?: string }).name === "AbortError"
   );
+}
+
+/**
+ * Extracts the suggested filename from a `Content-Disposition` header,
+ * e.g. `attachment; filename="proposal-ABC-123.pdf"`. Accepts both the
+ * quoted and bare forms; absent → undefined (caller's fallback applies).
+ */
+function filenameFromDisposition(value: string | null): string | undefined {
+  if (!value) return undefined;
+  const match =
+    value.match(/filename="([^"]+)"/) ?? value.match(/filename=([^;]+)/);
+  return match?.[1]?.trim() || undefined;
+}
+
+/**
+ * Keeps a server-suggested filename safe as a Windows/Unix file name. The
+ * parent sanitises its own base (`[^\w.-]` → `_`), but a filename from any
+ * route is still checked here -- defence in depth, never a path separator.
+ */
+function sanitiseFilename(name: string): string {
+  const clean = name
+    .replace(/[\\/:*?"<>|]/g, "_")
+    // Control characters are stripped without a control-char regex (lint).
+    .split("")
+    .filter((char) => char.charCodeAt(0) >= 32)
+    .join("")
+    .trim();
+  // A "name" with no alphanumeric character (e.g. "//" -> "__") is not a
+  // usable file name; fall back rather than save an anonymous file.
+  return clean.match(/[a-z0-9]/i) ? clean : "download.bin";
 }

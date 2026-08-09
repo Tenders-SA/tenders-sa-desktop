@@ -136,11 +136,35 @@ describe("http plugin scope", () => {
     }
   });
 
-  it("grants no filesystem, shell, or opener capability alongside it", () => {
+  it("grants fs only as the dialog-scoped write-file command (Slice 6)", () => {
+    // Slice 6 export needs to write the downloaded package, and only to the
+    // path the user picks: the dialog plugin extends the fs scope at runtime
+    // to exactly that path, so the capability holds the write command with
+    // no static fs scope at all. Any other fs identifier (reads, recursion,
+    // scope grants) would widen this silently — each must state its reason.
     const identifiers = capability.permissions.map((p) =>
       typeof p === "string" ? p : p.identifier,
     );
-    for (const forbidden of ["fs:", "shell:", "opener:"]) {
+    const fsIds = identifiers.filter((id) => id.startsWith("fs:"));
+    expect(fsIds).toEqual(["fs:allow-write-file"]);
+  });
+
+  it("grants dialog only as allow-save (Slice 6)", () => {
+    // The export feature needs exactly one dialog: save. `dialog:default`
+    // would also grant open/message/confirm/ask — none of which this app
+    // uses — so the narrow command is granted instead.
+    const identifiers = capability.permissions.map((p) =>
+      typeof p === "string" ? p : p.identifier,
+    );
+    const dialogIds = identifiers.filter((id) => id.startsWith("dialog:"));
+    expect(dialogIds).toEqual(["dialog:allow-save"]);
+  });
+
+  it("grants no shell or opener capability alongside it", () => {
+    const identifiers = capability.permissions.map((p) =>
+      typeof p === "string" ? p : p.identifier,
+    );
+    for (const forbidden of ["shell:", "opener:"]) {
       expect(identifiers.some((id) => id.startsWith(forbidden))).toBe(false);
     }
   });
