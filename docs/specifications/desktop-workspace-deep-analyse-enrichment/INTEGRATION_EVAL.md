@@ -1,6 +1,6 @@
 # Desktop Workspace — Deep-Analyse Enrichment — INTEGRATION_EVAL (Slice 5)
 
-- **Status**: T1-T3 verified; T4 pending human sign-off
+- **Status**: complete — T1–T4 verified
 - **Spec**: `desktop-workspace-deep-analyse-enrichment/` (requirements
   R-E-1..R-E-5, design, tasks)
 
@@ -12,7 +12,7 @@
 | Panel tests | T2 | `vitest module-screens` — 6 new tests (press → "Analysing…" → reload; isLoading; disabled single-flight; failure alert; retry re-press works; pass with untouched blueprint) | 2026-08-09 |
 | Full suite + static gates | T3 | `vitest` (all) 611/611 · 35 files; `tsc --noEmit` 0 errors; `eslint .` 0 errors | 2026-08-09 |
 | Capability/parity | T3 | `vitest endpoint-parity` — pins the `assist/enrich-blueprint` literal; fixtures stub gains `enrichBlueprint` | 2026-08-09 |
-| Live human verification | T4 | user live-verifies Deep-analyse → AI-tailored flip, 402 copy, failing-pass copy | — |
+| Live human verification | T4 | User confirmed the Analysing single-flight state, AI-tailored result, Professional-plan copy, and failing-pass fallback all work. | 2026-08-09 |
 
 ## Live contract evidence (2026-08-08)
 

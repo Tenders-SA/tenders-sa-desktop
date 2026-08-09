@@ -45,17 +45,17 @@ reference requirements R-E-1..R-E-5 and the live-verified contracts in `design.m
 
 ## T4 — Live verification (human)
 
-- **Pre-check**: T3 merged; app running via `pnpm tauri dev`.
+- **Pre-check**: T3 merged; app running via `pnpm tauri dev`. — done
 - **Work**: user opens a live DRAFT workspace with a completed analysis and
   confirms: Deep-analyse → "Analysing…" → the plan flips to "AI-tailored" with
   tender-specific sections merged; a deliberate 402 path (non-Professional
   account) shows the Professional-plan copy; a slow/failing pass shows the
-  `ai_unavailable` copy with the standard plan intact.
-- **Verification**: user sign-off; record in `INTEGRATION_EVAL.md`.
+  `ai_unavailable` copy with the standard plan intact. — done
+- **Verification**: user sign-off recorded in `INTEGRATION_EVAL.md`. — done
 
 ## Status (2026-08-09)
 
 - T1: DONE.
 - T2: DONE.
 - T3: DONE.
-- T4: OPEN — awaiting user live verification (`pnpm tauri dev`).
+- T4: DONE (2026-08-09) — user confirmed the entire live-verification task passes.
