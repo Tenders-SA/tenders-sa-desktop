@@ -10,6 +10,7 @@ import {
   fromErrorEnvelope,
   fromParentError,
   fromUnparseableResponse,
+  invalidRequestError,
   malformedResponseError,
   offlineError,
   timeoutError,
@@ -88,17 +89,45 @@ export interface ParentRequestOptions<T extends z.ZodTypeAny> {
 }
 
 /**
- * A binary-download request (Slice 6: workspace-export).
+ * The two origins that may serve tender document bytes (Slice 7,
+ * R-D2). The parent's `download-url` route resolves documents to either
+ * the R2 docs domain or the Cloudflare Worker's `/api/document` path.
+ *
+ * This must mirror `src-tauri/capabilities/default.json`'s http
+ * allow-list: the capability is the real security boundary, this guard is
+ * defence in depth for tests and non-Tauri runtimes. Both are pinned by
+ * tests (`capability-scope.test.ts` reads the JSON, transport tests use
+ * this constant).
+ */
+export const ALLOWED_DOCUMENT_ORIGINS: readonly string[] = [
+  "https://docs.tenders-sa.org",
+  "https://etenders-api.tenders-sa.org",
+];
+
+/**
+ * A binary-download request (Slice 6: workspace-export; Slice 7: tender
+ * documents).
  *
  * The response body is not JSON, so there is no `schema`: on success the
  * caller receives raw bytes plus the filename parsed from
  * `Content-Disposition` (the parent's suggested name) and the content type.
  * Non-2xx responses keep the exact JSON error mapping of `request()` --
  * the parent answers those in `{error, message}` JSON even on binary routes.
+ *
+ * Exactly one of `path` and `url` must be set: `path` is a parent-API route
+ * (auth headers, session-loss applies), `url` is an absolute document URL
+ * on one of {@link ALLOWED_DOCUMENT_ORIGINS} (keyless, no session-loss).
  */
 export interface DownloadOptions {
   method: HttpMethod;
-  path: string;
+  /** Parent-API route, e.g. `/api/v1/.../workspace-export`. Omit when `url` is set. */
+  path?: string;
+  /**
+   * Absolute external URL on an allowed document origin, e.g.
+   * `https://docs.tenders-sa.org/docs/t1/file.pdf`. Omit when `path` is
+   * set.
+   */
+  url?: string;
   query?: Record<string, string | number | undefined>;
   /** Serialised as JSON. Omit for GET/DELETE. */
   body?: unknown;
@@ -353,10 +382,13 @@ export class ApiTransport {
     } catch (error) {
       // One choke point for session loss, exactly as in `request()`: any 401
       // on an authenticated route means the stored token is no longer usable.
+      // Scoped to `path` requests: an external document fetch is keyless, so
+      // a 401 from a docs origin is a server-side signal, not a session one.
       if (
         error instanceof ApiError &&
         error.kind === "unauthorized" &&
-        !options.unauthenticatedIsExpected
+        !options.unauthenticatedIsExpected &&
+        options.path
       ) {
         this.onUnauthorized?.(options.path);
       }
@@ -372,7 +404,7 @@ export class ApiTransport {
       retry: "never",
       ...options.policy,
     };
-    const url = buildUrl(this.baseUrl, options.path, options.query);
+    const url = this.resolveDownloadUrl(options);
     const maxAttempts =
       policy.retry === "never" ? 1 : Math.max(1, policy.maxRetries + 1);
 
@@ -531,6 +563,37 @@ export class ApiTransport {
       clearTimeout(timer);
       callerSignal?.removeEventListener("abort", onCallerAbort);
     }
+  }
+
+  /**
+   * Resolves the request URL for a download: an absolute document URL when
+   * `options.url` is set, else the base-URL build for a parent-API `path`.
+   *
+   * The absolute form is validated against {@link ALLOWED_DOCUMENT_ORIGINS}
+   * before any fetch: the capability layer is the real boundary, but an
+   * invalid URL must fail fast as a contract error instead of leaking a
+   * request to an unvetted host in any runtime.
+   */
+  private resolveDownloadUrl(options: DownloadOptions): string {
+    if (options.url !== undefined) {
+      let parsed: URL;
+      try {
+        parsed = new URL(options.url);
+      } catch {
+        throw invalidRequestError();
+      }
+      if (
+        parsed.protocol !== "https:" ||
+        !ALLOWED_DOCUMENT_ORIGINS.includes(parsed.origin)
+      ) {
+        throw invalidRequestError();
+      }
+      return parsed.toString();
+    }
+    if (options.path !== undefined) {
+      return buildUrl(this.baseUrl, options.path, options.query);
+    }
+    throw invalidRequestError();
   }
 }
 

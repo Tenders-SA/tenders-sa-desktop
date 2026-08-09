@@ -948,6 +948,156 @@ describe("documents endpoint", () => {
   });
 });
 
+describe("documents endpoint — tender document download (Slice 7)", () => {
+  const DOCS_URL = "https://docs.tenders-sa.org/docs/t1/Advert.pdf";
+
+  /**
+   * Two-phase network: first the JSON `download-url` resolution, then the
+   * binary fetch of the resolved URL.
+   */
+  function resolvingFetch(
+    resolve: unknown,
+    binary: { bytes?: number[]; headers?: Record<string, string> } = {},
+  ) {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) return jsonResponse(resolve);
+      return new Response(new Uint8Array(binary.bytes ?? [1, 2, 3]), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          ...binary.headers,
+        },
+      });
+    });
+    return fetchImpl as typeof fetch & {
+      mock: ReturnType<typeof vi.fn>["mock"];
+    };
+  }
+
+  function makeEndpoint(fetchImpl: typeof fetch): DocumentsEndpoint {
+    return new DocumentsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl,
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+  }
+
+  it("resolves via download-url?requireR2=1 then fetches the absolute URL keyless", async () => {
+    const fetchImpl = resolvingFetch({
+      downloadUrl: DOCS_URL,
+      fileName: "Advert.pdf",
+      source: "r2",
+    });
+    const endpoint = makeEndpoint(fetchImpl);
+
+    const result = await endpoint.downloadTenderDocument("d1");
+
+    const [resolveUrl, resolveInit] = fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(resolveUrl).toContain("/api/v1/documents/d1/download-url");
+    expect(resolveUrl).toContain("requireR2=1");
+    expect(resolveInit.method).toBe("GET");
+    expect((resolveInit.headers as Record<string, string>).Authorization).toBe(
+      "Bearer tok",
+    );
+
+    const [fetchUrl, fetchInit] = fetchImpl.mock.calls[1] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(fetchUrl).toBe(DOCS_URL);
+    expect(fetchInit.method).toBe("GET");
+    expect(
+      (fetchInit.headers as Record<string, string>).Authorization,
+    ).toBeUndefined();
+    expect(result.bytes).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  it("prefers Content-Disposition over the payload fileName", async () => {
+    const fetchImpl = resolvingFetch(
+      { downloadUrl: DOCS_URL, fileName: "payload-name.pdf" },
+      {
+        headers: {
+          "Content-Disposition": 'attachment; filename="CD-name.pdf"',
+        },
+      },
+    );
+    const endpoint = makeEndpoint(fetchImpl);
+
+    const result = await endpoint.downloadTenderDocument("d1");
+    expect(result.filename).toBe("CD-name.pdf");
+  });
+
+  it("falls back to the payload fileName when no disposition arrives", async () => {
+    const fetchImpl = resolvingFetch({
+      downloadUrl: DOCS_URL,
+      fileName: "Advert.pdf",
+    });
+    const endpoint = makeEndpoint(fetchImpl);
+
+    const result = await endpoint.downloadTenderDocument("d1");
+    expect(result.filename).toBe("Advert.pdf");
+  });
+
+  it("derives an extension from the content type as a last resort", async () => {
+    const fetchImpl = resolvingFetch({ downloadUrl: DOCS_URL });
+    const endpoint = makeEndpoint(fetchImpl);
+
+    const result = await endpoint.downloadTenderDocument("d1");
+    expect(result.filename).toBe("document-d1.pdf");
+  });
+
+  it("surfaces the entitlement 403 from the resolution route", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse(
+        {
+          error:
+            "Application assistance entitlement required to download tender documents",
+          code: "DOCUMENT_DOWNLOAD_ENTITLEMENT_REQUIRED",
+        },
+        403,
+      ),
+    ) as unknown as typeof fetch;
+
+    await expect(
+      makeEndpoint(fetchImpl).downloadTenderDocument("d1"),
+    ).rejects.toMatchObject({
+      kind: "forbidden",
+      code: "DOCUMENT_DOWNLOAD_ENTITLEMENT_REQUIRED",
+    });
+  });
+
+  it("maps a missing document as not-found", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ error: "Document not found" }, 404),
+    ) as unknown as typeof fetch;
+
+    await expect(
+      makeEndpoint(fetchImpl).downloadTenderDocument("d1"),
+    ).rejects.toMatchObject({ kind: "not-found" });
+  });
+
+  it("does not retry either phase of the download", async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      throw new TypeError("Failed to fetch");
+    }) as unknown as typeof fetch;
+
+    await expect(
+      makeEndpoint(fetchImpl).downloadTenderDocument("d1"),
+    ).rejects.toMatchObject({ kind: "offline" });
+    expect(calls).toBe(1);
+  });
+});
+
 describe("notifications endpoint", () => {
   const body = {
     notifications: [

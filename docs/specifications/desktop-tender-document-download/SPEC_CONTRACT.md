@@ -1,8 +1,10 @@
 # Desktop — Tender Document Download — SPEC_CONTRACT (Slice 7)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-09
 - **Scope**: Slice 7 — tender document download (R-D1..R-D8).
+- **Approved by**: user (in-session directive, 2026-08-09)
+- **Approval date**: 2026-08-09
 
 ## Contract checklist (mirrors tasks.md)
 

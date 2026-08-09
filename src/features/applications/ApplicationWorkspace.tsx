@@ -22,10 +22,24 @@ import { ComplianceGapsPanel } from "./workspace/ComplianceGapsPanel";
 import { ResearchPanel } from "./workspace/ResearchPanel";
 import { AdditionalInfoPanel } from "./workspace/AdditionalInfoPanel";
 import { ResponseBlueprintPanel } from "./workspace/ResponseBlueprintPanel";
+import { DocumentDownloadButton } from "../tenders/DocumentDownloadButton";
+import type { DownloadResult } from "../../services/api/transport";
+import type { SaveDownloadPort } from "../../services/storage/save-download";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
   applicationId: string;
+  /**
+   * Tender-document download client (Slice 7, R-D5). Optional so the screen
+   * stays testable without it; the route passes `clients.documents`.
+   */
+  documents?: {
+    downloadTenderDocument: (
+      id: string,
+      signal?: AbortSignal,
+    ) => Promise<DownloadResult>;
+  };
+  savePort?: SaveDownloadPort;
 }
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
@@ -52,6 +66,8 @@ const ZAR = new Intl.NumberFormat("en-ZA", {
 export function ApplicationWorkspace({
   endpoint,
   applicationId,
+  documents,
+  savePort,
 }: ApplicationWorkspaceProps) {
   const state = useAsync(
     (signal) => endpoint.get(applicationId, signal),
@@ -88,6 +104,8 @@ export function ApplicationWorkspace({
               applicationId={applicationId}
               cockpitState={cockpitState}
               onDetailReload={state.reload}
+              documents={documents}
+              savePort={savePort}
             />
           )}
         </AsyncSection>
@@ -102,12 +120,16 @@ function WorkspaceBody({
   applicationId,
   cockpitState,
   onDetailReload,
+  documents,
+  savePort,
 }: {
   application: ApplicationDetail;
   endpoint: ApplicationsEndpoint;
   applicationId: string;
   cockpitState: AsyncState<CockpitPayload>;
   onDetailReload: () => void;
+  documents?: ApplicationWorkspaceProps["documents"];
+  savePort?: SaveDownloadPort;
 }) {
   const { tender, company } = application;
 
@@ -276,26 +298,34 @@ function WorkspaceBody({
           }`}
         >
           {tender.documents && tender.documents.length > 0 ? (
-            <>
-              <ul className="flex flex-col gap-1">
-                {tender.documents.map((document) => (
-                  <li
-                    key={document.id}
-                    className="text-sm text-muted-foreground"
-                  >
-                    {document.fileName ?? "Unnamed document"}
-                    {document.documentCategory
-                      ? ` · ${document.documentCategory}`
-                      : ""}
-                  </li>
-                ))}
-              </ul>
-              {/* INT-4: downloads go through the parent's R2 download-url
-                  route. Not wired here, and saying so beats a dead control. */}
-              <p className="mt-2 text-sm text-muted-foreground">
-                Opening tender documents is not available in this build.
-              </p>
-            </>
+            <ul className="flex flex-col gap-2">
+              {tender.documents.map((document) => (
+                <li key={document.id} className="text-sm">
+                  {documents ? (
+                    <DocumentDownloadButton
+                      endpoint={documents}
+                      documentId={document.id}
+                      documentName={[
+                        document.fileName ?? "Unnamed document",
+                        document.documentCategory,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                      savePort={savePort}
+                    />
+                  ) : (
+                    <>
+                      <span className="text-muted-foreground">
+                        {document.fileName ?? "Unnamed document"}
+                      </span>
+                      {document.documentCategory
+                        ? ` · ${document.documentCategory}`
+                        : ""}
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
           ) : (
             <p className="text-sm text-muted-foreground">
               No documents are attached to this tender.

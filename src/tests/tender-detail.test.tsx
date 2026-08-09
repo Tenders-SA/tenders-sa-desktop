@@ -11,12 +11,15 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TenderDetail } from "../features/tenders/TenderDetail";
 import { ApiError } from "../services/api/errors";
 import type {
   TenderDetail as TenderDetailData,
   TendersEndpoint,
 } from "../services/api/endpoints/tenders";
+import type { DownloadResult } from "../services/api/transport";
+import type { SaveDownloadPort } from "../services/storage/save-download";
 
 const tender: TenderDetailData = {
   id: "t1",
@@ -254,5 +257,187 @@ describe("TenderDetail", () => {
     unmount();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("TenderDetail — document downloads (Slice 7)", () => {
+  const withDocuments: TenderDetailData = {
+    ...tender,
+    documentStats: { total: 2, processed: 2, pending: 0, failed: 0 },
+    documents: [
+      { id: "d1", fileName: "Advert.pdf" },
+      { id: "d2", fileName: "SBD4.docx", processingStatus: "done" },
+    ],
+  };
+
+  const pdfBytes = new Uint8Array([37, 80, 68, 70, 1, 2, 3]);
+
+  function savePort(
+    overrides: Partial<SaveDownloadPort> = {},
+  ): SaveDownloadPort {
+    return {
+      saveDialog: vi.fn(async () => "C:\\Users\\you\\Downloads\\Advert.pdf"),
+      writeBytes: vi.fn(async () => {}),
+      ...overrides,
+    };
+  }
+
+  function documentsClient(rejectWith?: unknown) {
+    return {
+      downloadTenderDocument: rejectWith
+        ? vi.fn(async () => {
+            throw rejectWith;
+          })
+        : vi.fn(async () => ({
+            bytes: pdfBytes,
+            filename: "Advert.pdf",
+            contentType: "application/pdf",
+          })),
+    };
+  }
+
+  it("offers a Download button for every listed document", async () => {
+    render(
+      <TenderDetail
+        endpoint={endpointReturning(withDocuments)}
+        tenderId="t1"
+        documents={documentsClient()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText("2 documents")).toBeVisible());
+    expect(screen.getAllByRole("button", { name: "Download" })).toHaveLength(2);
+    expect(screen.getByText("Advert.pdf")).toBeVisible();
+    expect(screen.getByText("SBD4.docx")).toBeVisible();
+  });
+
+  it("saves the downloaded bytes to the user-picked path", async () => {
+    const port = savePort();
+    render(
+      <TenderDetail
+        endpoint={endpointReturning(withDocuments)}
+        tenderId="t1"
+        documents={documentsClient()}
+        savePort={port}
+      />,
+    );
+    const [download] = await screen.findAllByRole("button", {
+      name: "Download",
+    });
+
+    await userEvent.click(download);
+
+    await waitFor(() =>
+      expect(port.writeBytes).toHaveBeenCalledWith(
+        "C:\\Users\\you\\Downloads\\Advert.pdf",
+        pdfBytes,
+      ),
+    );
+    // Back to idle — no toast, the file is where the user pointed it.
+    expect(
+      (await screen.findAllByRole("button", { name: "Download" }))[0],
+    ).toBeEnabled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("disables the button while the download is in flight", async () => {
+    let resolveDownload: (value: DownloadResult) => void = () => {};
+    render(
+      <TenderDetail
+        endpoint={endpointReturning(withDocuments)}
+        tenderId="t1"
+        documents={{
+          downloadTenderDocument: vi.fn(
+            (): Promise<DownloadResult> =>
+              new Promise((resolve) => {
+                resolveDownload = resolve;
+              }),
+          ),
+        }}
+        savePort={savePort()}
+      />,
+    );
+    const [download] = await screen.findAllByRole("button", {
+      name: "Download",
+    });
+
+    await userEvent.click(download);
+    expect(screen.getByRole("button", { name: "Downloading…" })).toBeDisabled();
+
+    resolveDownload({
+      bytes: pdfBytes,
+      filename: "Advert.pdf",
+      contentType: "application/pdf",
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Downloading…" })).toBeNull(),
+    );
+  });
+
+  it("stays silent when the user cancels the save dialog", async () => {
+    const port = savePort({ saveDialog: vi.fn(async () => null) });
+    render(
+      <TenderDetail
+        endpoint={endpointReturning(withDocuments)}
+        tenderId="t1"
+        documents={documentsClient()}
+        savePort={port}
+      />,
+    );
+    const [download] = await screen.findAllByRole("button", {
+      name: "Download",
+    });
+    await userEvent.click(download);
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: "Download" })[0],
+      ).toBeEnabled(),
+    );
+    expect(port.writeBytes).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("explains the entitlement 403 as a plan limit, not a failure", async () => {
+    render(
+      <TenderDetail
+        endpoint={endpointReturning(withDocuments)}
+        tenderId="t1"
+        documents={documentsClient(
+          new ApiError({
+            kind: "forbidden",
+            status: 403,
+            message: "entitlement required",
+          }),
+        )}
+      />,
+    );
+    const [download] = await screen.findAllByRole("button", {
+      name: "Download",
+    });
+    await userEvent.click(download);
+
+    expect(
+      await screen.findByText(/your plan does not include this document/i),
+    ).toBeVisible();
+  });
+
+  it("shows the retryable copy for a server failure", async () => {
+    render(
+      <TenderDetail
+        endpoint={endpointReturning(withDocuments)}
+        tenderId="t1"
+        documents={documentsClient(
+          new ApiError({ kind: "server", status: 500, message: "boom" }),
+        )}
+      />,
+    );
+    const [download] = await screen.findAllByRole("button", {
+      name: "Download",
+    });
+    await userEvent.click(download);
+
+    expect(
+      await screen.findByText(/could not load this document right now/i),
+    ).toBeVisible();
   });
 });

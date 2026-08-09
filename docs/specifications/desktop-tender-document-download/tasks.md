@@ -5,12 +5,12 @@
 
 ## Status (2026-08-09)
 
-- T1: OPEN.
-- T2: OPEN.
-- T3: OPEN.
-- T4: OPEN.
-- T5: OPEN.
-- T6: OPEN.
+- T1: DONE — transport `DownloadOptions.url` + origin guard + keyless fetch (10 new tests).
+- T2: DONE — `downloadTenderDocument` + filename precedence (7 new tests).
+- T3: DONE — capability allow-list extended; `capability-scope.test.ts` updated (18 green).
+- T4: DONE — `DocumentDownloadButton` mounted in both screens; routes wired (22 tender-detail + 4 workspace download tests).
+- T5: DONE — fixtures + parity pins; full gates zero errors; docs synced; committed and pushed.
+- T6: OPEN — human verification.
 
 ## Tasks
 

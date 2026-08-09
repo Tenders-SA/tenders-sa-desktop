@@ -56,6 +56,7 @@ function TenderDetailRoute({ clients }: { clients: ApiClients }) {
       endpoint={clients.tenders}
       tenderId={tenderId}
       onBack={() => navigate("/tenders")}
+      documents={clients.documents}
       actions={
         <TenderActions
           tenderId={tenderId}
@@ -85,6 +86,7 @@ function ApplicationWorkspaceRoute({ clients }: { clients: ApiClients }) {
     <ApplicationWorkspace
       endpoint={clients.applications}
       applicationId={applicationId}
+      documents={clients.documents}
     />
   );
 }

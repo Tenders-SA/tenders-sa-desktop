@@ -22,7 +22,9 @@
  */
 
 import { z } from "zod";
+import { ApiError } from "../errors";
 import { AuthenticatedEndpoint } from "./base";
+import type { DownloadResult } from "../transport";
 
 /** Server-computed. Never derived locally — see the note above. */
 const expiryStatusSchema = z.enum(["valid", "expiring", "expired"]);
@@ -94,6 +96,9 @@ const downloadUrlSchema = z
     url: z.string().optional(),
     downloadUrl: z.string().optional(),
     data: z.object({ url: z.string() }).optional(),
+    /** The parent's own suggested name — the filename fallback (R-D3). */
+    fileName: z.string().nullable().optional(),
+    source: z.string().optional(),
   })
   .passthrough();
 
@@ -152,15 +157,64 @@ export class DocumentsEndpoint extends AuthenticatedEndpoint {
     documentId: string,
     signal?: AbortSignal,
   ): Promise<string | undefined> {
+    const resolved = await this.resolveDownload(documentId, signal);
+    return resolved.url;
+  }
+
+  /**
+   * Resolves a document through the parent route and downloads the bytes
+   * from the serving origin (Slice 7, R-D1/R-D2).
+   *
+   * One resolution + one fetch per press, `retry: "never"` on both, and a
+   * generous timeout — documents are large and a cold R2 miss is slow
+   * (R-D6). The external fetch is keyless and never fires session loss;
+   * the transport rejects any URL outside the document origins (R-D2).
+   *
+   * Filename precedence (R-D3): Content-Disposition (transport) > the
+   * parent's `fileName` > `document-<id>` with an extension derived from
+   * the content type.
+   */
+  async downloadTenderDocument(
+    documentId: string,
+    signal?: AbortSignal,
+  ): Promise<DownloadResult> {
+    const { url, fileName } = await this.resolveDownload(documentId, signal);
+    const result = await this.transport.download({
+      method: "GET",
+      url,
+      filenameFallback: fileName ?? `document-${documentId}`,
+      policy: { retry: "never", timeoutMs: 120_000 },
+      signal,
+    });
+    return {
+      ...result,
+      filename: withContentTypeExtension(result.filename, result.contentType),
+    };
+  }
+
+  private async resolveDownload(
+    documentId: string,
+    signal?: AbortSignal,
+  ): Promise<{ url: string; fileName: string | null }> {
     const body = await this.transport.request({
       method: "GET",
       path: `/api/v1/documents/${encodeURIComponent(documentId)}/download-url`,
       query: { requireR2: 1 },
       schema: downloadUrlSchema,
       headers: await this.authHeaders(),
+      // One resolution per press (R-D6): a retried resolution is a second
+      // entitlement check for nothing.
+      policy: { retry: "never" },
       signal,
     });
-    return body.url ?? body.downloadUrl ?? body.data?.url;
+    const url = body.url ?? body.downloadUrl ?? body.data?.url;
+    if (!url) {
+      throw new ApiError({
+        kind: "malformed",
+        message: "The download-url route returned no URL",
+      });
+    }
+    return { url, fileName: body.fileName ?? null };
   }
 }
 
@@ -198,4 +252,25 @@ export function describeExpiry(document: CompanyDocument): string | undefined {
     default:
       return undefined;
   }
+}
+
+const CONTENT_TYPE_EXTENSIONS: Record<string, string> = {
+  "application/pdf": "pdf",
+  "application/zip": "zip",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    "docx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/msword": "doc",
+  "application/vnd.ms-excel": "xls",
+};
+
+/**
+ * Appends a content-type-derived extension when the chosen filename has
+ * none (R-D3 last resort): `document-a1` + `application/pdf` →
+ * `document-a1.pdf`. Names with an extension are left alone.
+ */
+function withContentTypeExtension(name: string, contentType: string): string {
+  if (/\.[a-z0-9]{1,5}$/i.test(name)) return name;
+  const extension = CONTENT_TYPE_EXTENSIONS[contentType.toLowerCase()] ?? "bin";
+  return `${name}.${extension}`;
 }

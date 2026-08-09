@@ -4,9 +4,12 @@ import type {
   TenderDetail as TenderDetailData,
   TendersEndpoint,
 } from "../../services/api/endpoints/tenders";
+import type { DownloadResult } from "../../services/api/transport";
+import type { SaveDownloadPort } from "../../services/storage/save-download";
 import { ClosingLabel } from "./ClosingLabel";
 import { describeJsonField } from "./tender-fields";
 import { describeTenderError } from "./tender-errors";
+import { DocumentDownloadButton } from "./DocumentDownloadButton";
 
 export interface TenderDetailProps {
   endpoint: TendersEndpoint;
@@ -17,6 +20,17 @@ export interface TenderDetailProps {
    * screen stays a pure read and can be tested without the mutating clients.
    */
   actions?: React.ReactNode;
+  /**
+   * Tender-document download client (Slice 7, R-D5). Optional so the screen
+   * stays a pure read without it; the route passes `clients.documents`.
+   */
+  documents?: {
+    downloadTenderDocument: (
+      id: string,
+      signal?: AbortSignal,
+    ) => Promise<DownloadResult>;
+  };
+  savePort?: SaveDownloadPort;
 }
 
 type State =
@@ -94,6 +108,8 @@ export function TenderDetail({
   tenderId,
   onBack,
   actions,
+  documents,
+  savePort,
 }: TenderDetailProps) {
   const [state, setState] = useState<State>({ status: "loading" });
 
@@ -224,7 +240,11 @@ export function TenderDetail({
             value={tender.bbbeeRequirements}
           />
 
-          <DocumentsSection tender={tender} />
+          <DocumentsSection
+            tender={tender}
+            documents={documents}
+            savePort={savePort}
+          />
 
           {actions}
         </>
@@ -234,14 +254,22 @@ export function TenderDetail({
 }
 
 /**
- * Document metadata only.
+ * Document metadata with a per-document download control (Slice 7, R-D5).
  *
  * Downloading goes through the parent's
- * `/api/v1/documents/[id]/download-url?requireR2=1` route (INT-4) and is a
- * later slice. Listing file names while offering no way to open them would
- * be misleading, so the absence is stated rather than implied.
+ * `/api/v1/documents/[id]/download-url?requireR2=1` route (INT-4) — never a
+ * direct fetch of `sourceUrl`. Without the injected client the section still
+ * lists the files and says downloads are unavailable, honestly.
  */
-function DocumentsSection({ tender }: { tender: TenderDetailData }) {
+function DocumentsSection({
+  tender,
+  documents,
+  savePort,
+}: {
+  tender: TenderDetailData;
+  documents?: TenderDetailProps["documents"];
+  savePort?: SaveDownloadPort;
+}) {
   const stats = tender.documentStats;
   const count = stats?.total ?? tender.documentCount ?? 0;
   if (count === 0) return null;
@@ -258,9 +286,35 @@ function DocumentsSection({ tender }: { tender: TenderDetailData }) {
           {stats.failed > 0 ? `, ${stats.failed} failed` : ""}.
         </p>
       )}
-      <p className="mt-2 text-sm text-muted-foreground">
-        Opening tender documents is not available in this build.
-      </p>
+      {tender.documents && tender.documents.length > 0 ? (
+        <ul className="mt-2 flex flex-col gap-2">
+          {tender.documents.map((document) => (
+            <li key={document.id}>
+              {documents ? (
+                <DocumentDownloadButton
+                  endpoint={documents}
+                  documentId={document.id}
+                  documentName={document.fileName ?? "Unnamed document"}
+                  savePort={savePort}
+                />
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {document.fileName ?? "Unnamed document"}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Document names are not yet processed for this tender.
+        </p>
+      )}
+      {documents === undefined && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Opening tender documents is not available in this build.
+        </p>
+      )}
     </section>
   );
 }

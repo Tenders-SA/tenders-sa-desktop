@@ -13,7 +13,11 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { ApiTransport, type DownloadOptions } from "../services/api/transport";
+import {
+  ApiTransport,
+  ALLOWED_DOCUMENT_ORIGINS,
+  type DownloadOptions,
+} from "../services/api/transport";
 import { ApiError } from "../services/api/errors";
 
 function makeTransport(
@@ -264,5 +268,170 @@ describe("ApiTransport.download", () => {
     await expectApiError(makeTransport(fetchImpl).download(downloadOptions()));
 
     expect(calls).toBe(1);
+  });
+});
+
+describe("ApiTransport.download — absolute document URLs (Slice 7)", () => {
+  const DOCS_URL = "https://docs.tenders-sa.org/docs/t1/Advert.pdf";
+  const WORKER_URL =
+    "https://etenders-api.tenders-sa.org/api/document?id=155529/file.pdf";
+
+  function urlOptions(
+    overrides: Partial<DownloadOptions> = {},
+  ): DownloadOptions {
+    return {
+      method: "GET",
+      url: DOCS_URL,
+      filenameFallback: "document-t1.pdf",
+      ...overrides,
+    };
+  }
+
+  it("fetches the absolute URL verbatim, GET, keyless", async () => {
+    const fetchImpl = vi.fn(async () =>
+      binaryResponse([37, 80, 68, 70], {
+        "Content-Disposition": 'attachment; filename="Advert.pdf"',
+      }),
+    ) as unknown as typeof fetch & { mock: ReturnType<typeof vi.fn>["mock"] };
+
+    const result = await makeTransport(fetchImpl).download(urlOptions());
+
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toBe(DOCS_URL);
+    expect(init.method).toBe("GET");
+    expect(init.body).toBeUndefined();
+    expect(
+      (init.headers as Record<string, string>).Authorization,
+    ).toBeUndefined();
+    expect(result.filename).toBe("Advert.pdf");
+  });
+
+  it("accepts the worker document origin", async () => {
+    const fetchImpl = vi.fn(async () =>
+      binaryResponse([1, 2, 3]),
+    ) as unknown as typeof fetch & { mock: ReturnType<typeof vi.fn>["mock"] };
+
+    const result = await makeTransport(fetchImpl).download(
+      urlOptions({ url: WORKER_URL }),
+    );
+
+    const [url] = fetchImpl.mock.calls[0] as unknown as [string];
+    expect(url).toBe(WORKER_URL);
+    expect(result.bytes).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  it("rejects a non-https document URL before any fetch", async () => {
+    const fetchImpl = vi.fn(async () =>
+      binaryResponse([1]),
+    ) as unknown as typeof fetch;
+
+    const error = await expectApiError(
+      makeTransport(fetchImpl).download(
+        urlOptions({ url: "http://docs.tenders-sa.org/docs/t1/x.pdf" }),
+      ),
+    );
+
+    expect(error.kind).toBe("malformed");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("rejects a foreign-origin URL before any fetch", async () => {
+    const fetchImpl = vi.fn(async () =>
+      binaryResponse([1]),
+    ) as unknown as typeof fetch;
+
+    const error = await expectApiError(
+      makeTransport(fetchImpl).download(
+        urlOptions({ url: "https://evil.example.com/tender.pdf" }),
+      ),
+    );
+
+    expect(error.kind).toBe("malformed");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unparsable URL", async () => {
+    const fetchImpl = vi.fn(async () =>
+      binaryResponse([1]),
+    ) as unknown as typeof fetch;
+
+    const error = await expectApiError(
+      makeTransport(fetchImpl).download(urlOptions({ url: "not a url" })),
+    );
+
+    expect(error.kind).toBe("malformed");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("honours the per-request timeout override on external fetches", async () => {
+    const fetchImpl = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("aborted", "AbortError"));
+          });
+        }),
+    ) as unknown as typeof fetch;
+
+    const error = await expectApiError(
+      makeTransport(fetchImpl).download(
+        urlOptions({ policy: { timeoutMs: 5, retry: "never" } }),
+      ),
+    );
+
+    expect(error.kind).toBe("timeout");
+  });
+
+  it("never retries an external fetch on a transient failure", async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      throw new TypeError("Failed to fetch");
+    }) as unknown as typeof fetch;
+
+    await expectApiError(makeTransport(fetchImpl).download(urlOptions()));
+
+    expect(calls).toBe(1);
+  });
+
+  it("does not fire session loss on an external 401", async () => {
+    const onUnauthorized = vi.fn();
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: "denied" }), { status: 401 }),
+    ) as unknown as typeof fetch;
+
+    const error = await expectApiError(
+      makeTransport(fetchImpl, { onUnauthorized }).download(urlOptions()),
+    );
+
+    expect(error.kind).toBe("unauthorized");
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  it("still fires session loss on an API-path download 401", async () => {
+    const onUnauthorized = vi.fn();
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: "denied" }), { status: 401 }),
+    ) as unknown as typeof fetch;
+
+    await expectApiError(
+      makeTransport(fetchImpl, { onUnauthorized }).download(downloadOptions()),
+    );
+
+    expect(onUnauthorized).toHaveBeenCalledWith(
+      "/api/v1/applications/a1/assist/workspace-export",
+    );
+  });
+
+  it("exposes the exact origins the capability allow-list must grant", () => {
+    expect(ALLOWED_DOCUMENT_ORIGINS).toEqual([
+      "https://docs.tenders-sa.org",
+      "https://etenders-api.tenders-sa.org",
+    ]);
   });
 });

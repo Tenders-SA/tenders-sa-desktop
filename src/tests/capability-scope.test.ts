@@ -62,21 +62,20 @@ describe("http plugin scope", () => {
     expect(Array.isArray(httpPermission?.allow)).toBe(true);
   });
 
-  it("allows exactly the one origin the product runs against", () => {
-    // A second origin is a second place the token can be sent, so this can
-    // never grow silently. It is exactly ONE, and here is why:
-    //
-    //   - the runtime API base URL is unusable unless its origin appears here,
-    //     so a packaged build with no entry would have every request denied
-    //     by the plugin -- the app would install, open, and fail every read
-    //     with no way for configuration to fix it;
-    //   - and production pointing is unconditional, so no localhost or
-    //     third-party origin exists for the plugin to reach.
-    //
-    // Adding a second means updating this test and stating the reason.
-    expect(httpPermission?.allow).toHaveLength(1);
+  it("allows exactly the three origins the product runs against", () => {
+    // Each origin is a place the webview can be told to fetch. The API
+    // origin stays exactly one -- the runtime API base URL is unusable
+    // unless its origin appears here, production pointing is unconditional,
+    // and the token may only be sent there. Slice 7 adds exactly two
+    // document-serving origins (no token): the R2 docs domain and the
+    // Worker document path, scoped to the paths the parent's download-url
+    // route resolves to. A fourth origin means updating this test and
+    // stating the reason.
+    expect(httpPermission?.allow).toHaveLength(3);
     const urls = (httpPermission?.allow ?? []).map((entry) => entry.url);
     expect(urls).toContain("https://www.tenders-sa.org/api/*");
+    expect(urls).toContain("https://docs.tenders-sa.org/docs/*");
+    expect(urls).toContain("https://etenders-api.tenders-sa.org/api/document*");
     expect(urls).not.toContain("http://localhost:3000/api/*");
   });
 
@@ -89,13 +88,18 @@ describe("http plugin scope", () => {
     }
   });
 
-  it("scopes every entry to the API path, not a bare host", () => {
-    // A bare host would let the plugin reach the whole web application, not
-    // just its API surface.
-    const urls = httpPermission?.allow ?? [];
+  it("scopes every entry to a path, not a bare host", () => {
+    // A bare host would let the plugin reach the whole web application or
+    // whole docs site. Each origin is pinned to the exact surface it serves:
+    // the API origin to /api/, the R2 docs domain to /docs/, and the Worker
+    // to its /api/document path. The document origins never match the API
+    // origin's /api/* pattern (the Worker's is /api/document* only).
+    const urls = (httpPermission?.allow ?? []).map((entry) => entry.url);
     expect(urls.length).toBeGreaterThan(0);
-    for (const entry of urls) {
-      expect(entry.url).toMatch(/\/api\//);
+    for (const entry of httpPermission?.allow ?? []) {
+      expect(entry.url).toMatch(
+        /https:\/\/www\.tenders-sa\.org\/api\/\*|https:\/\/docs\.tenders-sa\.org\/docs\/\*|https:\/\/etenders-api\.tenders-sa\.org\/api\/document\*/,
+      );
     }
   });
 
@@ -110,8 +114,10 @@ describe("http plugin scope", () => {
 
   it("does not reach the public Developer API (REQ-A14)", () => {
     // The desktop consumes the main application's parent-internal API only.
+    // Exact-host check: the Worker document origin (etenders-api.*) is an
+    // allowed sibling and must not be caught by a substring match.
     for (const entry of httpPermission?.allow ?? []) {
-      expect(entry.url).not.toContain("api.tenders-sa.org");
+      expect(new URL(entry.url).hostname).not.toBe("api.tenders-sa.org");
     }
   });
 

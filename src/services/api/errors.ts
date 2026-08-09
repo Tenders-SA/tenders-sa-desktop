@@ -168,6 +168,19 @@ export function malformedResponseError(): ApiError {
   });
 }
 
+/**
+ * A caller-supplied URL that cannot be used — scheme or origin outside the
+ * document-serving allow-list (Slice 7). The server resolves these URLs, so
+ * this is a contract violation, hence the `malformed` kind: the shared
+ * describe copy stays honest and the failure is never retried.
+ */
+export function invalidRequestError(): ApiError {
+  return new ApiError({
+    kind: "malformed",
+    message: "The server returned a download URL outside the allowed origins",
+  });
+}
+
 export function offlineError(): ApiError {
   return new ApiError({
     kind: "offline",

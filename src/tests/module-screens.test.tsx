@@ -40,6 +40,7 @@ import type { DocumentsEndpoint } from "../services/api/endpoints/documents";
 import type { PlannerEndpoint } from "../services/api/endpoints/planner";
 import type { NotificationsEndpoint } from "../services/api/endpoints/notifications";
 import type { CompanyDocument } from "../services/api/endpoints/documents";
+import type { SaveDownloadPort } from "../services/storage/save-download";
 
 const wrap = (ui: React.ReactElement) =>
   render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -803,6 +804,151 @@ describe("ApplicationWorkspace — additional-information panel", () => {
       ),
     ).toBeVisible();
     expect(screen.getByText("Msinsi Holding (SOC)")).toBeVisible();
+  });
+});
+
+describe("ApplicationWorkspace — tender document downloads (Slice 7)", () => {
+  const workspaceDetailWithDocs = {
+    ...workspaceDetail,
+    tender: {
+      ...workspaceDetail.tender,
+      documents: [
+        {
+          id: "d1",
+          fileName: "Advert.pdf",
+          documentCategory: "Advertisement",
+        },
+        { id: "d2", fileName: "SBD4.docx" },
+      ],
+    },
+  };
+
+  const pdfBytes = new Uint8Array([37, 80, 68, 70, 1, 2, 3]);
+
+  function endpoint(overrides: Partial<Record<string, unknown>> = {}) {
+    return {
+      get: vi.fn(async () => workspaceDetailWithDocs),
+      validate: vi.fn(async () => ({
+        ready: false,
+        blockers: [],
+        warnings: [],
+      })),
+      getCockpit: vi.fn(async () => workspaceCockpit),
+      getComplianceGaps: vi.fn(async () => workspaceGaps),
+      getResearch: vi.fn(async () => workspaceResearch),
+      getWorkspaceStage: vi.fn(async () => "add_information"),
+      updateWorkspace: vi.fn(async () => ({ success: true })),
+      getAdditionalInfo: vi.fn(async () => ({ values: {}, fields: [] })),
+      saveAdditionalInfo: vi.fn(async () => ({ persisted: true })),
+      getResponseBlueprint: vi.fn(async () => ({ blueprint: null })),
+      ...overrides,
+    } as unknown as ApplicationsEndpoint;
+  }
+
+  function documentsClient(rejectWith?: unknown) {
+    return {
+      downloadTenderDocument: rejectWith
+        ? vi.fn(async () => {
+            throw rejectWith;
+          })
+        : vi.fn(async () => ({
+            bytes: pdfBytes,
+            filename: "Advert.pdf",
+            contentType: "application/pdf",
+          })),
+    };
+  }
+
+  function savePort(
+    overrides: Partial<SaveDownloadPort> = {},
+  ): SaveDownloadPort {
+    return {
+      saveDialog: vi.fn(async () => "C:\\Users\\you\\Downloads\\Advert.pdf"),
+      writeBytes: vi.fn(async () => {}),
+      ...overrides,
+    };
+  }
+
+  it("lists the documents with a Download button each", async () => {
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint()}
+        applicationId="a1"
+        documents={documentsClient()}
+      />,
+    );
+    expect(await screen.findByText(/tender documents \(2\)/i)).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "Download" })).toHaveLength(2);
+    expect(screen.getByText("Advert.pdf · Advertisement")).toBeVisible();
+    expect(screen.getByText("SBD4.docx")).toBeVisible();
+  });
+
+  it("saves a downloaded document to the user-picked path", async () => {
+    const port = savePort();
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint()}
+        applicationId="a1"
+        documents={documentsClient()}
+        savePort={port}
+      />,
+    );
+    await screen.findByText(/tender documents \(2\)/i);
+
+    const [download] = screen.getAllByRole("button", { name: "Download" });
+    await userEvent.click(download);
+
+    await waitFor(() =>
+      expect(port.writeBytes).toHaveBeenCalledWith(
+        "C:\\Users\\you\\Downloads\\Advert.pdf",
+        pdfBytes,
+      ),
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("stays silent when the save dialog is cancelled", async () => {
+    const port = savePort({ saveDialog: vi.fn(async () => null) });
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint()}
+        applicationId="a1"
+        documents={documentsClient()}
+        savePort={port}
+      />,
+    );
+    await screen.findByText(/tender documents \(2\)/i);
+
+    const [download] = screen.getAllByRole("button", { name: "Download" });
+    await userEvent.click(download);
+
+    await waitFor(() => expect(download).toBeEnabled());
+    expect(port.writeBytes).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("explains the entitlement 403 as a plan limit", async () => {
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint()}
+        applicationId="a1"
+        documents={documentsClient(
+          new ApiError({
+            kind: "forbidden",
+            status: 403,
+            message: "entitlement required",
+          }),
+        )}
+      />,
+    );
+    await screen.findByText(/tender documents \(2\)/i);
+
+    const [download] = screen.getAllByRole("button", { name: "Download" });
+    await userEvent.click(download);
+
+    expect(
+      await screen.findByText(/your plan does not include this document/i),
+    ).toBeVisible();
   });
 });
 

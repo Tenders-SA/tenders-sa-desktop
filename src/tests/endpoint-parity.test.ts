@@ -87,8 +87,12 @@ describe("endpoint parity — the desktop uses the main application API", () => 
   });
 
   it("references the Developer API host nowhere in executable source", () => {
+    // `etenders-api.tenders-sa.org` legitimately contains the substring
+    // `api.tenders-sa.org` (Slice 7 allowed download origin), so the host
+    // must be matched as a standalone hostname, not as a substring.
+    const hostname = /(^|[^a-z0-9-])api\.tenders-sa\.org/;
     const offenders = scanned
-      .filter((f) => f.code.includes(DEVELOPER_API_HOST))
+      .filter((f) => hostname.test(f.code))
       .map((f) => f.path);
     expect(offenders).toEqual([]);
   });
@@ -159,6 +163,27 @@ describe("endpoint parity — allowed main-application paths", () => {
   it("still catches a bare /v2 path", () => {
     const sample = `const p = "/v2/tenders";`;
     expect(/["'`]\/v[12]\//.test(stripComments(sample))).toBe(true);
+  });
+
+  it("keeps the tender document download on the parent /api/v1 documents surface", () => {
+    // Explicit coverage for the download flow added in
+    // desktop-tender-document-download T2: the download-url route and its
+    // requireR2=1 query are the parent's R2-backed path (INT-4), and a future
+    // contributor cannot quietly re-home them to another host or a parallel
+    // client without this test objecting.
+    const source = stripComments(
+      readFileSync(
+        resolve(srcRoot, "services/api/endpoints/documents.ts"),
+        "utf8",
+      ),
+    );
+    const expected = [
+      "`/api/v1/documents/${encodeURIComponent(documentId)}/download-url`",
+      "query: { requireR2: 1 }",
+    ];
+    for (const fragment of expected) {
+      expect(source, fragment).toContain(fragment);
+    }
   });
 
   it("ignores the Developer API host when it appears only in a comment", () => {
