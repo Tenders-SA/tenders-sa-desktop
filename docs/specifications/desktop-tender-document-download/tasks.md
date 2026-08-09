@@ -10,7 +10,7 @@
 - T3: DONE — capability allow-list extended; `capability-scope.test.ts` updated (18 green).
 - T4: DONE — `DocumentDownloadButton` mounted in both screens; routes wired (22 tender-detail + 4 workspace download tests).
 - T5: DONE — fixtures + parity pins; full gates zero errors; docs synced; committed and pushed.
-- T6: OPEN — human verification.
+- T6: DONE (2026-08-09) — user confirmed downloads work completely, save successfully, and open correctly.
 
 ## Tasks
 
@@ -21,4 +21,4 @@
 | T3 | Capability: add `https://docs.tenders-sa.org/docs/*` and `https://etenders-api.tenders-sa.org/api/document*` to `http:default`; update `capability-scope.test.ts` (scoped-only, shell/opener/static-fs still denied) | T2 green | `vitest capability-scope` |
 | T4 | UI: `DocumentDownloadButton` + mount in `TenderDetail.DocumentsSection` and `ApplicationWorkspace` documents panel (optional props, default save port); wire `clients.documents` in both routes | T3 green | `vitest tender-detail` + `module-screens` new cases |
 | T5 | Gates + docs: fixtures gain `downloadTenderDocument`; parity pins `download-url` + `requireR2`; full `vitest`, `tsc --noEmit`, `eslint .`, `prettier --check .`; update `tasks.md`/`INTEGRATION_EVAL.md`; commit + push | T4 green | zero errors |
-| T6 | Human verification: user downloads a real tender document from TenderDetail and from an application workspace; checks filename, save dialog, silent cancel, and a 403 (plan without entitlement) copy | T5 shipped | recorded in `INTEGRATION_EVAL.md` |
+| T6 | Human verification: user downloads a real tender document from TenderDetail and from an application workspace; checks filename, save dialog, silent cancel, and a 403 (plan without entitlement) copy | T5 shipped | DONE — recorded in `INTEGRATION_EVAL.md` (2026-08-09) |

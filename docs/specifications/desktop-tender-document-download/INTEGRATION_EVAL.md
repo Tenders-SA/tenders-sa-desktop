@@ -1,6 +1,6 @@
 # Desktop — Tender Document Download — INTEGRATION_EVAL (Slice 7)
 
-- **Status**: pending
+- **Status**: complete — T1–T6 verified
 - **Spec**: `desktop-tender-document-download/` (requirements R-D1..R-D8,
   design, tasks)
 
@@ -14,4 +14,4 @@
 | Screen tests | T4 | `vitest tender-detail` 22/22 + `module-screens` (4 workspace download cases): per-document Download button, save to picked path, disabled while downloading, silent dialog cancel, 403 plan-limit copy, server copy | 2026-08-09 |
 | Full suite + static gates | T5 | `vitest` 674/674 (37 files), `tsc --noEmit` clean, `eslint .` clean, `prettier --check .` clean | 2026-08-09 |
 | Fixtures + parity | T5 | `vitest endpoint-parity` 11/11 — `download-url` + `query: { requireR2: 1 }` pinned in documents.ts; Developer-API host guard now hostname-exact so `etenders-api.tenders-sa.org` is not a false positive; `api-clients.ts` gains `downloadTenderDocument: idle()` | 2026-08-09 |
-| Live human verification | T6 | user downloads a real tender document from TenderDetail and from an application workspace; filename, dialog, silent cancel, 403 copy | — |
+| Live human verification | T6 | User confirmed tender-document downloads work completely: documents save successfully and open correctly; the full Slice 7 verification is accepted. | 2026-08-09 |
