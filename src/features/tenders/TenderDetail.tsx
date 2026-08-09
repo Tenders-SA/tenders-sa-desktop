@@ -295,7 +295,7 @@ function DocumentsSection({
       )}
       {tender.documents && tender.documents.length > 0 ? (
         <>
-          {documents && (
+          {documents && tender.documents.length >= 2 && (
             <div className="mt-2">
               <BatchDocumentDownloadButton
                 endpoint={documents}

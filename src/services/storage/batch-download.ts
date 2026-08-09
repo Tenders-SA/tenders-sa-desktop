@@ -56,7 +56,7 @@ export function uniqueFilename(
     const dot = safe.lastIndexOf(".");
     const stem = dot > 0 ? safe.slice(0, dot) : safe;
     const extension = dot > 0 ? safe.slice(dot) : "";
-    candidate = `${stem} (${suffix})${extension}`;
+    candidate = `${stem}-${suffix}${extension}`;
     suffix += 1;
   }
   usedNames.add(candidate.toLocaleLowerCase("en-ZA"));

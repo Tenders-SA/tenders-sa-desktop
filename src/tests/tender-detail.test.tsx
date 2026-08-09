@@ -439,6 +439,24 @@ describe("TenderDetail — document downloads (Slice 7)", () => {
     expect(actionPort.writeBytes).toHaveBeenCalledTimes(2);
   });
 
+  it("does not offer Download all for a single tender document", async () => {
+    render(
+      <TenderDetail
+        endpoint={endpointReturning({
+          ...withDocuments,
+          documents: withDocuments.documents?.slice(0, 1),
+          documentCount: 1,
+        })}
+        tenderId="t1"
+        documents={documentsClient()}
+      />,
+    );
+    expect(
+      await screen.findByRole("button", { name: "Download" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Download all" })).toBeNull();
+  });
+
   it("stays silent when the user cancels the save dialog", async () => {
     const port = savePort({ saveDialog: vi.fn(async () => null) });
     render(

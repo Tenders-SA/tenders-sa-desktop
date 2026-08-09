@@ -13,7 +13,7 @@
 | T2 | Open action — DONE | Existing per-document component gains explicit Open with `Opening…`, single-flight, existing resolver, temp copy, OS viewer and safe errors. Evidence: TenderDetail and ApplicationWorkspace screen tests pass. |
 | T3 | Vault download — DONE | Existing shared Download control mounted per company document; upload remains web-only. Evidence: Vault save, cancel and failure screen tests pass. |
 | T4 | Batch download — DONE | Shared sequential coordinator/button on TenderDetail + ApplicationWorkspace; one directory choice, collision safety, progress, cancel and partial-failure honesty. Evidence: coordinator and both screen suites pass. |
-| T5 | Gates/docs | Full frontend/Rust gates plus capability/parity regression coverage; task/contract/eval synchronized |
+| T5 | Gates/docs — DONE | Full frontend/Rust gates plus capability/parity regression coverage; task/contract/eval synchronized. Evidence: all 689 tests pass together; TypeScript, ESLint, Prettier, Rust and diff checks pass. |
 | T6 | Human verification | Real Open, Vault save and batch save behaviors recorded |
 
 ## Non-negotiable constraints

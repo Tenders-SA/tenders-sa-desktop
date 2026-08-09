@@ -306,7 +306,7 @@ function WorkspaceBody({
         >
           {tender.documents && tender.documents.length > 0 ? (
             <>
-              {documents && (
+              {documents && tender.documents.length >= 2 && (
                 <div className="mb-2">
                   <BatchDocumentDownloadButton
                     endpoint={documents}

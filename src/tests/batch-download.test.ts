@@ -72,7 +72,7 @@ describe("batch document download", () => {
     );
     expect(native.writeBytes).toHaveBeenNthCalledWith(
       2,
-      "C:\\Downloads\\Advert (2).pdf",
+      "C:\\Downloads\\Advert-2.pdf",
       new Uint8Array([1]),
     );
   });
@@ -80,6 +80,6 @@ describe("batch document download", () => {
   it("treats filename collisions case-insensitively", () => {
     const used = new Set<string>();
     expect(uniqueFilename("Bid.PDF", used)).toBe("Bid.PDF");
-    expect(uniqueFilename("bid.pdf", used)).toBe("bid (2).pdf");
+    expect(uniqueFilename("bid.pdf", used)).toBe("bid-2.pdf");
   });
 });

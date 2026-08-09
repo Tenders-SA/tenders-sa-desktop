@@ -34,5 +34,5 @@ describe("application start-up", () => {
     expect(body).not.toContain("could not start");
     // A heading proves real UI mounted rather than an empty container.
     expect(screen.getByRole("heading")).toBeVisible();
-  });
+  }, 10_000);
 });

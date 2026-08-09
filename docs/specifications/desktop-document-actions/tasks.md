@@ -10,7 +10,7 @@
 - T2: DONE — Open uses the existing resolver, scoped temp copy and per-document single-flight UI.
 - T3: DONE — Document Vault rows use the shared Download control; upload remains website-only.
 - T4: DONE — shared sequential Download all control is mounted in Tender Detail and Application Workspace.
-- T5: OPEN.
+- T5: DONE — full frontend/Rust gates and Slice 8 traceability records are complete.
 - T6: OPEN — human verification.
 
 ## Tasks

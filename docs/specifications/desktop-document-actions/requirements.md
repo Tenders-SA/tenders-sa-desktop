@@ -29,45 +29,45 @@
 
 ## Functional Requirements
 
-- [ ] R-DA1: A user can press **Open** on a tender document; the client resolves and
+- [x] R-DA1: A user can press **Open** on a tender document; the client resolves and
   downloads through `downloadTenderDocument`, writes beneath
   `$TEMP/tenders-sa/**`, and opens it in the OS-associated viewer.
-- [ ] R-DA2: Opening has a per-document `Opening…` single-flight state, fixed safe
+- [x] R-DA2: Opening has a per-document `Opening…` single-flight state, fixed safe
   error copy, and never exposes or accepts a government/source URL.
-- [ ] R-DA3: Every company document row in Document Vault has the existing
+- [x] R-DA3: Every company document row in Document Vault has the existing
   per-document Download flow, including save dialog, silent cancel, filename
   fallback, and entitlement/error copy.
-- [ ] R-DA4: TenderDetail and ApplicationWorkspace offer **Download all** only when
+- [x] R-DA4: TenderDetail and ApplicationWorkspace offer **Download all** only when
   at least two tender documents exist. One directory picker is shown, then each
   document is resolved and downloaded exactly once and written to that directory.
-- [ ] R-DA5: Batch filenames are sanitised and collision-safe. Duplicate names gain
+- [x] R-DA5: Batch filenames are sanitised and collision-safe. Duplicate names gain
   deterministic `-2`, `-3`, … suffixes without overwriting an earlier file.
-- [ ] R-DA6: Batch processing is sequential (bounded memory/network), exposes
+- [x] R-DA6: Batch processing is sequential (bounded memory/network), exposes
   `Downloading n of m…`, is single-flight, treats folder-picker cancel silently,
   and reports a final saved/failed count without discarding successful files.
-- [ ] R-DA7: Existing single-document Download behavior remains unchanged.
+- [x] R-DA7: Existing single-document Download behavior remains unchanged.
 
 ## Non-Functional Requirements
 
-- [ ] SEC-DA1: Opener access is path-scoped to `$TEMP/tenders-sa/**`; no URL opener,
+- [x] SEC-DA1: Opener access is path-scoped to `$TEMP/tenders-sa/**`; no URL opener,
   shell permission, wildcard path, or broad filesystem read/write scope is granted.
-- [ ] SEC-DA2: Batch writes only to a directory explicitly selected by the user;
+- [x] SEC-DA2: Batch writes only to a directory explicitly selected by the user;
   no static arbitrary-directory scope is added.
-- [ ] PERF-DA1: Batch downloads are sequential and hold at most one document payload
+- [x] PERF-DA1: Batch downloads are sequential and hold at most one document payload
   awaiting write at a time.
-- [ ] UX-DA1: Every action is explicit, keyboard-operable, and labelled in text;
+- [x] UX-DA1: Every action is explicit, keyboard-operable, and labelled in text;
   cancel remains a silent no-op.
-- [ ] REL-DA1: A failed item does not abort or delete already-saved batch items.
+- [x] REL-DA1: A failed item does not abort or delete already-saved batch items.
 
 ## Integration Requirements
 
-- [ ] INT-DA1: Reuse `DocumentsEndpoint.downloadTenderDocument`; do not add an API
+- [x] INT-DA1: Reuse `DocumentsEndpoint.downloadTenderDocument`; do not add an API
   route, alternate resolver, storage key construction, or external origin.
-- [ ] INT-DA2: Extend the existing save/storage port family and
+- [x] INT-DA2: Extend the existing save/storage port family and
   `DocumentDownloadButton`; do not introduce a second binary transport.
-- [ ] INT-DA3: Update capability tests deliberately for exactly
+- [x] INT-DA3: Update capability tests deliberately for exactly
   `dialog:allow-open`, temp-path filesystem write scope, and path-only opener access.
-- [ ] INT-DA4: Government-source fallback URLs remain excluded.
+- [x] INT-DA4: Government-source fallback URLs remain excluded.
 
 ## Success Criteria
 
@@ -75,6 +75,5 @@
 - [ ] Vault Download saves a real company document.
 - [ ] Download all saves every available tender document after one folder choice,
   preserves duplicate filenames safely, and reports partial failures honestly.
-- [ ] Existing single-download, capability, endpoint-parity, and screen tests pass.
-- [ ] Full Vitest, TypeScript, ESLint, Prettier, and Rust checks pass.
-
+- [x] Existing single-download, capability, endpoint-parity, and screen tests pass.
+- [x] Full Vitest, TypeScript, ESLint, Prettier, and Rust checks pass.
