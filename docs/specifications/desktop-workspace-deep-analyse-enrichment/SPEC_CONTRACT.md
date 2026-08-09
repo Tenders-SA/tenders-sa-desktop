@@ -1,10 +1,10 @@
 # Desktop Workspace — Deep-Analyse Enrichment — SPEC_CONTRACT (Slice 5)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-08
 - **Scope**: Slice 5 — deep-analyse enrichment (R-E-1..R-E-5).
-- **Approved by**: *(awaiting user)*
-- **Approval date**: —
+- **Approved by**: user (in-session directive, 2026-08-09)
+- **Approval date**: 2026-08-09
 
 ## Contract checklist (mirrors tasks.md)
 

@@ -1427,3 +1427,126 @@ describe("applications endpoint — response document authoring", () => {
     ).rejects.toMatchObject({ kind: "validation" });
   });
 });
+
+describe("applications endpoint — deep-analyse enrichment", () => {
+  const mergedBlueprint = {
+    tenderId: "t1",
+    industry: { id: "i1", name: "Construction" },
+    requiredUserDocuments: [
+      {
+        name: "Tax Clearance Certificate",
+        canonicalType: "tax-clearance",
+        source: "compliance",
+        mandatory: true,
+      },
+    ],
+    responseDocuments: [
+      {
+        key: "cover_letter",
+        title: "Cover Letter",
+        kind: "cover_letter",
+        brief: "Tender-specific brief from the deep-analyse.",
+        mandatory: true,
+      },
+    ],
+    steps: [],
+    risks: ["Enrichment-added risk."],
+    confidence: "high",
+    generatedBy: "ai",
+  };
+
+  it("POSTs with no body and parses the enriched result", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ blueprint: mergedBlueprint, enriched: true }),
+    );
+    const result = await endpoint.enrichBlueprint("a1");
+    const [url, init] = lastCall(fetchImpl);
+    expect(url).toContain("/a1/assist/enrich-blueprint");
+    expect(init.method).toBe("POST");
+    expect(init.body).toBeUndefined();
+    expect(result.enriched).toBe(true);
+    expect(result.blueprint?.generatedBy).toBe("ai");
+    expect(result.blueprint?.responseDocuments?.[0].brief).toContain(
+      "deep-analyse",
+    );
+  });
+
+  it("parses a non-fatal fallback with each reason", async () => {
+    for (const reason of [
+      "ai_unavailable",
+      "no_analysis",
+      "analysis_triggered",
+    ]) {
+      const { endpoint } = harness(ApplicationsEndpoint, () =>
+        jsonResponse({ blueprint: mergedBlueprint, enriched: false, reason }),
+      );
+      const result = await endpoint.enrichBlueprint("a1");
+      expect(result.enriched).toBe(false);
+      expect(result.reason).toBe(reason);
+      expect(result.blueprint?.generatedBy).toBe("ai");
+      expect(result.analysisStatus).toBeUndefined();
+    }
+  });
+
+  it("tolerates a null blueprint", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ blueprint: null, enriched: false, reason: "no_analysis" }),
+    );
+    const result = await endpoint.enrichBlueprint("a1");
+    expect(result.blueprint).toBeNull();
+    expect(result.reason).toBe("no_analysis");
+  });
+
+  it("surfaces 402 as payment-required", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse(
+        {
+          error: "Pro plan required",
+          message:
+            "On-demand tender analysis for your application is a Professional feature.",
+          upgradeUrl: "/pricing",
+        },
+        402,
+      ),
+    );
+    await expect(endpoint.enrichBlueprint("a1")).rejects.toMatchObject({
+      kind: "payment-required",
+    });
+  });
+
+  it("maps 403/404 exactly like the other application routes", async () => {
+    const forbidden = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Forbidden" }, 403),
+    );
+    await expect(
+      forbidden.endpoint.enrichBlueprint("a1"),
+    ).rejects.toMatchObject({
+      kind: "forbidden",
+    });
+
+    const missing = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ error: "Application not found" }, 404),
+    );
+    await expect(missing.endpoint.enrichBlueprint("a1")).rejects.toMatchObject({
+      kind: "not-found",
+    });
+  });
+
+  it("never retries an enrich request", async () => {
+    let calls = 0;
+    const fetchImpl = vi.fn(async () => {
+      calls += 1;
+      throw new TypeError("Failed to fetch");
+    });
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+    await expect(endpoint.enrichBlueprint("a1")).rejects.toBeDefined();
+    expect(calls).toBe(1);
+  });
+});

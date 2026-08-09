@@ -52,6 +52,7 @@ export function stubApiClients(
       getResponseBlueprint: idle(),
       generateResponseDocument: idle(),
       saveResponseDocument: idle(),
+      enrichBlueprint: idle(),
     },
     company: {
       getProfile: idle(),

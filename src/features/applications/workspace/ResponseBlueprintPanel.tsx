@@ -1,13 +1,15 @@
 /**
  * Tender-driven Response Blueprint (Slice 3, R-B-1..R-B-6; Slice 4
- * authoring, R-A-1..R-A-5).
+ * authoring, R-A-1..R-A-5; Slice 5 deep-analyse, R-E-1..R-E-5).
  *
  * Renders the parent's plan for this tender: which response documents to
  * generate, which documents the user must have, the steps/milestones, the
  * submission method, risks, and confidence. Since Slice 4 the panel also
  * carries the authoring actions — Generate, Edit/Save, Regenerate, Retry —
  * each an explicit human press (R-W-7). After a Generate 202 the panel runs
- * a bounded follow-up refresh (R-A-3); steady state stays timer-free.
+ * a bounded follow-up refresh (R-A-3); steady state stays timer-free. Since
+ * Slice 5 the header carries Deep-analyse, the Pro-tier enrichment action
+ * (R-E-1..R-E-5).
  *
  * `blueprint: null` is not an error: the parent answers that before its
  * analysis exists, and the panel must say so honestly (R-B-5).
@@ -16,8 +18,11 @@
 import { useEffect, useState } from "react";
 import { AsyncSection, Panel } from "../../../components/common/AsyncSection";
 import { useAsync } from "../../../hooks/use-async";
+import { ApiError } from "../../../services/api/errors";
+import { describeApiError } from "../../../services/api/describe-error";
 import type {
   BlueprintPayload,
+  EnrichBlueprintResult,
   GenerateResponseDocResult,
   ResponseBlueprint,
   ResponseDocSaveResult,
@@ -52,6 +57,10 @@ export interface ResponseBlueprintPanelProps {
       content: string,
       signal?: AbortSignal,
     ) => Promise<ResponseDocSaveResult>;
+    enrichBlueprint: (
+      id: string,
+      signal?: AbortSignal,
+    ) => Promise<EnrichBlueprintResult>;
   };
   applicationId: string;
 }
@@ -136,11 +145,18 @@ export function ResponseBlueprintPanel({
           applicationId={applicationId}
           onGenerateAccepted={acceptGenerate}
           onSaved={acceptSaved}
+          onReload={state.reload}
         />
       )}
     </AsyncSection>
   );
 }
+
+/** Deep-analyse outcomes: idle, in flight, or a non-fatal message (R-E-4). */
+type EnrichState =
+  | { status: "idle" }
+  | { status: "working" }
+  | { status: "error"; message: string };
 
 function BlueprintView({
   blueprint,
@@ -152,6 +168,7 @@ function BlueprintView({
   applicationId,
   onGenerateAccepted,
   onSaved,
+  onReload,
 }: {
   blueprint: ResponseBlueprint;
   enriched: boolean;
@@ -165,14 +182,47 @@ function BlueprintView({
   applicationId: string;
   onGenerateAccepted: (key: string) => void;
   onSaved: (key: string, content: string) => void;
+  onReload: () => void;
 }) {
   const aiTailored = blueprint.generatedBy === "ai" || enriched;
+  const [enrich, setEnrich] = useState<EnrichState>({ status: "idle" });
+
+  function deepAnalyse() {
+    setEnrich({ status: "working" });
+    endpoint
+      .enrichBlueprint(applicationId)
+      .then((result) => {
+        if (result.enriched === true) {
+          setEnrich({ status: "idle" });
+          // The GET re-merges the cached enrichment and reports `enriched:
+          // true` (response-blueprint/route.ts) — one reload adopts it from
+          // the single source of truth (R-E-2).
+          onReload();
+        } else {
+          setEnrich({
+            status: "error",
+            message: describeEnrichReason(result.reason),
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        setEnrich({ status: "error", message: describeEnrichError(error) });
+      });
+  }
 
   return (
     <Panel
       title="Response blueprint"
       aside={
         <span className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={deepAnalyse}
+            disabled={enrich.status === "working"}
+            className="rounded border border-border px-2 py-1 text-xs text-foreground disabled:opacity-50"
+          >
+            {enrich.status === "working" ? "Analysing…" : "Deep-analyse"}
+          </button>
           <ConfidenceBadge confidence={blueprint.confidence} />
           <span className="text-xs text-muted-foreground">
             {aiTailored ? "AI-tailored" : "Standard plan"}
@@ -180,6 +230,11 @@ function BlueprintView({
         </span>
       }
     >
+      {enrich.status === "error" && (
+        <p role="alert" className="mb-3 text-sm text-destructive">
+          {enrich.message}
+        </p>
+      )}
       {blueprint.industry?.name && (
         <p className="mb-3 text-xs text-muted-foreground">
           Industry: {blueprint.industry.name}
@@ -317,6 +372,36 @@ function ConfidenceBadge({ confidence }: { confidence: string | undefined }) {
       {confidence}
     </span>
   );
+}
+
+/**
+ * The enrich 402 carries no machine code (the route gates on tier only), so
+ * the copy is keyed off the action — never off the server's `error` string
+ * (R-E-3). Every other failure goes through `describeApiError`.
+ */
+function describeEnrichError(error: unknown): string {
+  if (error instanceof ApiError && error.kind === "payment-required") {
+    return "Deep-analyse needs the Professional plan.";
+  }
+  return describeApiError(error, "the deep-analyse").message;
+}
+
+/**
+ * `enriched: false` is not an error — the deterministic plan still renders
+ * (R-E-4). The parent's `reason` is its own prose; this fixed copy says what
+ * to do instead.
+ */
+function describeEnrichReason(reason: string | undefined): string {
+  switch (reason) {
+    case "analysis_triggered":
+      return "The tender is still being analysed — try deep-analyse again shortly.";
+    case "no_analysis":
+      return "There's no tender analysis to deep-analyse yet.";
+    case "ai_unavailable":
+      return "AI analysis is unavailable right now — the standard plan is shown.";
+    default:
+      return "Could not deep-analyse this application right now.";
+  }
 }
 
 function SubmissionBox({

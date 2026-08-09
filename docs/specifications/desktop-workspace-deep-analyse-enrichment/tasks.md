@@ -53,9 +53,9 @@ reference requirements R-E-1..R-E-5 and the live-verified contracts in `design.m
   `ai_unavailable` copy with the standard plan intact.
 - **Verification**: user sign-off; record in `INTEGRATION_EVAL.md`.
 
-## Status (2026-08-08)
+## Status (2026-08-09)
 
-- T1: OPEN.
-- T2: OPEN.
-- T3: OPEN.
-- T4: OPEN.
+- T1: DONE.
+- T2: DONE.
+- T3: DONE.
+- T4: OPEN — awaiting user live verification (`pnpm tauri dev`).

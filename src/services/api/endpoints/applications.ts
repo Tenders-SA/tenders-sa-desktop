@@ -688,6 +688,22 @@ const responseDocSaveSchema = z
   })
   .passthrough();
 
+/**
+ * Deep-analyse enrichment contract (desktop-workspace-deep-analyse-enrichment).
+ * The POST returns the merged blueprint directly; `enriched: false` is not an
+ * error — the deterministic plan is returned with a `reason` (R-E-4).
+ * `analysisStatus` is a server-internal shape and is deliberately never
+ * typed (never rendered).
+ */
+const enrichBlueprintResponseSchema = z
+  .object({
+    blueprint: blueprintSchema.nullable().optional(),
+    enriched: z.boolean().optional(),
+    reason: z.string().optional(),
+    analysisStatus: z.unknown().optional(),
+  })
+  .passthrough();
+
 export type BlueprintPayload = z.infer<typeof blueprintPayloadSchema>;
 export type ResponseBlueprint = z.infer<typeof blueprintSchema>;
 export type RequiredUserDocument = z.infer<typeof requiredUserDocumentSchema>;
@@ -700,6 +716,9 @@ export type GenerateResponseDocResult = z.infer<
   typeof generateResponseDocSchema
 >;
 export type ResponseDocSaveResult = z.infer<typeof responseDocSaveSchema>;
+export type EnrichBlueprintResult = z.infer<
+  typeof enrichBlueprintResponseSchema
+>;
 
 export class ApplicationsEndpoint extends AuthenticatedEndpoint {
   async list(
@@ -1066,6 +1085,33 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
       schema: responseDocSaveSchema,
       headers: await this.authHeaders(),
       body: { key, content },
+      policy: { retry: "never" },
+      signal,
+    });
+  }
+
+  /**
+   * Deep-analyse for this application
+   * (`POST .../assist/enrich-blueprint`,
+   * desktop-workspace-deep-analyse-enrichment R-E-1).
+   *
+   * Runs the parent's application-focused AI pass over the tender analysis
+   * and caches the enrichment; the blueprint GET then re-merges it and
+   * reports `enriched: true` (R-E-2). Professional/Enterprise tier only —
+   * 402 with no machine code, so the panel keys its copy off the action
+   * (R-E-3). A slow/failing AI pass falls back with `enriched: false` +
+   * `reason` instead of failing (R-E-4). A mutation — the transport must
+   * never auto-retry it (R-E-5).
+   */
+  async enrichBlueprint(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<EnrichBlueprintResult> {
+    return this.transport.request({
+      method: "POST",
+      path: `/api/v1/applications/${encodeURIComponent(id)}/assist/enrich-blueprint`,
+      schema: enrichBlueprintResponseSchema,
+      headers: await this.authHeaders(),
       policy: { retry: "never" },
       signal,
     });

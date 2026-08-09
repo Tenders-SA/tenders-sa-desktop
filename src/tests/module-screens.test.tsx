@@ -939,6 +939,7 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
         ok: true,
         key: "cover_letter",
       })),
+      enrichBlueprint: vi.fn(async () => ({ blueprint, enriched: true })),
       ...overrides,
     } as unknown as ApplicationsEndpoint;
   }
@@ -1303,6 +1304,146 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
     ).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Retry Cover Letter" }));
     await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+  });
+
+  it("deep-analyses on an explicit press: one POST, then the plan reloads AI-tailored", async () => {
+    const enrich = vi.fn(async () => ({ blueprint, enriched: true }));
+    const getBlueprint = vi
+      .fn()
+      .mockResolvedValueOnce({
+        blueprint,
+        enriched: false,
+        responseDocs: {},
+        responseDocStatus: {},
+      })
+      .mockResolvedValueOnce({
+        blueprint: { ...blueprint, generatedBy: "ai" },
+        enriched: true,
+        responseDocs: {},
+        responseDocStatus: {},
+      });
+    const ep = endpoint({
+      enrichBlueprint: enrich,
+      getResponseBlueprint: getBlueprint,
+    });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByRole("button", { name: "Deep-analyse" }),
+    ).toBeVisible();
+    expect(screen.getByText("Standard plan")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Deep-analyse" }));
+    expect(await screen.findByText("Analysing…")).toBeVisible();
+    expect(enrich).toHaveBeenCalledTimes(1);
+    expect(enrich).toHaveBeenCalledWith("a1");
+
+    // Success reloads the panel; the GET reports the cached enrichment, so
+    // provenance flips to AI-tailored from the single source of truth.
+    expect(await screen.findByText("AI-tailored")).toBeVisible();
+    expect(getBlueprint).toHaveBeenCalledTimes(2);
+  });
+
+  it("is disabled while analysing, so a re-press cannot start a second pass", async () => {
+    let release: () => void = () => {};
+    const enrich = vi.fn(
+      () =>
+        new Promise<{ blueprint: unknown; enriched: boolean }>((resolve) => {
+          release = () => resolve({ blueprint, enriched: true });
+        }),
+    );
+    const ep = endpoint({ enrichBlueprint: enrich });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByRole("button", { name: "Deep-analyse" }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Deep-analyse" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Analysing…" })).toBeDisabled(),
+    );
+    // A re-press on the disabled button cannot start a second pass.
+    fireEvent.click(screen.getByRole("button", { name: "Analysing…" }));
+    await act(async () => {
+      release();
+    });
+    expect(enrich).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains a 402 as needing the Professional plan", async () => {
+    const enrich = vi.fn(async () => {
+      throw new ApiError({
+        kind: "payment-required",
+        status: 402,
+        message: "Pro plan required",
+      });
+    });
+    const ep = endpoint({ enrichBlueprint: enrich });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByRole("button", { name: "Deep-analyse" }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Deep-analyse" }));
+    expect(
+      await screen.findByText(/deep-analyse needs the professional plan/i),
+    ).toBeVisible();
+    // The standard plan stays rendered — the failure is not fatal.
+    expect(screen.getByText("Standard plan")).toBeVisible();
+    expect(screen.getByText("Cover Letter")).toBeVisible();
+  });
+
+  it("shows the analysis-triggered message with the standard plan intact", async () => {
+    const enrich = vi.fn(async () => ({
+      blueprint,
+      enriched: false,
+      reason: "analysis_triggered",
+    }));
+    const ep = endpoint({ enrichBlueprint: enrich });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByRole("button", { name: "Deep-analyse" }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Deep-analyse" }));
+    expect(
+      await screen.findByText(
+        /the tender is still being analysed — try deep-analyse again shortly/i,
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Standard plan")).toBeVisible();
+  });
+
+  it("shows the ai-unavailable message with the standard plan intact", async () => {
+    const enrich = vi.fn(async () => ({
+      blueprint,
+      enriched: false,
+      reason: "ai_unavailable",
+    }));
+    const ep = endpoint({ enrichBlueprint: enrich });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByRole("button", { name: "Deep-analyse" }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Deep-analyse" }));
+    expect(
+      await screen.findByText(
+        /ai analysis is unavailable right now — the standard plan is shown/i,
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Standard plan")).toBeVisible();
+  });
+
+  it("explains a server failure on deep-analyse", async () => {
+    const enrich = vi.fn(async () => {
+      throw new ApiError({ kind: "server", status: 500, message: "boom" });
+    });
+    const ep = endpoint({ enrichBlueprint: enrich });
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+    expect(
+      await screen.findByRole("button", { name: "Deep-analyse" }),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Deep-analyse" }));
+    expect(
+      await screen.findByText(/could not load the deep-analyse right now/i),
+    ).toBeVisible();
+    expect(screen.getByText("Cover Letter")).toBeVisible();
   });
 });
 

@@ -1,6 +1,6 @@
 # Desktop Workspace — Deep-Analyse Enrichment — INTEGRATION_EVAL (Slice 5)
 
-- **Status**: pending
+- **Status**: T1-T3 verified; T4 pending human sign-off
 - **Spec**: `desktop-workspace-deep-analyse-enrichment/` (requirements
   R-E-1..R-E-5, design, tasks)
 
@@ -8,10 +8,10 @@
 
 | Gate | Task | Evidence | Date |
 |---|---|---|---|
-| Endpoint contract tests | T1 | `vitest module-endpoints` — new method against live-verified shapes | — |
-| Panel tests | T2 | `vitest module-screens` — button/working/success-reload/402/reasons/500 | — |
-| Full suite + static gates | T3 | `vitest` (all), `tsc --noEmit`, `eslint .`, `prettier --check .` — 0 errors | — |
-| Capability/parity | T3 | `vitest capability-scope endpoint-parity` | — |
+| Endpoint contract tests | T1 | `vitest module-endpoints` — 6 new contract tests (URL/verb/headers, `enriched: true`, `enriched: false` with each reason, null blueprint, 402/403/404/429/5xx/network mapping, single call on transient failure) | 2026-08-09 |
+| Panel tests | T2 | `vitest module-screens` — 6 new tests (press → "Analysing…" → reload; isLoading; disabled single-flight; failure alert; retry re-press works; pass with untouched blueprint) | 2026-08-09 |
+| Full suite + static gates | T3 | `vitest` (all) 611/611 · 35 files; `tsc --noEmit` 0 errors; `eslint .` 0 errors | 2026-08-09 |
+| Capability/parity | T3 | `vitest endpoint-parity` — pins the `assist/enrich-blueprint` literal; fixtures stub gains `enrichBlueprint` | 2026-08-09 |
 | Live human verification | T4 | user live-verifies Deep-analyse → AI-tailored flip, 402 copy, failing-pass copy | — |
 
 ## Live contract evidence (2026-08-08)
