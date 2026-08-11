@@ -23,6 +23,7 @@ import { CompanyEndpoint } from "../services/api/endpoints/company";
 import { DocumentsEndpoint } from "../services/api/endpoints/documents";
 import { NotificationsEndpoint } from "../services/api/endpoints/notifications";
 import { PlannerEndpoint } from "../services/api/endpoints/planner";
+import { PulseEndpoint } from "../services/api/endpoints/pulse";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -124,6 +125,121 @@ describe("dashboard endpoint", () => {
     await endpoint.getActionItems();
     const headers = lastCall(fetchImpl)[1].headers as Record<string, string>;
     expect(headers.Authorization).toBeUndefined();
+  });
+});
+
+describe("platform pulse endpoint (Slice 8)", () => {
+  const pulseBody = {
+    success: true,
+    data: {
+      totals: {
+        activeTenders: 4812,
+        newTenders30d: 1204,
+        closingSoon7d: 318,
+        awards30d: 642,
+        awardedValue30d: 8_400_000_000,
+      },
+      trend: [{ date: "2026-08-10", tenders: 55, awards: 9 }],
+      tendersByProvince: [
+        { province: "Gauteng", slug: "gauteng", count: 1402 },
+      ],
+      awardsByProvince: [
+        {
+          province: "Western Cape",
+          slug: "western_cape",
+          count: 88,
+          totalValue: 120_000_000,
+        },
+      ],
+      generatedAt: "2026-08-11T06:00:00.000Z",
+    },
+  };
+
+  it("reads the parent's platform-pulse route with the Bearer token", async () => {
+    const { endpoint, fetchImpl } = harness(PulseEndpoint, () =>
+      jsonResponse(pulseBody),
+    );
+    const pulse = await endpoint.getPulse();
+
+    const [url, init] = lastCall(fetchImpl);
+    expect(String(url)).toContain("/api/v1/dashboard/platform-pulse");
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      "Bearer tok",
+    );
+    expect(pulse.totals.activeTenders).toBe(4812);
+    expect(pulse.trend).toEqual([
+      { date: "2026-08-10", tenders: 55, awards: 9 },
+    ]);
+  });
+
+  it("degrades an empty payload to empty collections rather than throwing", async () => {
+    // The parent-internal API is undocumented and two sibling dashboard
+    // routes already answer `{}` on the live deployment. A missing
+    // collection has to render as "nothing to show", not as a crash.
+    const { endpoint } = harness(PulseEndpoint, () =>
+      jsonResponse({ success: true, data: {} }),
+    );
+    const pulse = await endpoint.getPulse();
+    expect(pulse.trend).toEqual([]);
+    expect(pulse.tendersByProvince).toEqual([]);
+    expect(pulse.totals.activeTenders).toBeUndefined();
+  });
+
+  it("keeps a missing total distinct from a zero one", async () => {
+    // The KPI strip renders one as `0` and the other as `—`; collapsing them
+    // here would make that distinction impossible downstream.
+    const { endpoint } = harness(PulseEndpoint, () =>
+      jsonResponse({
+        success: true,
+        data: { totals: { activeTenders: 0 } },
+      }),
+    );
+    const pulse = await endpoint.getPulse();
+    expect(pulse.totals.activeTenders).toBe(0);
+    expect(pulse.totals.awards30d).toBeUndefined();
+  });
+
+  it("tolerates a field the parent adds later", async () => {
+    const { endpoint } = harness(PulseEndpoint, () =>
+      jsonResponse({
+        success: true,
+        data: { ...pulseBody.data, sectorBreakdown: [{ sector: "ICT" }] },
+      }),
+    );
+    await expect(endpoint.getPulse()).resolves.toBeDefined();
+  });
+
+  it("treats a null count as zero rather than dropping the province", async () => {
+    const { endpoint } = harness(PulseEndpoint, () =>
+      jsonResponse({
+        success: true,
+        data: { tendersByProvince: [{ province: "Limpopo", count: null }] },
+      }),
+    );
+    const pulse = await endpoint.getPulse();
+    expect(pulse.tendersByProvince).toEqual([
+      { province: "Limpopo", count: 0 },
+    ]);
+  });
+
+  it("reports a 401 as unauthorized so the screen says sign in", async () => {
+    const { endpoint } = harness(PulseEndpoint, () =>
+      jsonResponse({ success: false, error: "Unauthorized" }, 401),
+    );
+    await expect(endpoint.getPulse()).rejects.toMatchObject({
+      kind: "unauthorized",
+    });
+  });
+
+  it("reports a success:false body as malformed rather than as data", async () => {
+    // The envelope pins `success: true`. A body claiming failure must not be
+    // read as an empty-but-valid pulse and rendered as "no activity".
+    const { endpoint } = harness(PulseEndpoint, () =>
+      jsonResponse({ success: false, error: "Failed to load platform pulse" }),
+    );
+    await expect(endpoint.getPulse()).rejects.toMatchObject({
+      kind: "malformed",
+    });
   });
 });
 

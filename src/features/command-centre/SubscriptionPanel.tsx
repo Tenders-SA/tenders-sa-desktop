@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Gauge } from "../../components/charts/Gauge";
 import { ApiError } from "../../services/api/errors";
 import type {
   EntitlementSummary,
@@ -65,41 +66,59 @@ function EntitlementView({ entitlement }: { entitlement: EntitlementSummary }) {
   const slots = subscription.applicationSlots;
 
   return (
-    <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-      <dt className="text-muted-foreground">Plan</dt>
-      <dd className="text-card-foreground">{subscription.planName}</dd>
+    <>
+      {/* Slice 8: the gauge reads the entitlement this component has already
+          resolved. Giving the slot count its own panel would have meant a
+          second call to a route whose failure modes this component handles
+          carefully, and two places deciding what "no subscription" means. */}
+      <div className="mt-3 flex justify-center">
+        <Gauge
+          label="Application slots used"
+          value={slots.used}
+          max={slots.total}
+          display={`${slots.remaining}`}
+          caption={
+            slots.total > 0 ? `of ${slots.total} left` : "credits available"
+          }
+        />
+      </div>
 
-      <dt className="text-muted-foreground">Status</dt>
-      <dd className="text-card-foreground">
-        {subscription.isTrial ? "Trial" : subscription.status}
-      </dd>
+      <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+        <dt className="text-muted-foreground">Plan</dt>
+        <dd className="text-card-foreground">{subscription.planName}</dd>
 
-      <dt className="text-muted-foreground">Application slots</dt>
-      <dd className="text-card-foreground">
-        {slots.remaining} of {slots.total} remaining
-      </dd>
+        <dt className="text-muted-foreground">Status</dt>
+        <dd className="text-card-foreground">
+          {subscription.isTrial ? "Trial" : subscription.status}
+        </dd>
 
-      {entitlement.kind === "free-with-credits" && (
-        <>
-          <dt className="text-muted-foreground">Access</dt>
-          {/* The trap made visible: this user has no subscription row but
+        <dt className="text-muted-foreground">Application slots</dt>
+        <dd className="text-card-foreground">
+          {slots.remaining} of {slots.total} remaining
+        </dd>
+
+        {entitlement.kind === "free-with-credits" && (
+          <>
+            <dt className="text-muted-foreground">Access</dt>
+            {/* The trap made visible: this user has no subscription row but
               does hold credits, and must not be shown as unentitled. */}
-          <dd className="text-card-foreground">Using application credits</dd>
-        </>
-      )}
+            <dd className="text-card-foreground">Using application credits</dd>
+          </>
+        )}
 
-      {/* `currentPeriodStart` is deliberately never rendered: the route
+        {/* `currentPeriodStart` is deliberately never rendered: the route
           hard-codes it to null in both branches, so any "period began"
           date shown here would be invented. */}
-      {subscription.currentPeriodEnd && (
-        <>
-          <dt className="text-muted-foreground">Renews</dt>
-          <dd className="text-card-foreground">
-            {subscription.currentPeriodEnd.slice(0, 10)}
-          </dd>
-        </>
-      )}
-    </dl>
+        {subscription.currentPeriodEnd && (
+          <>
+            <dt className="text-muted-foreground">Renews</dt>
+            <dd className="text-card-foreground">
+              {subscription.currentPeriodEnd.slice(0, 10)}
+            </dd>
+          </>
+        )}
+      </dl>
+    </>
   );
 }
 

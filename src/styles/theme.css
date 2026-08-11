@@ -84,3 +84,38 @@
     outline-offset: 2px;
   }
 }
+
+/* Sign-in bid-pipeline graphic (Slice 8, R-V3).
+ *
+ * The only animation in the application. CSS rather than JS so that the
+ * reduced-motion guard below is the whole story -- there is no timer to
+ * cancel and nothing scheduled behind a login screen a user may leave open
+ * all day. The 288px translation is the rail's length in the diagram's own
+ * coordinate system (FIRST_X 36 -> last node 324). */
+@keyframes login-pipeline-pulse {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(288px);
+    opacity: 0;
+  }
+}
+
+.login-pipeline-pulse {
+  animation: login-pipeline-pulse 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-pipeline-pulse {
+    animation: none;
+    /* Parked on the first node rather than hidden: the diagram keeps the
+     * same composition whether or not it moves. */
+    opacity: 1;
+  }
+}

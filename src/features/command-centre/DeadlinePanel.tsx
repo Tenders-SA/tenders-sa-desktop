@@ -1,20 +1,12 @@
 import { AsyncSection, Panel } from "../../components/common/AsyncSection";
-import { useAsync } from "../../hooks/use-async";
-import type { ApplicationsEndpoint } from "../../services/api/endpoints/applications";
-import type { DocumentsEndpoint } from "../../services/api/endpoints/documents";
 import { ClosingLabel } from "../tenders/ClosingLabel";
+import { activeApplications, type PortfolioState } from "./use-portfolio";
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
   style: "currency",
   currency: "ZAR",
   maximumFractionDigits: 0,
 });
-
-/**
- * The statuses the parent counts as an active application. Mirrors the
- * status list the web application's own summary used to query with.
- */
-const ACTIVE_STATUSES = new Set(["DRAFT", "SUBMITTED", "UNDER_REVIEW"]);
 
 /** The server's seven-day deadline window, mirrored client-side. */
 const CLOSING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -28,25 +20,14 @@ const CLOSING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
  * (see `docs/specifications/dashboard-live-data.md`), so the closing-window
  * filter the summary used to apply server-side is applied here instead.
  * The window is still seven days, so the desktop and the web app agree.
+ *
+ * Slice 8 moved the fetch itself up into the Command Centre (`usePortfolio`):
+ * this panel used to load fifty applications and render three numbers from
+ * them, and the pipeline and runway charts are drawn from the rest of that
+ * same payload. Sharing the state rather than repeating the request is why
+ * three of the screen's six visuals cost nothing.
  */
-export function DeadlinePanel({
-  applications,
-  documents,
-}: {
-  applications: ApplicationsEndpoint;
-  documents: DocumentsEndpoint;
-}) {
-  const state = useAsync(
-    async (signal) => {
-      const [apps, stats] = await Promise.all([
-        applications.list({ limit: 50 }, signal),
-        documents.getStats(signal),
-      ]);
-      return { apps: apps.applications, stats };
-    },
-    [applications, documents],
-  );
-
+export function DeadlinePanel({ state }: { state: PortfolioState }) {
   return (
     <Panel title="Closing this week">
       <AsyncSection
@@ -54,12 +35,8 @@ export function DeadlinePanel({
         subject="your deadlines"
         onRetry={state.reload}
       >
-        {({ apps, stats }) => {
-          const active = apps.filter(
-            (application) =>
-              !application.isArchived &&
-              ACTIVE_STATUSES.has(application.status),
-          );
+        {({ applications, stats }) => {
+          const active = activeApplications(applications);
 
           const now = Date.now();
           const closing = active

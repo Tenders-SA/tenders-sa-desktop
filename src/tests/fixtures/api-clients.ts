@@ -29,6 +29,7 @@ export function stubApiClients(
     dashboard: {
       getActionItems: idle(),
     },
+    pulse: { getPulse: idle() },
     recommendations: {
       list: idle(),
       explain: idle(),

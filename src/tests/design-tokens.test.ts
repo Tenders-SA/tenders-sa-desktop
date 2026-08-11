@@ -176,3 +176,65 @@ describe("design tokens", () => {
     expect(css).toMatch(/--radius:\s*0\.375rem/);
   });
 });
+
+/**
+ * The chart modules must reach the ramp through the tokens, not around it
+ * (Slice 8, R-V8).
+ *
+ * The contrast guarantees above are properties of `--chart-1` … `--chart-5`.
+ * A literal `#2a78d6` in a chart carries none of them, and nothing else in
+ * the suite would notice — the chart would render, look plausible, and quietly
+ * fail AA on a dark surface. So the sources are scanned.
+ */
+describe("chart sources use tokens, never literals", () => {
+  const CHART_SOURCES = [
+    "components/charts/scale.ts",
+    "components/charts/chart-tokens.ts",
+    "components/charts/ChartFrame.tsx",
+    "components/charts/AreaTrend.tsx",
+    "components/charts/BarRow.tsx",
+    "components/charts/Donut.tsx",
+    "components/charts/Gauge.tsx",
+    "features/command-centre/PulseTotals.tsx",
+    "features/command-centre/MarketPanel.tsx",
+    "features/command-centre/PipelinePanel.tsx",
+    "features/command-centre/RunwayPanel.tsx",
+    "features/auth/BidPipelineDiagram.tsx",
+    "features/auth/SignInBrandPanel.tsx",
+    "features/auth/SignInStatusFooter.tsx",
+  ];
+
+  const srcRoot = resolve(process.cwd(), "src");
+
+  /** Declarations only: a hex code quoted in prose is not a defect. */
+  function code(path: string): string {
+    return readFileSync(resolve(srcRoot, path), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  }
+
+  it("scans every chart source it claims to", () => {
+    // Guards the guard: a renamed file would otherwise make this vacuous.
+    for (const path of CHART_SOURCES) {
+      expect(() => code(path), path).not.toThrow();
+    }
+  });
+
+  it("contains no hex, rgb() or hsl() literal", () => {
+    for (const path of CHART_SOURCES) {
+      const source = code(path);
+      expect(source, `${path}: hex literal`).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+      expect(source, `${path}: rgb()`).not.toMatch(/\brgba?\(/);
+      // `hsl(var(--x))` is the sanctioned form; `hsl(160 70% 42%)` is not.
+      expect(source, `${path}: raw hsl()`).not.toMatch(/\bhsla?\(\s*[\d.]/);
+    }
+  });
+
+  it("contains no raw Tailwind palette class", () => {
+    for (const path of CHART_SOURCES) {
+      expect(code(path), path).not.toMatch(
+        /(bg|text|border|fill|stroke)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}/,
+      );
+    }
+  });
+});

@@ -186,6 +186,18 @@ describe("endpoint parity — allowed main-application paths", () => {
     }
   });
 
+  it("keeps the platform pulse on the parent /api/v1 dashboard surface", () => {
+    // Explicit coverage for the route added in Slice 8 T2. The pulse is the
+    // one market-level read the desktop makes, and it must stay on the
+    // main-application API: the Developer API has its own tender surface,
+    // and quietly re-homing this there would put a second, differently
+    // shaped source of truth behind the Command Centre.
+    const source = stripComments(
+      readFileSync(resolve(srcRoot, "services/api/endpoints/pulse.ts"), "utf8"),
+    );
+    expect(source).toContain('"/api/v1/dashboard/platform-pulse"');
+  });
+
   it("ignores the Developer API host when it appears only in a comment", () => {
     const sample = `// historical: fixtures once used https://api.tenders-sa.org\nconst x = 1;`;
     expect(stripComments(sample)).not.toContain(DEVELOPER_API_HOST);

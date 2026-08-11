@@ -1,11 +1,11 @@
 # Desktop — Visual Sign-in and Command Centre — SPEC_CONTRACT (Slice 8)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-11
 - **Scope**: Slice 8 — visual sign-in shell and a charted Command Centre
   (R-V1..R-V12).
-- **Approved by**: —
-- **Approval date**: —
+- **Approved by**: user (in-session directive, 2026-08-11)
+- **Approval date**: 2026-08-11
 
 ## Contract checklist (mirrors tasks.md)
 

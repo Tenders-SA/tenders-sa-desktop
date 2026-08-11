@@ -22,6 +22,7 @@ import { TendersEndpoint } from "../services/api/endpoints/tenders";
 import { ApplicationsEndpoint } from "../services/api/endpoints/applications";
 import { CompanyEndpoint } from "../services/api/endpoints/company";
 import { DashboardEndpoint } from "../services/api/endpoints/dashboard";
+import { PulseEndpoint } from "../services/api/endpoints/pulse";
 import { DocumentsEndpoint } from "../services/api/endpoints/documents";
 import { EligibilityEndpoint } from "../services/api/endpoints/eligibility";
 import { NotificationsEndpoint } from "../services/api/endpoints/notifications";
@@ -75,6 +76,8 @@ export interface ApiClients {
   subscription: SubscriptionEndpoint;
   tenders: TendersEndpoint;
   dashboard: DashboardEndpoint;
+  /** Market-level activity for the Command Centre charts (Slice 8). */
+  pulse: PulseEndpoint;
   recommendations: RecommendationsEndpoint;
   savedTenders: SavedTendersEndpoint;
   applications: ApplicationsEndpoint;
@@ -170,6 +173,7 @@ export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
     notifications: new NotificationsEndpoint(endpointOptions),
     planner: new PlannerEndpoint(endpointOptions),
     preferences: new PreferencesEndpoint(endpointOptions),
+    pulse: new PulseEndpoint(endpointOptions),
     supplierIntelligence: new SupplierIntelligenceEndpoint(endpointOptions),
   };
 

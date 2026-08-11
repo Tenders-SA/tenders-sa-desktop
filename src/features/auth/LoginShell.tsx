@@ -5,6 +5,8 @@ import {
   type AuthPort,
   type SessionSummary,
 } from "../../services/auth/ports";
+import { SignInBrandPanel } from "./SignInBrandPanel";
+import { SignInStatusFooter } from "./SignInStatusFooter";
 
 export interface LoginShellProps {
   auth: AuthPort;
@@ -123,83 +125,98 @@ export function LoginShell({ auth, onSignedIn }: LoginShellProps) {
   const controlsDisabled = !enabled || pending;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <div className="w-full max-w-sm rounded border border-border bg-card p-6">
-        <h1 className="text-xl font-semibold text-card-foreground">
-          Sign in to Tenders-SA
-        </h1>
+    // Two columns (Slice 8, R-V1): the form first in the DOM so the first
+    // Tab lands on the email field, and the brand column second — hidden
+    // rather than squashed below `lg`, where the form is the whole point.
+    <main className="flex min-h-screen bg-background">
+      <div className="flex w-full flex-col justify-center p-6 lg:w-[26rem] lg:shrink-0 lg:border-r lg:border-border">
+        <div className="mx-auto w-full max-w-sm rounded border border-border bg-card p-6">
+          <h1 className="text-xl font-semibold text-card-foreground">
+            Sign in to Tenders-SA
+          </h1>
 
-        {!enabled && (
-          <p
-            role="status"
-            className="mt-3 rounded border border-border bg-muted p-3 text-sm text-muted-foreground"
-          >
-            Sign-in is not yet available in this build.
-          </p>
-        )}
-
-        <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor={emailId}
-              className="text-sm font-medium text-card-foreground"
+          {!enabled && (
+            <p
+              role="status"
+              className="mt-3 rounded border border-border bg-muted p-3 text-sm text-muted-foreground"
             >
-              Email
-            </label>
-            <input
-              id={emailId}
-              type="email"
-              autoComplete="username"
-              value={email}
-              disabled={controlsDisabled}
-              aria-invalid={failure ? true : undefined}
-              aria-describedby={failure ? errorId : undefined}
-              onChange={(event) => setEmail(event.target.value)}
-              className="rounded border border-input bg-background px-3 py-2 text-foreground disabled:opacity-60"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor={passwordId}
-              className="text-sm font-medium text-card-foreground"
-            >
-              Password
-            </label>
-            <input
-              id={passwordId}
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              disabled={controlsDisabled}
-              aria-invalid={failure ? true : undefined}
-              aria-describedby={failure ? errorId : undefined}
-              onChange={(event) => setPassword(event.target.value)}
-              className="rounded border border-input bg-background px-3 py-2 text-foreground disabled:opacity-60"
-            />
-          </div>
-
-          {failure && (
-            // `alert` announces without stealing focus, so a keyboard user
-            // is not thrown out of the field they were correcting.
-            <div role="alert" id={errorId} className="flex flex-col gap-1">
-              <p className="text-sm font-medium text-destructive">
-                {failure.message}
-              </p>
-              {failure.hint && (
-                <p className="text-sm text-muted-foreground">{failure.hint}</p>
-              )}
-            </div>
+              Sign-in is not yet available in this build.
+            </p>
           )}
 
-          <button
-            type="submit"
-            disabled={controlsDisabled}
-            className="rounded bg-primary px-4 py-2 font-medium text-primary-foreground disabled:opacity-60"
-          >
-            {pending ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor={emailId}
+                className="text-sm font-medium text-card-foreground"
+              >
+                Email
+              </label>
+              <input
+                id={emailId}
+                type="email"
+                autoComplete="username"
+                value={email}
+                disabled={controlsDisabled}
+                aria-invalid={failure ? true : undefined}
+                aria-describedby={failure ? errorId : undefined}
+                onChange={(event) => setEmail(event.target.value)}
+                className="rounded border border-input bg-background px-3 py-2 text-foreground disabled:opacity-60"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor={passwordId}
+                className="text-sm font-medium text-card-foreground"
+              >
+                Password
+              </label>
+              <input
+                id={passwordId}
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                disabled={controlsDisabled}
+                aria-invalid={failure ? true : undefined}
+                aria-describedby={failure ? errorId : undefined}
+                onChange={(event) => setPassword(event.target.value)}
+                className="rounded border border-input bg-background px-3 py-2 text-foreground disabled:opacity-60"
+              />
+            </div>
+
+            {failure && (
+              // `alert` announces without stealing focus, so a keyboard user
+              // is not thrown out of the field they were correcting.
+              <div role="alert" id={errorId} className="flex flex-col gap-1">
+                <p className="text-sm font-medium text-destructive">
+                  {failure.message}
+                </p>
+                {failure.hint && (
+                  <p className="text-sm text-muted-foreground">
+                    {failure.hint}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={controlsDisabled}
+              className="rounded bg-primary px-4 py-2 font-medium text-primary-foreground disabled:opacity-60"
+            >
+              {pending ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+        </div>
+
+        <div className="mx-auto w-full max-w-sm">
+          <SignInStatusFooter />
+        </div>
+      </div>
+
+      <div className="hidden flex-1 items-center bg-card lg:flex">
+        <SignInBrandPanel />
       </div>
     </main>
   );
