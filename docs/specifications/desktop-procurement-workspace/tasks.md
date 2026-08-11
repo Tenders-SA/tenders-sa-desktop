@@ -10,7 +10,7 @@
 - [x] Phase 0 foundation complete
 - [x] Phase 1 audit complete
 - [x] Integration evaluation passed
-- [ ] All Phase 0–1 success criteria verified — **3 open**: REQ-1 (React Hook Form + accessible component foundation absent), PERF-2 (100 ms input target unmeasured), success criterion 4 (shell has made no live parent call). All Phase 2 scope; see INTEGRATION_EVAL.md §Result
+- [ ] All Phase 0–1 success criteria verified — **2 open** (was 3; re-checked 2026-08-11 against shipped Slices 1–8 at `867cafc7a`): REQ-1 (`react-hook-form` + Radix/shadcn still absent — the accessible foundation shipped bespoke instead; needs a user decision to amend the requirement or adopt the libraries), PERF-2 (100 ms input target still unmeasured on the reference device — user-gated). **Success criterion 4 is now met**: the shell makes live parent calls through the Rust transport, human-verified across Slices 3–8. See INTEGRATION_EVAL.md §Re-check of the three open items — 2026-08-11
 
 ## Phase 0A: Repository and Native Foundation
 

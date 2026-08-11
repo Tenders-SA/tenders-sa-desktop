@@ -2,7 +2,7 @@
 
 > Update this file during implementation. No implementation is complete until every applicable item passes and evidence is recorded.
 >
-> **Current status: PHASE 0 AND PHASE 1 COMPLETE.** Every Phase 0 gate passes with recorded evidence: all automated checks, human-triggered Windows packaging, confirmed application launch, and PERF-1 start-up within target. Phase 1's parent data and API audit is complete against pinned parent commit `8ff2e4c2b2b5597dc6d8107f628ffe72c9a89bc1`, with seven audit artifacts, no parent file modified, and **three precisely named items left open** (§Result).
+> **Current status: PHASE 0 AND PHASE 1 COMPLETE.** Every Phase 0 gate passes with recorded evidence: all automated checks, human-triggered Windows packaging, confirmed application launch, and PERF-1 start-up within target. Phase 1's parent data and API audit is complete against pinned parent commit `8ff2e4c2b2b5597dc6d8107f628ffe72c9a89bc1`, with seven audit artifacts, no parent file modified, and **two items left open** — reduced from three on 2026-08-11 after re-checking against shipped Slices 1–8 (§Result, §Re-check).
 
 ## Specification Validation
 
@@ -187,6 +187,49 @@ Each is stated as a named blocker rather than ticked, per the rule that a record
 3. **Success criterion 4 is not met**: "the shell can call a non-destructive audited test endpoint through the typed transport and render validated data/error states." The shell has never made a live parent call. TASK-1.3 found why this could not have worked as built — **the parent sets no CORS headers on any route the desktop needs**, so webview `fetch` cannot reach it, and the transport must move to Rust. **Resolution**: this is precisely Phase 2's vertical slice (`phase-2-plan.md` §2, item 6, acceptance criteria A9/A13).
 
 None of the three blocks Phase 1, and none is a defect in the audit. All three are Phase 2 work, and all three are scoped in `phase-2-plan.md`.
+
+### Re-check of the three open items — 2026-08-11
+
+Phase 2 was delivered as Slices 1–8 (`desktop-authenticated-shell` through
+`desktop-document-actions`) rather than as a single `phase-2-plan.md` execution.
+The three items above were re-verified against the shipped code at
+`867cafc7a`. Full gates were re-run first and all pass: 689 tests (688 in one
+run plus `app-boot.test.tsx` green in isolation — the known parallel-load
+flake), `tsc --noEmit`, ESLint, Prettier, and `cargo check`.
+
+1. **REQ-1 — still open as literally written; intent satisfied by a different
+   means.** `react-hook-form` and Radix/shadcn are still absent from
+   `package.json` (verified 2026-08-11). They were never adopted because the
+   login form shipped hand-rolled in Slice 1:
+   `src/features/auth/LoginShell.tsx` is a live, working form using `useId`,
+   `autoComplete="username"`/`current-password`, `aria-invalid`,
+   `aria-describedby`, `role="alert"` and `role="status"`, covered by
+   `src/tests/login-shell.test.tsx` and `login-redirect.test.tsx`. The
+   accessible foundation exists as a bespoke system —
+   `docs/architecture/design-system.md`, `src/components/common`,
+   `src/components/navigation`, enforced by 34 tests in
+   `src/tests/design-tokens.test.ts` and `eslint-plugin-jsx-a11y`. **This is a
+   deviation from REQ-1's named libraries, not a missing capability.** It needs
+   a user decision to close: either amend REQ-1 to name the bespoke foundation,
+   or adopt the two libraries retroactively. Left open pending that decision —
+   no approval is recorded here because none was given.
+2. **PERF-2 — still open, unchanged.** The 100 ms input-acknowledgement target
+   has still never been measured on the agreed Windows 11 reference device. The
+   Phase 0 harness (`src/tests/performance-harness.test.ts`) still records marks
+   without asserting a threshold, deliberately. This remains user-gated: it
+   cannot be closed from CI or developer hardware.
+3. **Success criterion 4 — RESOLVED.** The shell now makes live parent calls
+   through the Rust transport, and the CORS blocker recorded in TASK-1.3 was
+   the reason the transport moved to Rust. Evidence: every slice from
+   `desktop-authenticated-shell` onward calls the parent and renders validated
+   data and error states, with live human verification recorded in the
+   `INTEGRATION_EVAL.md` of Slices 3, 4, 5, 6, 7 and 8. `dashboard-live-data.md`
+   additionally records live-route verification against the running parent with
+   a real session token. This item is closed.
+
+**Net**: one of the three is closed on evidence, one is a documentation
+deviation awaiting a user decision, one is a measurement that only the user can
+take. No code defect was found in this re-check.
 
 ### Carried forward
 
