@@ -38,6 +38,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The tender application assistance workspace now uses the available desktop
+  window width, giving analysis, qualification and document work a practical
+  full-size working area.
 - Starting a tender application now creates or opens the company application
   workspace instead of incorrectly reporting that a company profile is missing.
 - Tender detail responses that omit list-only identifiers now load correctly

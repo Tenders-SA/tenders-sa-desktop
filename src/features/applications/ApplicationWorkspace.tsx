@@ -99,7 +99,10 @@ export function ApplicationWorkspace({
   );
 
   return (
-    <section aria-labelledby="workspace-heading" className="max-w-4xl">
+    <section
+      aria-labelledby="workspace-heading"
+      className="w-full min-w-0 max-w-none"
+    >
       <Link
         to="/applications"
         className="text-sm text-muted-foreground hover:underline"
