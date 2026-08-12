@@ -51,10 +51,10 @@ full-work-area authoring environment with unsaved-change protection.
 - [x] TASK-1.2: Add pure workflow stage model and derivation
 - [x] TASK-1.3: Implement addressable workflow routes and shell
 - [x] TASK-1.4: Phase 1 integration evaluation
-- [ ] TASK-2.1: Extract reusable tender intelligence presentation
-- [ ] TASK-2.2: Build Understand stage with full analysis
-- [ ] TASK-2.3: Compose Qualify stage from existing capability
-- [ ] TASK-2.4: Phase 2 integration evaluation
+- [x] TASK-2.1: Extract reusable tender intelligence presentation
+- [x] TASK-2.2: Build Understand stage with full analysis
+- [x] TASK-2.3: Compose Qualify stage from existing capability
+- [x] TASK-2.4: Phase 2 integration evaluation
 - [ ] TASK-3.1: Extract one blueprint workspace controller
 - [ ] TASK-3.2: Build Plan stage
 - [ ] TASK-3.3: Build response document navigator and editor

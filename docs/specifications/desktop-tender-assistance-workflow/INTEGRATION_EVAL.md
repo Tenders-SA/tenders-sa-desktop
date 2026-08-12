@@ -1,7 +1,6 @@
 # Integration evaluation — desktop tender assistance workflow
 
-> Updated at each implementation phase. The current result is planning-only;
-> no product code has been changed.
+> Updated at each implementation phase.
 
 ## Pre-implementation check
 
@@ -27,13 +26,15 @@
 
 ## Phase 2 evaluation — Understand and Qualify
 
-- [ ] Understand uses existing `TendersEndpoint` and shared analysis logic.
-- [ ] All stored analysis categories and source filenames remain visible.
-- [ ] Pending/partial/no-analysis states remain honest.
-- [ ] Document downloads retain existing R2-backed route and ports.
-- [ ] Eligibility remains explicit and preserves three-way result.
-- [ ] Compliance/company failures isolate to Qualify.
-- [ ] No parent or pipeline file changed.
+- [x] Understand uses existing `TendersEndpoint` and shared analysis logic.
+- [x] All stored analysis categories and source filenames remain visible.
+- [x] Pending/partial/no-analysis states remain honest.
+- [x] Document downloads retain existing R2-backed route and ports.
+- [x] Eligibility remains explicit and preserves three-way result.
+- [x] Compliance and eligibility failures isolate within Qualify panels.
+- [x] No parent or pipeline file changed.
+- [x] Phase boundary passed 179 focused tests plus TypeScript, ESLint,
+  Prettier, Rust and diff checks.
 
 ## Phase 3 evaluation — Plan and Draft
 
@@ -70,5 +71,5 @@
 ## Result
 
 - **Status:** IN PROGRESS
-- **Remaining issues:** Implementation has not started.
+- **Remaining issues:** Phase 3 and Phase 4 remain.
 - **Approved by:** User on 2026-08-12.

@@ -7,7 +7,7 @@
 ## Current status
 
 - [x] Phase 1 — workflow foundation complete
-- [ ] Phase 2 — Understand and Qualify complete
+- [x] Phase 2 — Understand and Qualify complete
 - [ ] Phase 3 — Plan and Draft complete
 - [ ] Phase 4 — Review, migration and verification complete
 - [ ] Integration evaluation passed
@@ -60,7 +60,7 @@
 
 ## Phase 2 — Understand and Qualify
 
-- [ ] **TASK-2.1: Extract reusable tender intelligence presentation**
+- [x] **TASK-2.1: Extract reusable tender intelligence presentation**
   - *Refs:* REQ-3, INT-3
   - *Files:* `TenderDetail.tsx`, `TenderAnalysisWorkbench.tsx`, optional small
     reusable tender presentation components, tender-detail tests.
@@ -72,7 +72,7 @@
     not semantic, assertion updates.
   - *Commit:* `refactor(assistance-workflow/2.1): share tender intelligence`
 
-- [ ] **TASK-2.2: Build Understand stage with full analysis**
+- [x] **TASK-2.2: Build Understand stage with full analysis**
   - *Refs:* REQ-3, REQ-10, PERF-1, INT-3, INT-4
   - *Files:* create `UnderstandStage.tsx`; modify workflow wiring, fixtures and
     application screen tests.
@@ -84,7 +84,7 @@
     pending states; no analysis/generation mutation is called.
   - *Commit:* `feat(assistance-workflow/2.2): add full analysis stage`
 
-- [ ] **TASK-2.3: Compose Qualify stage from existing capability**
+- [x] **TASK-2.3: Compose Qualify stage from existing capability**
   - *Refs:* REQ-4, REQ-10, REQ-11
   - *Files:* create `QualifyStage.tsx`; extract reusable eligibility/company
     comparison presentation where required; update tests.
@@ -96,7 +96,7 @@
     distinct from yes/no; profile link works.
   - *Commit:* `feat(assistance-workflow/2.3): compose qualification stage`
 
-- [ ] **TASK-2.4: Phase 2 integration evaluation**
+- [x] **TASK-2.4: Phase 2 integration evaluation**
   - *Refs:* REQ-3, REQ-4, INT-3, INT-4
   - *Files:* `INTEGRATION_EVAL.md`, task/contract checkboxes only.
   - *Pre-check:* Run tender detail, tender endpoint, application screen,
