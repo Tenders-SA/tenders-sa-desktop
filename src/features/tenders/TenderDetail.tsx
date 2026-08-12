@@ -10,9 +10,9 @@ import type { DocumentActionPort } from "../../services/storage/document-actions
 import { ClosingLabel } from "./ClosingLabel";
 import { describeJsonField } from "./tender-fields";
 import { describeTenderError } from "./tender-errors";
-import { DocumentDownloadButton } from "./DocumentDownloadButton";
-import { BatchDocumentDownloadButton } from "./BatchDocumentDownloadButton";
 import { TenderAnalysisWorkbench } from "./detail/TenderAnalysisWorkbench";
+import { TenderDocumentsSection } from "./detail/TenderDocumentsSection";
+import { TenderIntelligenceOverview } from "./detail/TenderIntelligenceOverview";
 
 export interface TenderDetailProps {
   endpoint: TendersEndpoint;
@@ -283,7 +283,7 @@ export function TenderDetail({
             value={tender.bbbeeRequirements}
           />
 
-          <DocumentsSection
+          <TenderDocumentsSection
             tender={tender}
             documents={documents}
             savePort={savePort}
@@ -293,85 +293,6 @@ export function TenderDetail({
           {actions}
         </>
       )}
-    </section>
-  );
-}
-
-function TenderIntelligenceOverview({ tender }: { tender: TenderDetailData }) {
-  const summaries = (tender.documents ?? []).flatMap((document) => {
-    const summary = document.summary?.trim();
-    return summary ? [summary] : [];
-  });
-  const requirements = (tender.documents ?? [])
-    .flatMap((document) => describeJsonField(document.keyPoints) ?? [])
-    .filter(
-      (requirement, index, all) =>
-        all.findIndex(
-          (candidate) => candidate.toLowerCase() === requirement.toLowerCase(),
-        ) === index,
-    );
-
-  if (summaries.length === 0 && requirements.length === 0) return null;
-
-  return (
-    <section
-      aria-labelledby="tender-intelligence-heading"
-      className="mt-5 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
-    >
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-5 py-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
-            AI-generated tender intelligence
-          </p>
-          <h2
-            id="tender-intelligence-heading"
-            className="mt-0.5 text-base font-semibold text-card-foreground"
-          >
-            Understand the opportunity at a glance
-          </h2>
-        </div>
-        <span className="text-xs text-muted-foreground">
-          Verify against official documents
-        </span>
-      </header>
-      <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        {summaries.length > 0 && (
-          <div className="px-5 py-4 lg:border-r lg:border-border">
-            <h3 className="text-sm font-semibold text-primary">AI Summary</h3>
-            <div className="mt-2 space-y-2">
-              {summaries.map((summary, index) => (
-                <p
-                  key={`${index}-${summary}`}
-                  className="text-sm leading-6 text-foreground"
-                >
-                  {summary}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-        {requirements.length > 0 && (
-          <div className="border-t border-border px-5 py-4 lg:border-t-0">
-            <h3 className="text-sm font-semibold text-foreground">
-              Key Requirements
-            </h3>
-            <ul className="mt-2 space-y-2">
-              {requirements.map((requirement, index) => (
-                <li
-                  key={`${index}-${requirement}`}
-                  className="flex gap-2.5 text-sm leading-5 text-foreground"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-warning"
-                  />
-                  <span>{requirement}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
     </section>
   );
 }
@@ -431,86 +352,6 @@ function ApplicationFacts({ tender }: { tender: TenderDetailData }) {
             ))}
           </ol>
         </div>
-      )}
-    </section>
-  );
-}
-
-/**
- * Document metadata with a per-document download control (Slice 7, R-D5).
- *
- * Downloading goes through the parent's
- * `/api/v1/documents/[id]/download-url?requireR2=1` route (INT-4) — never a
- * direct fetch of `sourceUrl`. Without the injected client the section still
- * lists the files and says downloads are unavailable, honestly.
- */
-function DocumentsSection({
-  tender,
-  documents,
-  savePort,
-  documentActionPort,
-}: {
-  tender: TenderDetailData;
-  documents?: TenderDetailProps["documents"];
-  savePort?: SaveDownloadPort;
-  documentActionPort?: DocumentActionPort;
-}) {
-  const stats = tender.documentStats;
-  const count = stats?.total ?? tender.documentCount ?? 0;
-  if (count === 0) return null;
-
-  return (
-    <section className="mt-6 rounded border border-border bg-card p-4">
-      <h2 className="text-sm font-medium text-card-foreground">
-        {count} {count === 1 ? "document" : "documents"}
-      </h2>
-      {stats && (
-        <p className="mt-1 text-sm text-muted-foreground">
-          {stats.processed} processed
-          {stats.pending > 0 ? `, ${stats.pending} still processing` : ""}
-          {stats.failed > 0 ? `, ${stats.failed} failed` : ""}.
-        </p>
-      )}
-      {tender.documents && tender.documents.length > 0 ? (
-        <>
-          {documents && tender.documents.length >= 2 && (
-            <div className="mt-2">
-              <BatchDocumentDownloadButton
-                endpoint={documents}
-                documents={tender.documents}
-                documentActionPort={documentActionPort}
-              />
-            </div>
-          )}
-          <ul className="mt-2 flex flex-col gap-2">
-            {tender.documents.map((document) => (
-              <li key={document.id}>
-                {documents ? (
-                  <DocumentDownloadButton
-                    endpoint={documents}
-                    documentId={document.id}
-                    documentName={document.fileName ?? "Unnamed document"}
-                    savePort={savePort}
-                    documentActionPort={documentActionPort}
-                  />
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    {document.fileName ?? "Unnamed document"}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        <p className="mt-2 text-sm text-muted-foreground">
-          Document names are not yet processed for this tender.
-        </p>
-      )}
-      {documents === undefined && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          Opening tender documents is not available in this build.
-        </p>
       )}
     </section>
   );
