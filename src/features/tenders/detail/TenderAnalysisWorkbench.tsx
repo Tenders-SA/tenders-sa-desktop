@@ -117,28 +117,61 @@ function PointGroups({ points }: { points: AnalysisPoint[] }) {
               {entries.length}
             </span>
           </div>
-          <ul className="mt-3 space-y-2">
-            {entries.map((point, index) => (
+          <SourceGroups entries={entries} />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function SourceGroups({ entries }: { entries: AnalysisPoint[] }) {
+  const sources = new Map<string, AnalysisPoint[]>();
+  for (const entry of entries) {
+    const source = entry.source ?? "Tender record";
+    const sourceEntries = sources.get(source) ?? [];
+    sourceEntries.push(entry);
+    sources.set(source, sourceEntries);
+  }
+
+  return (
+    <div className="mt-3 space-y-3">
+      {[...sources].map(([source, sourceEntries]) => (
+        <article
+          key={source}
+          className="overflow-hidden rounded-lg border border-border bg-background"
+        >
+          <header className="flex items-center justify-between gap-3 border-b border-border bg-muted/50 px-4 py-2.5">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Source document
+              </p>
+              <h4
+                className="truncate text-sm font-medium text-foreground"
+                title={source}
+              >
+                {source}
+              </h4>
+            </div>
+            <span className="shrink-0 rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground">
+              {sourceEntries.length}{" "}
+              {sourceEntries.length === 1 ? "point" : "points"}
+            </span>
+          </header>
+          <ul className="divide-y divide-border/70 px-4">
+            {sourceEntries.map((point, index) => (
               <li
                 key={`${point.category}-${index}`}
-                className="flex gap-3 text-sm leading-6 text-foreground"
+                className="flex gap-3 py-2.5 text-sm leading-6 text-foreground"
               >
                 <span
                   aria-hidden="true"
                   className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary"
                 />
-                <span>
-                  {point.content}
-                  {point.source && (
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      Source: {point.source}
-                    </span>
-                  )}
-                </span>
+                <span>{point.content}</span>
               </li>
             ))}
           </ul>
-        </section>
+        </article>
       ))}
     </div>
   );

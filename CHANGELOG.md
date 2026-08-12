@@ -23,6 +23,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Grouped AI-analyzed tender findings beneath their source document so business
+  users can read each set of requirements continuously without repeated file
+  labels interrupting every point.
 - Refined the sign-in experience to present Tenders-SA as a focused business
   procurement workspace from first launch.
 - Improved tender cards and navigation for faster opportunity assessment in a

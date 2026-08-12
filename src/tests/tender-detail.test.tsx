@@ -141,7 +141,7 @@ describe("TenderDetail", () => {
     ).toBeNull();
   });
 
-  it("emphasises deduplicated AI compliance requirements with their source", async () => {
+  it("groups deduplicated AI compliance requirements under one source heading", async () => {
     render(
       <TenderDetail
         endpoint={endpointReturning({
@@ -171,9 +171,14 @@ describe("TenderDetail", () => {
     ).toBeVisible();
     expect(screen.getByText("Valid tax compliance status")).toBeVisible();
     expect(screen.getByText("Signed SBD forms")).toBeVisible();
+    expect(screen.getByText("Source document")).toBeVisible();
     expect(
-      screen.getAllByText(/Source: Tender specification.pdf/),
-    ).toHaveLength(2);
+      screen.getByRole("heading", {
+        level: 4,
+        name: "Tender specification.pdf",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText("2 points")).toBeVisible();
   });
 
   it("reports existing document processing without inventing missing requirements", async () => {
