@@ -50,7 +50,7 @@ export function TenderActions({
   );
 }
 
-function EligibilityPanel({
+export function EligibilityPanel({
   endpoint,
   tenderId,
 }: {

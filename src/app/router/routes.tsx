@@ -110,6 +110,7 @@ function ApplicationWorkspaceRoute({ clients }: { clients: ApiClients }) {
       workflowStage={stage as WorkflowStage}
       documentKey={documentKey}
       tenders={clients.tenders}
+      eligibility={clients.eligibility}
       documents={clients.documents}
     />
   );

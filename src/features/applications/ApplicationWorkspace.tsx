@@ -30,6 +30,8 @@ import type { WorkflowStage } from "./workflow/workflow-state";
 import { ApplicationWorkflowShell } from "./workflow/ApplicationWorkflowShell";
 import type { TendersEndpoint } from "../../services/api/endpoints/tenders";
 import { UnderstandStage } from "./workflow/UnderstandStage";
+import type { EligibilityEndpoint } from "../../services/api/endpoints/eligibility";
+import { QualifyStage } from "./workflow/QualifyStage";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
@@ -37,6 +39,7 @@ export interface ApplicationWorkspaceProps {
   workflowStage?: WorkflowStage;
   documentKey?: string;
   tenders?: Pick<TendersEndpoint, "get">;
+  eligibility?: EligibilityEndpoint;
   /**
    * Tender-document download client (Slice 7, R-D5). Optional so the screen
    * stays testable without it; the route passes `clients.documents`.
@@ -77,6 +80,7 @@ export function ApplicationWorkspace({
   applicationId,
   workflowStage = "understand",
   tenders,
+  eligibility,
   documents,
   savePort,
   documentActionPort,
@@ -116,6 +120,7 @@ export function ApplicationWorkspace({
               applicationId={applicationId}
               workflowStage={workflowStage}
               tenders={tenders}
+              eligibility={eligibility}
               cockpitState={cockpitState}
               onDetailReload={state.reload}
               documents={documents}
@@ -135,6 +140,7 @@ function WorkspaceBody({
   applicationId,
   workflowStage,
   tenders,
+  eligibility,
   cockpitState,
   onDetailReload,
   documents,
@@ -146,6 +152,7 @@ function WorkspaceBody({
   applicationId: string;
   workflowStage: WorkflowStage;
   tenders?: ApplicationWorkspaceProps["tenders"];
+  eligibility?: EligibilityEndpoint;
   cockpitState: AsyncState<CockpitPayload>;
   onDetailReload: () => void;
   documents?: ApplicationWorkspaceProps["documents"];
@@ -176,6 +183,13 @@ function WorkspaceBody({
           documents={documents}
           savePort={savePort}
           documentActionPort={documentActionPort}
+        />
+      ) : workflowStage === "qualify" && eligibility ? (
+        <QualifyStage
+          application={application}
+          applicationId={applicationId}
+          applications={endpoint}
+          eligibility={eligibility}
         />
       ) : (
         <>
