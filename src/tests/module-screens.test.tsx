@@ -513,6 +513,39 @@ describe("ApplicationWorkspace — workspace cockpit", () => {
     expect(screen.getByText("BridgeCo")).toBeVisible();
   });
 
+  it("keeps every established assistance capability reachable without implicit mutations", async () => {
+    const ep = endpoint();
+    wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
+
+    expect(await screen.findByText(/add information/i)).toBeVisible();
+    expect(screen.getByText("Tax clearance valid")).toBeVisible();
+    expect(screen.getByText(/1 of 2 complete/i)).toBeVisible();
+    expect(screen.getByText("Site visit")).toBeVisible();
+    expect(
+      await screen.findByText(/b-bbee certificate missing/i),
+    ).toBeVisible();
+    expect(screen.getByText("Msinsi Holding (SOC)")).toBeVisible();
+    expect(
+      screen.getByText(/no response blueprint for this tender yet/i),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Check readiness" }),
+    ).toBeVisible();
+
+    expect(ep.get).toHaveBeenCalledWith("a1", expect.anything());
+    expect(ep.getCockpit).toHaveBeenCalledWith("a1", expect.anything());
+    expect(ep.getComplianceGaps).toHaveBeenCalledWith("a1", expect.anything());
+    expect(ep.getResearch).toHaveBeenCalledWith("a1", expect.anything());
+    expect(ep.getAdditionalInfo).toHaveBeenCalledWith("a1", expect.anything());
+    expect(ep.getResponseBlueprint).toHaveBeenCalledWith(
+      "a1",
+      expect.anything(),
+    );
+    expect(ep.validate).not.toHaveBeenCalled();
+    expect(ep.updateWorkspace).not.toHaveBeenCalled();
+    expect(ep.saveAdditionalInfo).not.toHaveBeenCalled();
+  });
+
   it("renders one panel's error while the others still render", async () => {
     const ep = endpoint({
       getComplianceGaps: vi.fn(async () => {

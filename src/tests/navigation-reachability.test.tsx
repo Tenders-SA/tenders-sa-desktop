@@ -89,6 +89,18 @@ describe("navigation reachability", () => {
     expect(clients.tenders.get).toHaveBeenCalledWith("a/b", expect.anything());
   });
 
+  it("mounts the existing application workspace deep link", () => {
+    renderAt(`/applications/${encodeURIComponent("application/42")}`);
+    expect(clients.applications.get).toHaveBeenCalledWith(
+      "application/42",
+      expect.anything(),
+    );
+    expect(clients.applications.getCockpit).toHaveBeenCalledWith(
+      "application/42",
+      expect.anything(),
+    );
+  });
+
   it("still sends a genuinely unknown path home", () => {
     renderAt("/not-a-real-screen");
     expect(
