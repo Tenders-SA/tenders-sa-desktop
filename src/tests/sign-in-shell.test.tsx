@@ -42,8 +42,10 @@ describe("sign-in brand column (R-V1)", () => {
   it("says what the product is", () => {
     render(<LoginShell auth={enabledAuth()} />);
     expect(
-      screen.getByText(/bid desk for South African public procurement/i),
+      screen.getByText(/prepare stronger tender responses/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/without the distractions/i)).toBeInTheDocument();
+    expect(screen.getByText(/focused tender preparation/i)).toBeInTheDocument();
   });
 
   it("states no quantity anywhere (R-V4)", () => {
@@ -52,9 +54,7 @@ describe("sign-in brand column (R-V1)", () => {
     // measured. The version string is the one permitted numeral and lives
     // in the footer, so this scans the brand column alone.
     render(<LoginShell auth={enabledAuth()} />);
-    const claim = screen.getByText(
-      /bid desk for South African public procurement/i,
-    );
+    const claim = screen.getByText(/prepare stronger tender responses/i);
     const panel = claim.closest("div")?.parentElement;
     expect(panel).not.toBeNull();
     expect(panel?.textContent ?? "").not.toMatch(/\d/);

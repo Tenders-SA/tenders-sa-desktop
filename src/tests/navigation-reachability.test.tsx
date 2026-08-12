@@ -72,7 +72,9 @@ describe("navigation reachability", () => {
 
   it("keeps /tenders reachable with no session, because the nav promises it", () => {
     renderAt("/tenders");
-    expect(screen.getByRole("heading", { name: "Tenders" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Find the right tender to prepare" }),
+    ).toBeVisible();
   });
 
   it("mounts the tender detail route", () => {

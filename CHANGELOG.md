@@ -1,0 +1,33 @@
+# Changelog
+
+All notable changes to the Tenders-SA desktop application are documented here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Added
+
+- A desktop company profile studio that loads the complete company record and
+  supports deliberate, section-based editing without leaving the application.
+- Industry-aware certification guidance, including issuing bodies and clear
+  commonly-required versus recommended indicators while preserving custom
+  company evidence.
+- Company-specific matched and scored tender browsing alongside the complete
+  tender catalogue.
+- A command-centre workbench with a visual activity timeline and prioritised
+  attention items for tender preparation.
+
+### Changed
+
+- Refined the sign-in experience to present Tenders-SA as a focused business
+  procurement workspace from first launch.
+- Improved tender cards and navigation for faster opportunity assessment in a
+  desktop environment.
+- Expanded company profile visibility to include CIDB grading, project
+  experience, personnel, operating regions, capabilities, and certifications.
+
+### Fixed
+
+- Tender detail responses that omit list-only identifiers now load correctly
+  instead of showing an unsupported-format message.

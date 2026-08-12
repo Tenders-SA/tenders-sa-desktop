@@ -62,6 +62,33 @@ const companyProfileSchema = z
 
 export type CompanyProfile = z.infer<typeof companyProfileSchema>;
 
+export interface CompanyProfileUpdate {
+  name: string;
+  registrationNumber: string | null;
+  taxNumber: string | null;
+  bbbeeLevel: number | null;
+  bbbeeCertificateUrl: string | null;
+  industryCodes: string[];
+  provincesOperating: string[];
+  companySize: string | null;
+  annualTurnover: number | null;
+  certifications: string[];
+  capabilitiesDescription: string | null;
+}
+
+export interface CompanyProfileUpdateResult {
+  company: CompanyProfile;
+  profileCompleteness: number;
+  matchingTriggered: boolean;
+}
+
+const companyProfileUpdateResponseSchema = z.object({
+  message: z.string(),
+  profileCompleteness: z.number(),
+  matchingTriggered: z.boolean(),
+  company: companyProfileSchema,
+});
+
 const experienceSchema = z
   .object({
     id: z.string(),
@@ -135,6 +162,26 @@ export class CompanyEndpoint extends AuthenticatedEndpoint {
       }
       throw error;
     }
+  }
+
+  /** Explicit human-approved update of the canonical parent company record. */
+  async updateProfile(
+    update: CompanyProfileUpdate,
+    signal?: AbortSignal,
+  ): Promise<CompanyProfileUpdateResult> {
+    const body = await this.transport.request({
+      method: "PUT",
+      path: "/api/v1/company/profile",
+      schema: companyProfileUpdateResponseSchema,
+      headers: await this.authHeaders(),
+      body: update,
+      signal,
+    });
+    return {
+      company: body.company,
+      profileCompleteness: body.profileCompleteness,
+      matchingTriggered: body.matchingTriggered,
+    };
   }
 
   async getExperiences(signal?: AbortSignal): Promise<CompanyExperience[]> {

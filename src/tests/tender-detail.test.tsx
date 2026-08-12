@@ -24,7 +24,6 @@ import type { DocumentActionPort } from "../services/storage/document-actions";
 
 const tender: TenderDetailData = {
   id: "t1",
-  tender_id: "EXT-1",
   title: "Supply of office furniture",
   referenceNumber: "RFQ-2026-001",
   sourceOrganization: "Department of Public Works",

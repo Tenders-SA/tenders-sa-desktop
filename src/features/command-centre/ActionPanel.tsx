@@ -1,6 +1,10 @@
 import { AsyncSection, Panel } from "../../components/common/AsyncSection";
 import { useAsync } from "../../hooks/use-async";
-import type { DashboardEndpoint } from "../../services/api/endpoints/dashboard";
+import { Link } from "react-router-dom";
+import type {
+  ActionItem,
+  DashboardEndpoint,
+} from "../../services/api/endpoints/dashboard";
 
 /**
  * Needs attention (brief §6.1 — pending approvals, missing mandatory items).
@@ -18,7 +22,17 @@ export function ActionPanel({ endpoint }: { endpoint: DashboardEndpoint }) {
   );
 
   return (
-    <Panel title="Needs attention">
+    <Panel
+      title="Needs attention"
+      aside={
+        <Link
+          to="/tasks"
+          className="text-xs font-medium text-primary hover:underline"
+        >
+          Open task desk
+        </Link>
+      }
+    >
       <AsyncSection
         state={state}
         subject="outstanding actions"
@@ -30,27 +44,37 @@ export function ActionPanel({ endpoint }: { endpoint: DashboardEndpoint }) {
         }
       >
         {(items) => (
-          <ul className="flex flex-col gap-2">
+          <ul className="grid gap-2 sm:grid-cols-2">
             {items.map((item) => (
               <li
                 key={item.id}
-                className="flex items-baseline justify-between gap-3"
+                className="rounded border border-border bg-background/40 p-3"
               >
-                <span className="min-w-0">
-                  <span className="text-sm text-card-foreground">
-                    {item.title}
+                <div className="flex items-start justify-between gap-3">
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs font-semibold ${severityStyle(item.severity)}`}
+                  >
+                    {severityLabel(item.severity)}
                   </span>
-                  {item.detail && (
-                    <span className="block truncate text-sm text-muted-foreground">
-                      {item.detail}
+                  {typeof item.count === "number" && (
+                    <span
+                      aria-label={`${item.count} items`}
+                      className="flex h-7 min-w-7 items-center justify-center rounded-full bg-secondary px-2 text-xs font-semibold text-secondary-foreground"
+                    >
+                      {item.count}
                     </span>
                   )}
-                </span>
-                {typeof item.count === "number" && (
-                  <span className="shrink-0 text-sm font-medium text-foreground">
-                    {item.count}
-                  </span>
-                )}
+                </div>
+                <div className="mt-3 min-w-0">
+                  <p className="text-sm font-semibold text-card-foreground">
+                    {item.title}
+                  </p>
+                  {item.detail && (
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                      {item.detail}
+                    </p>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -58,4 +82,29 @@ export function ActionPanel({ endpoint }: { endpoint: DashboardEndpoint }) {
       </AsyncSection>
     </Panel>
   );
+}
+
+function severityLabel(severity: ActionItem["severity"]): string {
+  switch (severity?.toLowerCase()) {
+    case "critical":
+    case "urgent":
+    case "high":
+      return "Urgent";
+    case "medium":
+    case "warning":
+      return "Review";
+    default:
+      return "Next action";
+  }
+}
+
+function severityStyle(severity: ActionItem["severity"]): string {
+  switch (severityLabel(severity)) {
+    case "Urgent":
+      return "bg-destructive/15 text-destructive";
+    case "Review":
+      return "bg-warning/15 text-warning";
+    default:
+      return "bg-info/15 text-info";
+  }
 }

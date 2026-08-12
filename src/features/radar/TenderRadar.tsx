@@ -18,6 +18,8 @@ const ZAR = new Intl.NumberFormat("en-ZA", {
 
 export interface TenderRadarProps {
   endpoint: RecommendationsEndpoint;
+  /** Removes the route-level heading when Radar is part of Opportunity Desk. */
+  embedded?: boolean;
 }
 
 /**
@@ -35,7 +37,7 @@ export interface TenderRadarProps {
  * is the company profile, not a wider search. Collapsing the two would send a
  * new user hunting for tenders that were never going to appear.
  */
-export function TenderRadar({ endpoint }: TenderRadarProps) {
+export function TenderRadar({ endpoint, embedded = false }: TenderRadarProps) {
   const [minScore, setMinScore] = useState(60);
   const [offset, setOffset] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,14 +48,31 @@ export function TenderRadar({ endpoint }: TenderRadarProps) {
   );
 
   return (
-    <section aria-labelledby="radar-heading" className="max-w-4xl">
+    <section
+      aria-labelledby={embedded ? "company-matches-heading" : "radar-heading"}
+      className={embedded ? "" : "max-w-4xl"}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h1
-          id="radar-heading"
-          className="text-xl font-semibold text-foreground"
-        >
-          Tender Radar
-        </h1>
+        {embedded ? (
+          <div>
+            <h2
+              id="company-matches-heading"
+              className="text-base font-semibold text-foreground"
+            >
+              Prioritised opportunities
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Server-calculated against your company profile and readiness.
+            </p>
+          </div>
+        ) : (
+          <h1
+            id="radar-heading"
+            className="text-xl font-semibold text-foreground"
+          >
+            Tender Radar
+          </h1>
+        )}
         <button
           type="button"
           disabled={refreshing}
@@ -75,9 +94,11 @@ export function TenderRadar({ endpoint }: TenderRadarProps) {
         </button>
       </div>
 
-      <p className="mt-2 text-sm text-muted-foreground">
-        Open tenders scored against your company profile.
-      </p>
+      {!embedded && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Open tenders scored against your company profile.
+        </p>
+      )}
 
       <div className="mt-4 flex items-center gap-2">
         <label

@@ -17,6 +17,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { TenderList } from "../features/tenders/TenderList";
 import {
   PROVINCES,
@@ -26,6 +27,7 @@ import type {
   TenderListResult,
   TendersEndpoint,
 } from "../services/api/endpoints/tenders";
+import type { RecommendationsEndpoint } from "../services/api/endpoints/recommendations";
 
 const emptyResult: TenderListResult = {
   tenders: [],
@@ -191,6 +193,90 @@ describe("TenderList filters", () => {
     await userEvent.selectOptions(screen.getByLabelText("Province"), "Gauteng");
     expect(
       await screen.findByText(/No tenders match “roadworks” with the current/),
+    ).toBeVisible();
+  });
+});
+
+describe("company opportunity desk", () => {
+  function recommendationsEndpoint() {
+    const list = vi.fn(async () => ({
+      state: "ready" as const,
+      recommendations: [
+        {
+          id: "match-1",
+          tenderId: "tender-1",
+          tender: {
+            id: "tender-1",
+            title: "Supply and delivery of safety equipment",
+            referenceNumber: "SAFE-2026",
+            description: null,
+            closingDate: "2026-09-01T10:00:00.000Z",
+            estimatedValue: 500_000,
+            province: "Gauteng",
+            sourceOrganization: "Department of Public Works",
+            status: "ACTIVE",
+          },
+          score: 84,
+          baseScore: 82,
+          reasoning: "Strong industry and province alignment.",
+          factors: null,
+          improvementAreas: [],
+          calculatedAt: "2026-08-12T08:00:00.000Z",
+          matchCategory: "highly_qualified" as const,
+        },
+      ],
+      hasMore: false,
+      offset: 0,
+      limit: 20,
+    }));
+    return {
+      endpoint: {
+        list,
+        explain: vi.fn(),
+        newCount: vi.fn(),
+        refresh: vi.fn(async () => undefined),
+      } as unknown as RecommendationsEndpoint,
+      list,
+    };
+  }
+
+  it("leads with server-scored company matches and defers the corpus read", async () => {
+    const tenders = listEndpoint();
+    const matches = recommendationsEndpoint();
+
+    render(
+      <MemoryRouter>
+        <TenderList
+          endpoint={tenders.endpoint}
+          recommendations={matches.endpoint}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("84%")).toBeVisible();
+    expect(screen.getByText("Strong match")).toBeVisible();
+    expect(matches.list).toHaveBeenCalledTimes(1);
+    expect(tenders.list).not.toHaveBeenCalled();
+  });
+
+  it("loads all tenders only when that view is selected and labels them unscored", async () => {
+    const tenders = listEndpoint();
+    const matches = recommendationsEndpoint();
+
+    render(
+      <MemoryRouter>
+        <TenderList
+          endpoint={tenders.endpoint}
+          recommendations={matches.endpoint}
+        />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("84%");
+    await userEvent.click(screen.getByRole("tab", { name: "All tenders" }));
+    await waitFor(() => expect(tenders.list).toHaveBeenCalledTimes(1));
+    expect(
+      screen.getByText(/not company-scored until they appear in Tender Radar/i),
     ).toBeVisible();
   });
 });

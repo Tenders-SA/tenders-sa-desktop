@@ -72,32 +72,41 @@ const tenderListResponseSchema = z.object({
   // desktop has no business rendering, and it inflates every page.
 });
 
-/** Detail returns the tender object bare — no wrapper (a tenth shape). */
-const tenderDetailSchema = tenderListItemSchema.extend({
-  status: z.string().optional(),
-  sourceUrl: z.string().nullable().optional(),
-  updatedAt: z.string().optional(),
-  documents: z
-    .array(
-      z.object({
-        id: z.string(),
-        fileName: z.string().nullable().optional(),
-        // NOTE: never fetched directly. Document access goes through
-        // /api/v1/documents/[id]/download-url?requireR2=1 (INT-4), which is
-        // a later slice. This is metadata only.
-        processingStatus: z.string().optional(),
-      }),
-    )
-    .optional(),
-  documentStats: z
-    .object({
-      total: z.number(),
-      processed: z.number(),
-      pending: z.number(),
-      failed: z.number(),
-    })
-    .optional(),
-});
+/**
+ * Detail returns the tender object bare — no wrapper (a tenth shape).
+ *
+ * Unlike the list projection, the parent detail route does not return the
+ * external `tender_id` field. Keep that route-specific mismatch explicit:
+ * inheriting the required list field makes every real detail response fail
+ * validation before the page can render.
+ */
+const tenderDetailSchema = tenderListItemSchema
+  .omit({ tender_id: true })
+  .extend({
+    status: z.string().optional(),
+    sourceUrl: z.string().nullable().optional(),
+    updatedAt: z.string().optional(),
+    documents: z
+      .array(
+        z.object({
+          id: z.string(),
+          fileName: z.string().nullable().optional(),
+          // NOTE: never fetched directly. Document access goes through
+          // /api/v1/documents/[id]/download-url?requireR2=1 (INT-4), which is
+          // a later slice. This is metadata only.
+          processingStatus: z.string().optional(),
+        }),
+      )
+      .optional(),
+    documentStats: z
+      .object({
+        total: z.number(),
+        processed: z.number(),
+        pending: z.number(),
+        failed: z.number(),
+      })
+      .optional(),
+  });
 
 export type TenderDetail = z.infer<typeof tenderDetailSchema>;
 

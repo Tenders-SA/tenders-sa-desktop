@@ -162,10 +162,14 @@ describe("tender list", () => {
 describe("tender detail", () => {
   it("parses the BARE object the detail route returns, with no wrapper (E-11)", async () => {
     // A tenth top-level shape. Expecting `{tenders}` or `{success,data}`
-    // here would fail on every call.
+    // here would fail on every call. The parent detail projection also omits
+    // list-only `tender_id`; requiring it caused every live detail read to be
+    // reported as malformed.
+    const { tender_id: listOnlyId, ...liveDetail } = tender;
+    expect(listOnlyId).toBe("EXT-1");
     const { endpoint } = makeEndpoint(async () =>
       jsonResponse({
-        ...tender,
+        ...liveDetail,
         status: "ACTIVE",
         documentStats: { total: 3, processed: 3, pending: 0, failed: 0 },
       }),

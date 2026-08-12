@@ -24,6 +24,7 @@ import { stubApiClients } from "./fixtures/api-clients";
 import type { ApiClients } from "../app/auth-wiring";
 import type { Application } from "../services/api/endpoints/applications";
 import type { PlatformPulse } from "../services/api/endpoints/pulse";
+import type { ActionItem } from "../services/api/endpoints/dashboard";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -78,11 +79,13 @@ function clientsWith({
   pulseValue = pulse(),
   applicationsError,
   pulseError,
+  actions = [],
 }: {
   applications?: Application[];
   pulseValue?: PlatformPulse;
   applicationsError?: unknown;
   pulseError?: unknown;
+  actions?: ActionItem[];
 } = {}): ApiClients {
   const list = vi.fn(async () =>
     applicationsError
@@ -105,6 +108,10 @@ function clientsWith({
     // The stubs are structural stand-ins for endpoint classes, so the cast
     // goes through `unknown` — the same shape `stubApiClients` itself uses.
     pulse: { getPulse },
+    dashboard: {
+      ...stubApiClients().dashboard,
+      getActionItems: vi.fn(async () => actions),
+    },
   } as unknown as Partial<ApiClients>);
 }
 
@@ -202,6 +209,69 @@ describe("Command Centre — portfolio visuals (R-V10)", () => {
       ([query]) => (query as { limit?: number })?.limit === 50,
     );
     expect(portfolioReads).toHaveLength(1);
+    expect(clients.applications.list).toHaveBeenCalledTimes(1);
+  });
+
+  it("turns recent work into linked application context", async () => {
+    renderCentre(
+      clientsWith({
+        applications: [
+          application({
+            id: "application/42",
+            status: "UNDER_REVIEW",
+            tender: {
+              ...application().tender,
+              title: "Facilities maintenance services",
+              sourceOrganization: "City of Tshwane",
+              referenceNumber: "TSH-2026-42",
+            },
+          }),
+        ],
+      }),
+    );
+
+    const workspaceLink = await screen.findByRole("link", {
+      name: "Facilities maintenance services",
+    });
+    expect(workspaceLink).toHaveAttribute(
+      "href",
+      "/applications/application%2F42",
+    );
+    const timelineEntry = workspaceLink.closest("li");
+    expect(timelineEntry).not.toBeNull();
+    expect(
+      within(timelineEntry as HTMLElement).getByText(
+        /City of Tshwane · TSH-2026-42/,
+      ),
+    ).toBeVisible();
+    expect(
+      within(timelineEntry as HTMLElement).getByText("Under review"),
+    ).toBeVisible();
+  });
+
+  it("presents attention items as labelled preparation priorities", async () => {
+    renderCentre(
+      clientsWith({
+        actions: [
+          {
+            id: "missing-documents",
+            title: "Missing mandatory documents",
+            detail: "Complete the returnable schedule before review.",
+            count: 3,
+            severity: "high",
+          },
+        ],
+      }),
+    );
+
+    expect(
+      await screen.findByText("Missing mandatory documents"),
+    ).toBeVisible();
+    expect(screen.getByText("Urgent")).toBeVisible();
+    expect(screen.getByLabelText("3 items")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Open task desk" }),
+    ).toHaveAttribute("href", "/tasks");
   });
 
   it("draws the pipeline donut from the user's own applications", async () => {

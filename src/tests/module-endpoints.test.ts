@@ -958,6 +958,47 @@ describe("applications endpoint — additional-info Q&A", () => {
 });
 
 describe("company endpoint", () => {
+  it("updates the canonical profile with typed arrays and returns save metadata", async () => {
+    const { endpoint, fetchImpl } = harness(CompanyEndpoint, () =>
+      jsonResponse({
+        message: "Company profile updated successfully",
+        profileCompleteness: 82,
+        matchingTriggered: true,
+        company: {
+          id: "c1",
+          name: "Acme Construction",
+          industryCodes: ["Construction"],
+          provincesOperating: ["Gauteng"],
+          certifications: ["ISO 9001"],
+        },
+      }),
+    );
+    const result = await endpoint.updateProfile({
+      name: "Acme Construction",
+      registrationNumber: "2020/1",
+      taxNumber: null,
+      bbbeeLevel: 2,
+      bbbeeCertificateUrl: null,
+      industryCodes: ["Construction"],
+      provincesOperating: ["Gauteng"],
+      companySize: "Small",
+      annualTurnover: 2_500_000,
+      certifications: ["ISO 9001"],
+      capabilitiesDescription: "Civil works",
+    });
+    const [, init] = lastCall(fetchImpl);
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      industryCodes: ["Construction"],
+      provincesOperating: ["Gauteng"],
+      bbbeeLevel: 2,
+    });
+    expect(result).toMatchObject({
+      profileCompleteness: 82,
+      matchingTriggered: true,
+    });
+  });
+
   it("treats a 404 as 'no profile yet' rather than an error", async () => {
     // The normal state for a new account, and the reason Tender Radar is
     // empty. Throwing would send the user hunting for a fault.

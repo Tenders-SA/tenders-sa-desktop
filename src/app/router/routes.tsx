@@ -74,6 +74,7 @@ function TenderListRoute({ clients }: { clients: ApiClients }) {
   return (
     <TenderList
       endpoint={clients.tenders}
+      recommendations={clients.recommendations}
       onOpenTender={(id) => navigate(`/tenders/${encodeURIComponent(id)}`)}
     />
   );

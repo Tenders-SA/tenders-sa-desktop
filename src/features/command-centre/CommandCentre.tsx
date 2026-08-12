@@ -38,13 +38,33 @@ export interface CommandCentreProps {
  */
 export function CommandCentre({ clients }: CommandCentreProps) {
   return (
-    <section aria-labelledby="command-centre-heading" className="max-w-5xl">
-      <h1
-        id="command-centre-heading"
-        className="text-xl font-semibold text-foreground"
-      >
-        Command Centre
-      </h1>
+    <section aria-labelledby="command-centre-heading" className="max-w-6xl">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+            Bid preparation workspace
+          </p>
+          <h1
+            id="command-centre-heading"
+            className="mt-1 text-2xl font-semibold tracking-tight text-foreground"
+          >
+            Command Centre
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Prioritise the next action, protect each deadline and keep every
+            response moving towards submission.
+          </p>
+        </div>
+
+        {clients && (
+          <Link
+            to="/applications"
+            className="rounded border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            Open application workspace
+          </Link>
+        )}
+      </div>
 
       {!clients && (
         <p className="mt-2 text-sm text-muted-foreground">
@@ -54,23 +74,26 @@ export function CommandCentre({ clients }: CommandCentreProps) {
 
       {clients && <SignedIn clients={clients} />}
 
-      <div className="mt-6 rounded border border-border bg-card p-6">
-        <h2 className="text-sm font-medium text-card-foreground">
-          Find work to bid on
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Tender Radar scores open tenders against your company profile.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-4">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded border border-primary/30 bg-primary/5 px-5 py-4">
+        <div>
+          <h2 className="text-sm font-semibold text-card-foreground">
+            Add the next opportunity to your desk
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Use Tender Radar to qualify suitable work before committing bid
+            preparation time.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Link
             to="/radar"
-            className="text-sm font-medium text-primary hover:underline"
+            className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
           >
             Open Tender Radar
           </Link>
           <Link
             to="/tenders"
-            className="text-sm font-medium text-primary hover:underline"
+            className="rounded border border-border px-4 py-2 text-sm font-medium text-foreground hover:border-primary hover:text-primary"
           >
             Browse all tenders
           </Link>
@@ -118,9 +141,9 @@ function SignedIn({ clients }: { clients: ApiClients }) {
         <SubscriptionPanel endpoint={clients.subscription} />
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]">
         <ActionPanel endpoint={clients.dashboard} />
-        <ActivityPanel applications={clients.applications} />
+        <ActivityPanel state={portfolio} />
       </div>
     </>
   );

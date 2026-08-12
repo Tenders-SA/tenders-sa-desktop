@@ -1908,7 +1908,12 @@ describe("Company profile screen", () => {
       getProfile: vi.fn(async () => profile),
       getExperiences: vi.fn(async () => []),
       getPersonnel: vi.fn(async () => []),
-      getCidb: vi.fn(),
+      getCidb: vi.fn(async () => undefined),
+      updateProfile: vi.fn(async (update) => ({
+        company: { id: "c1", ...update },
+        profileCompleteness: 82,
+        matchingTriggered: true,
+      })),
     } as unknown as CompanyEndpoint;
   }
 
@@ -1933,6 +1938,117 @@ describe("Company profile screen", () => {
     );
     await screen.findByText("Acme");
     expect(screen.getAllByText("Not recorded").length).toBeGreaterThan(0);
+  });
+
+  it("loads every core field into a deliberate editor and saves typed values", async () => {
+    const client = endpoint({
+      id: "c1",
+      name: "Acme",
+      registrationNumber: "2020/123",
+      taxNumber: "9876",
+      bbbeeLevel: 3,
+      companySize: "Small",
+      annualTurnover: 1_000_000,
+      industryCodes: ["Construction", "Civil engineering"],
+      provincesOperating: ["Gauteng"],
+      certifications: ["ISO 9001"],
+      capabilitiesDescription: "Road and bridge construction",
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit company profile" }),
+    );
+    expect(screen.getByDisplayValue("Acme")).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Market footprint" }),
+    );
+    expect(screen.getByLabelText(/industry codes and sectors/i)).toHaveValue(
+      "Construction\nCivil engineering",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Company details" }),
+    );
+
+    await userEvent.clear(screen.getByLabelText(/annual turnover/i));
+    await userEvent.type(screen.getByLabelText(/annual turnover/i), "2500000");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save company profile" }),
+    );
+
+    await waitFor(() =>
+      expect(client.updateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Acme",
+          annualTurnover: 2_500_000,
+          industryCodes: ["Construction", "Civil engineering"],
+          provincesOperating: ["Gauteng"],
+        }),
+      ),
+    );
+    expect(
+      await screen.findByText(/Tender matches are being refreshed/i),
+    ).toBeVisible();
+  });
+
+  it("cancels an edit without writing the canonical profile", async () => {
+    const client = endpoint({
+      id: "c1",
+      name: "Acme",
+      industryCodes: [],
+      provincesOperating: [],
+      certifications: [],
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit company profile" }),
+    );
+    await userEvent.clear(screen.getByDisplayValue("Acme"));
+    await userEvent.type(
+      screen.getByLabelText(/company name/i),
+      "Changed draft",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(client.updateProfile).not.toHaveBeenCalled();
+    expect(await screen.findByText("Acme")).toBeVisible();
+  });
+
+  it("shows certifications for the company's field and preserves custom evidence", async () => {
+    const client = endpoint({
+      id: "c1",
+      name: "Acme Digital",
+      industryCodes: ["ict", "ICT-001"],
+      provincesOperating: ["Gauteng"],
+      certifications: ["legacy-partner-status"],
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Edit company profile" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Bid capability" }),
+    );
+
+    expect(screen.getByText("POPIA Compliance")).toBeVisible();
+    expect(
+      screen.getByText("ISO 27001 (Information Security Management)"),
+    ).toBeVisible();
+    expect(screen.queryByText("PSIRA Registration")).not.toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/other certifications already held/i),
+    ).toHaveValue("legacy-partner-status");
+
+    await userEvent.click(screen.getByLabelText(/POPIA Compliance/i));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save company profile" }),
+    );
+    await waitFor(() =>
+      expect(client.updateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          industryCodes: ["ict", "ICT-001"],
+          certifications: ["legacy-partner-status", "popia"],
+        }),
+      ),
+    );
   });
 });
 
