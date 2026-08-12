@@ -48,17 +48,25 @@ const ZAR = new Intl.NumberFormat("en-ZA", {
   maximumFractionDigits: 0,
 });
 
-function DetailRow({
+function SnapshotItem({
   label,
   children,
+  className = "",
 }: {
   label: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
-      <dt className="w-48 shrink-0 text-sm text-muted-foreground">{label}</dt>
-      <dd className="text-sm text-foreground">{children}</dd>
+    <div
+      className={`min-w-0 rounded-lg border border-border/80 bg-background/80 px-4 py-3 ${className}`}
+    >
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mt-1 break-words text-sm font-medium text-foreground">
+        {children}
+      </dd>
     </div>
   );
 }
@@ -176,50 +184,76 @@ export function TenderDetail({
 
       {tender && (
         <>
-          <h1
-            id="tender-detail-heading"
-            className="mt-4 text-xl font-semibold text-foreground"
-          >
-            {tender.title}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {tender.sourceOrganization}
-          </p>
+          <header className="mt-4 overflow-hidden rounded-xl border border-primary/25 bg-card shadow-sm">
+            <div className="border-b border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-5 py-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 max-w-4xl">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                    Tender opportunity
+                  </p>
+                  <h1
+                    id="tender-detail-heading"
+                    className="mt-1 text-2xl font-semibold leading-tight text-foreground"
+                  >
+                    {tender.title}
+                  </h1>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Issued by {tender.sourceOrganization}
+                  </p>
+                </div>
+                {tender.status && (
+                  <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+                    {tender.status}
+                  </span>
+                )}
+              </div>
+            </div>
 
-          <div className="mt-4">
-            <ClosingLabel closingDate={tender.closingDate} />
-          </div>
-
-          <dl className="mt-6 flex flex-col gap-2">
-            <DetailRow label="Reference">{tender.referenceNumber}</DetailRow>
-            {tender.province && (
-              <DetailRow label="Province">{tender.province}</DetailRow>
-            )}
-            {tender.type && <DetailRow label="Type">{tender.type}</DetailRow>}
-            {typeof tender.estimatedValue === "number" && (
-              <DetailRow label="Estimated value">
-                {ZAR.format(tender.estimatedValue)}
-              </DetailRow>
-            )}
-            {tender.status && (
-              <DetailRow label="Status">{tender.status}</DetailRow>
-            )}
-            {tender.industryCategories &&
-              tender.industryCategories.length > 0 && (
-                <DetailRow label="Industry">
-                  {tender.industryCategories.join(", ")}
-                </DetailRow>
+            <dl className="grid gap-3 bg-muted/25 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <SnapshotItem label="Closing">
+                <ClosingLabel closingDate={tender.closingDate} />
+              </SnapshotItem>
+              {tender.province && (
+                <SnapshotItem label="Province">{tender.province}</SnapshotItem>
               )}
-            {tender.sourceUrl && (
-              // Shown as text, not a link. The desktop never fetches
-              // government sources directly (INT-4) -- documents come from
-              // the parent's Worker/R2/D1 pipeline -- and there is no
-              // external-open capability in the Tauri scope.
-              <DetailRow label="Source">
-                <span className="break-all">{tender.sourceUrl}</span>
-              </DetailRow>
-            )}
-          </dl>
+              {tender.type && (
+                <SnapshotItem label="Procurement type">
+                  {tender.type}
+                </SnapshotItem>
+              )}
+              {tender.industryCategories &&
+                tender.industryCategories.length > 0 && (
+                  <SnapshotItem label="Industry">
+                    {tender.industryCategories.join(", ")}
+                  </SnapshotItem>
+                )}
+              {typeof tender.estimatedValue === "number" && (
+                <SnapshotItem label="Estimated value">
+                  {ZAR.format(tender.estimatedValue)}
+                </SnapshotItem>
+              )}
+              <SnapshotItem
+                label="Tender reference"
+                className="sm:col-span-2 lg:col-span-3"
+              >
+                <span className="font-mono text-xs sm:text-sm">
+                  {tender.referenceNumber}
+                </span>
+              </SnapshotItem>
+              {tender.sourceUrl && (
+                <SnapshotItem
+                  label="Official source"
+                  className="sm:col-span-2 lg:col-span-4"
+                >
+                  <span className="break-all font-normal">
+                    {tender.sourceUrl}
+                  </span>
+                </SnapshotItem>
+              )}
+            </dl>
+          </header>
+
+          <TenderIntelligenceOverview tender={tender} />
 
           <TenderAnalysisWorkbench tender={tender} />
 
@@ -259,6 +293,85 @@ export function TenderDetail({
           {actions}
         </>
       )}
+    </section>
+  );
+}
+
+function TenderIntelligenceOverview({ tender }: { tender: TenderDetailData }) {
+  const summaries = (tender.documents ?? []).flatMap((document) => {
+    const summary = document.summary?.trim();
+    return summary ? [summary] : [];
+  });
+  const requirements = (tender.documents ?? [])
+    .flatMap((document) => describeJsonField(document.keyPoints) ?? [])
+    .filter(
+      (requirement, index, all) =>
+        all.findIndex(
+          (candidate) => candidate.toLowerCase() === requirement.toLowerCase(),
+        ) === index,
+    );
+
+  if (summaries.length === 0 && requirements.length === 0) return null;
+
+  return (
+    <section
+      aria-labelledby="tender-intelligence-heading"
+      className="mt-5 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+    >
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-5 py-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+            AI-generated tender intelligence
+          </p>
+          <h2
+            id="tender-intelligence-heading"
+            className="mt-0.5 text-base font-semibold text-card-foreground"
+          >
+            Understand the opportunity at a glance
+          </h2>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          Verify against official documents
+        </span>
+      </header>
+      <div className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        {summaries.length > 0 && (
+          <div className="px-5 py-4 lg:border-r lg:border-border">
+            <h3 className="text-sm font-semibold text-primary">AI Summary</h3>
+            <div className="mt-2 space-y-2">
+              {summaries.map((summary, index) => (
+                <p
+                  key={`${index}-${summary}`}
+                  className="text-sm leading-6 text-foreground"
+                >
+                  {summary}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+        {requirements.length > 0 && (
+          <div className="border-t border-border px-5 py-4 lg:border-t-0">
+            <h3 className="text-sm font-semibold text-foreground">
+              Key Requirements
+            </h3>
+            <ul className="mt-2 space-y-2">
+              {requirements.map((requirement, index) => (
+                <li
+                  key={`${index}-${requirement}`}
+                  className="flex gap-2.5 text-sm leading-5 text-foreground"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-warning"
+                  />
+                  <span>{requirement}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

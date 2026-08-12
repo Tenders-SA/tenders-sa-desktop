@@ -61,6 +61,42 @@ describe("TenderDetail", () => {
     );
     expect(screen.getByText("RFQ-2026-001")).toBeInTheDocument();
     expect(screen.getByText("Gauteng")).toBeInTheDocument();
+    expect(screen.getByText("Tender opportunity")).toBeVisible();
+    expect(screen.getByText("Tender reference")).toBeVisible();
+  });
+
+  it("puts available AI summary and key requirements above deeper analysis", async () => {
+    render(
+      <TenderDetail
+        endpoint={endpointReturning({
+          ...tender,
+          documents: [
+            {
+              id: "d1",
+              fileName: "Specification.pdf",
+              summary: "Supply and install ergonomic office furniture.",
+              keyPoints: ["Provide product samples", "Include a delivery plan"],
+            },
+          ],
+        })}
+        tenderId="t1"
+      />,
+    );
+
+    expect(await screen.findByText("AI Summary")).toBeVisible();
+    expect(
+      screen.getByText("Supply and install ergonomic office furniture."),
+    ).toBeVisible();
+    expect(screen.getByText("Key Requirements")).toBeVisible();
+    expect(screen.getByText("Provide product samples")).toBeVisible();
+    expect(screen.getByText("Include a delivery plan")).toBeVisible();
+    expect(
+      screen.getByText("AI Summary").compareDocumentPosition(
+        screen.getByRole("heading", {
+          name: "AI-Analyzed Compliance Requirements",
+        }),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("requests the id it was given", async () => {

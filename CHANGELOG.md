@@ -23,6 +23,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Reworked tender detail headers into an opportunity snapshot and moved the
+  available AI summary and key requirements above the full compliance analysis
+  for faster first-pass bid assessment.
 - Grouped AI-analyzed tender findings beneath their source document so business
   users can read each set of requirements continuously without repeated file
   labels interrupting every point.
