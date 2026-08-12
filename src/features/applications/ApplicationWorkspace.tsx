@@ -215,6 +215,8 @@ function WorkspaceBody({
           endpoint={endpoint}
           cockpitState={cockpitState}
           savePort={savePort}
+          applicationStatus={application.status}
+          onApplicationChanged={onDetailReload}
         />
       ) : (
         <>

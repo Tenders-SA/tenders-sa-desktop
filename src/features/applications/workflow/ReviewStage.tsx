@@ -18,17 +18,24 @@ import { ChecklistPanel } from "../workspace/ChecklistPanel";
 import { EventsPanel } from "../workspace/EventsPanel";
 import { ComplianceGapsPanel } from "../workspace/ComplianceGapsPanel";
 import { useResponseBlueprintWorkspace } from "./use-response-blueprint-workspace";
+import { AnalysisStatusPanel } from "../workspace/AnalysisStatusPanel";
+import { ValueEstimatePanel } from "../workspace/ValueEstimatePanel";
+import { StageBar } from "../workspace/StageBar";
 
 export function ReviewStage({
   applicationId,
   endpoint,
   cockpitState,
   savePort = createTauriSavePort(),
+  applicationStatus,
+  onApplicationChanged,
 }: {
   applicationId: string;
   endpoint: ApplicationsEndpoint;
   cockpitState: AsyncState<CockpitPayload>;
   savePort?: SaveDownloadPort;
+  applicationStatus: string;
+  onApplicationChanged: () => void;
 }) {
   const blueprint = useResponseBlueprintWorkspace(endpoint, applicationId);
   const [readiness, setReadiness] = useState<
@@ -69,6 +76,20 @@ export function ReviewStage({
 
   return (
     <div className="space-y-5">
+      <Panel title="Application tracking">
+        <StageBar
+          endpoint={endpoint}
+          applicationId={applicationId}
+          applicationStatus={applicationStatus}
+          onChanged={onApplicationChanged}
+        />
+      </Panel>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AnalysisStatusPanel state={cockpitState} />
+        <ValueEstimatePanel state={cockpitState} />
+      </div>
+
       <Panel
         title="Submission readiness"
         aside={

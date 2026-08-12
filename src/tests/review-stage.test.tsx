@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { ReviewStage } from "../features/applications/workflow/ReviewStage";
 import type {
   ApplicationsEndpoint,
@@ -23,6 +24,8 @@ describe("ReviewStage", () => {
     }));
     const endpoint = {
       validate,
+      getWorkspaceStage: vi.fn(async () => "add_information"),
+      updateWorkspace: vi.fn(async () => ({ success: true })),
       getComplianceGaps: vi.fn(async () => ({ gaps: [] })),
       getResponseBlueprint: vi.fn(async () => ({
         blueprint: {
@@ -44,20 +47,24 @@ describe("ReviewStage", () => {
     };
 
     render(
-      <ReviewStage
-        applicationId="a1"
-        endpoint={endpoint}
-        cockpitState={{
-          status: "ready",
-          value: {
-            checklistState: [
-              { id: "c1", label: "Confirm pricing", completed: false },
-            ],
-            events: [],
-          } as unknown as CockpitPayload,
-        }}
-        savePort={savePort}
-      />,
+      <MemoryRouter>
+        <ReviewStage
+          applicationId="a1"
+          endpoint={endpoint}
+          cockpitState={{
+            status: "ready",
+            value: {
+              checklistState: [
+                { id: "c1", label: "Confirm pricing", completed: false },
+              ],
+              events: [],
+            } as unknown as CockpitPayload,
+          }}
+          savePort={savePort}
+          applicationStatus="DRAFT"
+          onApplicationChanged={vi.fn()}
+        />
+      </MemoryRouter>,
     );
 
     expect(validate).not.toHaveBeenCalled();
