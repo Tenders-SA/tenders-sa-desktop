@@ -86,6 +86,21 @@ const tenderDetailSchema = tenderListItemSchema
     status: z.string().optional(),
     sourceUrl: z.string().nullable().optional(),
     updatedAt: z.string().optional(),
+    aiSummary: z.string().nullable().optional(),
+    aiKeyRequirements: z.string().nullable().optional(),
+    analysisAccess: z
+      .object({
+        state: z.enum([
+          "available",
+          "locked",
+          "pending",
+          "partial",
+          "unavailable",
+        ]),
+        analysedDocuments: z.number(),
+        totalDocuments: z.number(),
+      })
+      .optional(),
     documents: z
       .array(
         z.object({
@@ -95,6 +110,44 @@ const tenderDetailSchema = tenderListItemSchema
           // /api/v1/documents/[id]/download-url?requireR2=1 (INT-4), which is
           // a later slice. This is metadata only.
           processingStatus: z.string().optional(),
+          analyses: z
+            .array(
+              z.object({
+                id: z.string(),
+                submissionGuidelines: z.string().nullable().optional(),
+                evaluationCriteria: z.string().nullable().optional(),
+                evaluationStructured: z.unknown().optional(),
+                importantDates: z.string().nullable().optional(),
+                contactInformation: z.string().nullable().optional(),
+                technicalSpecifications: z.string().nullable().optional(),
+                financialRequirements: z.string().nullable().optional(),
+                complianceRequirements: z.string().nullable().optional(),
+                localContentRequirement: z.string().nullable().optional(),
+                hdiRequirement: z.string().nullable().optional(),
+                analysisSections: z
+                  .array(
+                    z.object({
+                      sectionType: z.string(),
+                      content: z.string(),
+                      source: z
+                        .object({
+                          documentId: z.string().optional(),
+                          documentName: z.string().nullable().optional(),
+                          documentCategory: z.string().nullable().optional(),
+                        })
+                        .optional(),
+                    }),
+                  )
+                  .nullable()
+                  .optional(),
+                confidenceScore: z.number().nullable().optional(),
+                extractionMethod: z.string().nullable().optional(),
+                extractionVersion: z.number().nullable().optional(),
+                sectionTaxonomyVersion: z.number().nullable().optional(),
+                extractedAt: z.string().nullable().optional(),
+              }),
+            )
+            .optional(),
         }),
       )
       .optional(),

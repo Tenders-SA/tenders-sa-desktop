@@ -12,6 +12,7 @@ import { describeJsonField } from "./tender-fields";
 import { describeTenderError } from "./tender-errors";
 import { DocumentDownloadButton } from "./DocumentDownloadButton";
 import { BatchDocumentDownloadButton } from "./BatchDocumentDownloadButton";
+import { TenderAnalysisWorkbench } from "./detail/TenderAnalysisWorkbench";
 
 export interface TenderDetailProps {
   endpoint: TendersEndpoint;
@@ -146,7 +147,7 @@ export function TenderDetail({
   const tender = state.status === "ready" ? state.tender : undefined;
 
   return (
-    <section aria-labelledby="tender-detail-heading" className="max-w-3xl">
+    <section aria-labelledby="tender-detail-heading" className="max-w-7xl">
       {onBack && (
         <button
           type="button"
@@ -219,6 +220,8 @@ export function TenderDetail({
               </DetailRow>
             )}
           </dl>
+
+          <TenderAnalysisWorkbench tender={tender} />
 
           {tender.description && (
             <section className="mt-6">

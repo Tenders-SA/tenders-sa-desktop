@@ -141,6 +141,71 @@ describe("TenderDetail", () => {
     ).toBeNull();
   });
 
+  it("emphasises deduplicated AI compliance requirements with their source", async () => {
+    render(
+      <TenderDetail
+        endpoint={endpointReturning({
+          ...tender,
+          analysisAccess: {
+            state: "available",
+            analysedDocuments: 1,
+            totalDocuments: 1,
+          },
+          documents: [
+            {
+              id: "d1",
+              fileName: "Tender specification.pdf",
+              analyses: [
+                {
+                  id: "a1",
+                  complianceRequirements: "Valid tax compliance status",
+                  analysisSections: [
+                    {
+                      sectionType: "returnable_documents",
+                      content: "Signed SBD forms",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        })}
+        tenderId="t1"
+      />,
+    );
+    expect(
+      await screen.findByRole("heading", {
+        name: "AI-Analyzed Compliance Requirements",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText("Valid tax compliance status")).toBeVisible();
+    expect(screen.getByText("Signed SBD forms")).toBeVisible();
+    expect(
+      screen.getAllByText(/Source: Tender specification.pdf/),
+    ).toHaveLength(2);
+  });
+
+  it("never renders analysis text in the locked state", async () => {
+    render(
+      <TenderDetail
+        endpoint={endpointReturning({
+          ...tender,
+          analysisAccess: {
+            state: "locked",
+            analysedDocuments: 1,
+            totalDocuments: 1,
+          },
+          documents: [{ id: "d1", analyses: [] }],
+        })}
+        tenderId="t1"
+      />,
+    );
+    expect(
+      await screen.findByText(/current access does not include/i),
+    ).toBeVisible();
+    expect(screen.queryByText("Valid tax compliance status")).toBeNull();
+  });
+
   it("does not crash on an unexpected field shape", async () => {
     render(
       <TenderDetail

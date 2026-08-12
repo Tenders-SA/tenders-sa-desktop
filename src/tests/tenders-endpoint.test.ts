@@ -190,6 +190,44 @@ describe("tender detail", () => {
     await expect(endpoint.get("t1")).resolves.toBeDefined();
   });
 
+  it("projects complete stored analysis without weakening the core tender contract", async () => {
+    const { endpoint } = makeEndpoint(async () =>
+      jsonResponse({
+        ...tender,
+        analysisAccess: {
+          state: "partial",
+          analysedDocuments: 1,
+          totalDocuments: 2,
+        },
+        aiSummary: "A concise bidder briefing",
+        documents: [
+          {
+            id: "d1",
+            fileName: "spec.pdf",
+            analyses: [
+              {
+                id: "a1",
+                complianceRequirements: "Tax compliant",
+                analysisSections: [
+                  {
+                    sectionType: "health_safety",
+                    content: "Submit a safety plan",
+                  },
+                ],
+                confidenceScore: 0.91,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    const result = await endpoint.get("t1");
+    expect(result.analysisAccess?.state).toBe("partial");
+    expect(
+      result.documents?.[0]?.analyses?.[0]?.analysisSections?.[0]?.sectionType,
+    ).toBe("health_safety");
+  });
+
   it("encodes the id into the path", async () => {
     const { endpoint, fetchImpl } = makeEndpoint(async () =>
       jsonResponse(tender),

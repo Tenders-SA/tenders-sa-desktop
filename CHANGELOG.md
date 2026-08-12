@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A desktop tender analysis workbench that puts AI-analyzed compliance and
+  submission requirements first, retains source-document references, shows
+  analysis coverage, and keeps the application workspace as the next step.
 - A desktop company profile studio that loads the complete company record and
   supports deliberate, section-based editing without leaving the application.
 - Industry-aware certification guidance, including issuing bodies and clear

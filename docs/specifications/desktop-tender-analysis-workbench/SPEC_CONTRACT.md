@@ -1,9 +1,9 @@
 # Specification contract — desktop tender analysis workbench
 
-**Status: PENDING APPROVAL**
+**Status: APPROVED — user directive, 2026-08-12**
 
-Implementation is prohibited until the user approves this contract and a
-separate parent-repository API specification.
+Implementation is authorised by the user directive. Parent API implementation
+still requires the separately governed parent-repository specification below.
 
 ## Locked decisions
 

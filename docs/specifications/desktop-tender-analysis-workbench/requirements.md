@@ -2,7 +2,7 @@
 
 ## Status
 
-Planning complete; implementation pending approval.
+Approved by user directive, 2026-08-12; implementation in progress.
 
 ## Evidence and current state
 
