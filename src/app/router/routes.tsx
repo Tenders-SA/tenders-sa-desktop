@@ -25,6 +25,10 @@ import { Calendar } from "../../features/calendar/Calendar";
 import { Tasks } from "../../features/tasks/Tasks";
 import { Settings } from "../../features/settings/Settings";
 import { SupplierIntelligence } from "../../features/intelligence/SupplierIntelligence";
+import {
+  isWorkflowStage,
+  type WorkflowStage,
+} from "../../features/applications/workflow/workflow-state";
 
 export interface AppRoutesProps {
   auth: AuthPort;
@@ -81,12 +85,30 @@ function TenderListRoute({ clients }: { clients: ApiClients }) {
 }
 
 function ApplicationWorkspaceRoute({ clients }: { clients: ApiClients }) {
-  const { applicationId } = useParams();
+  const { applicationId, stage, documentKey } = useParams();
   if (!applicationId) return <Navigate to="/applications" replace />;
+  if (!stage) {
+    return (
+      <Navigate
+        to={`/applications/${encodeURIComponent(applicationId)}/understand`}
+        replace
+      />
+    );
+  }
+  if (!isWorkflowStage(stage)) {
+    return (
+      <Navigate
+        to={`/applications/${encodeURIComponent(applicationId)}/understand`}
+        replace
+      />
+    );
+  }
   return (
     <ApplicationWorkspace
       endpoint={clients.applications}
       applicationId={applicationId}
+      workflowStage={stage as WorkflowStage}
+      documentKey={documentKey}
       documents={clients.documents}
     />
   );
@@ -164,6 +186,14 @@ export function AppRoutes({
           />
           <Route
             path="applications/:applicationId"
+            element={<ApplicationWorkspaceRoute clients={clients} />}
+          />
+          <Route
+            path="applications/:applicationId/:stage"
+            element={<ApplicationWorkspaceRoute clients={clients} />}
+          />
+          <Route
+            path="applications/:applicationId/draft/:documentKey"
             element={<ApplicationWorkspaceRoute clients={clients} />}
           />
           <Route

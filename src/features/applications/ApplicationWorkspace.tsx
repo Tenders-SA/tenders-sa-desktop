@@ -10,7 +10,6 @@ import {
   type SubmissionReadiness,
 } from "../../services/api/endpoints/applications";
 import { describeApiError } from "../../services/api/describe-error";
-import { ClosingLabel } from "../tenders/ClosingLabel";
 import { describeJsonField } from "../tenders/tender-fields";
 import { StageBar } from "./workspace/StageBar";
 import { UrgencyBanner } from "./workspace/UrgencyBanner";
@@ -27,10 +26,14 @@ import { BatchDocumentDownloadButton } from "../tenders/BatchDocumentDownloadBut
 import type { DownloadResult } from "../../services/api/transport";
 import type { SaveDownloadPort } from "../../services/storage/save-download";
 import type { DocumentActionPort } from "../../services/storage/document-actions";
+import type { WorkflowStage } from "./workflow/workflow-state";
+import { ApplicationWorkflowShell } from "./workflow/ApplicationWorkflowShell";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
   applicationId: string;
+  workflowStage?: WorkflowStage;
+  documentKey?: string;
   /**
    * Tender-document download client (Slice 7, R-D5). Optional so the screen
    * stays testable without it; the route passes `clients.documents`.
@@ -69,6 +72,7 @@ const ZAR = new Intl.NumberFormat("en-ZA", {
 export function ApplicationWorkspace({
   endpoint,
   applicationId,
+  workflowStage = "understand",
   documents,
   savePort,
   documentActionPort,
@@ -106,6 +110,7 @@ export function ApplicationWorkspace({
               application={application}
               endpoint={endpoint}
               applicationId={applicationId}
+              workflowStage={workflowStage}
               cockpitState={cockpitState}
               onDetailReload={state.reload}
               documents={documents}
@@ -123,6 +128,7 @@ function WorkspaceBody({
   application,
   endpoint,
   applicationId,
+  workflowStage,
   cockpitState,
   onDetailReload,
   documents,
@@ -132,6 +138,7 @@ function WorkspaceBody({
   application: ApplicationDetail;
   endpoint: ApplicationsEndpoint;
   applicationId: string;
+  workflowStage: WorkflowStage;
   cockpitState: AsyncState<CockpitPayload>;
   onDetailReload: () => void;
   documents?: ApplicationWorkspaceProps["documents"];
@@ -141,38 +148,20 @@ function WorkspaceBody({
   const { tender, company } = application;
 
   return (
-    <>
-      <h1
-        id="workspace-heading"
-        className="text-xl font-semibold text-foreground"
-      >
-        {tender.title}
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {tender.sourceOrganization ?? "Buyer not recorded"}
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-        <span className="font-medium text-foreground">
-          {describeApplicationStatus(application.status)}
-        </span>
-        {tender.closingDate ? (
-          <ClosingLabel closingDate={tender.closingDate} />
-        ) : (
-          <span className="text-muted-foreground">No closing date</span>
-        )}
-        {typeof tender.estimatedValue === "number" && (
-          <span className="text-muted-foreground">
-            {ZAR.format(tender.estimatedValue)}
-          </span>
-        )}
-        {tender.referenceNumber && (
-          <span className="text-muted-foreground">
-            Ref {tender.referenceNumber}
-          </span>
-        )}
-      </div>
-
+    <ApplicationWorkflowShell
+      applicationId={applicationId}
+      tenderId={tender.id}
+      activeStage={workflowStage}
+      title={tender.title}
+      buyer={tender.sourceOrganization}
+      reference={tender.referenceNumber}
+      applicationStatus={describeApplicationStatus(application.status)}
+      closingDate={tender.closingDate}
+      evidence={{
+        cockpit:
+          cockpitState.status === "ready" ? cockpitState.value : undefined,
+      }}
+    >
       <div className="mt-4 flex flex-col gap-4">
         <Panel title="Workspace stage">
           <StageBar
@@ -352,7 +341,7 @@ function WorkspaceBody({
           )}
         </Panel>
       </div>
-    </>
+    </ApplicationWorkflowShell>
   );
 }
 

@@ -22,6 +22,7 @@ import { MemoryRouter } from "react-router-dom";
 import { AppRoutes } from "../app/router/routes";
 import { ALL_NAVIGATION_ITEMS } from "../components/navigation/navigation-items";
 import type { AuthPort } from "../services/auth/ports";
+import type { ApiClients } from "../app/auth-wiring";
 import { stubApiClients } from "./fixtures/api-clients";
 
 /** Gated build: `isEnabled()` false is what opens the escape hatch. */
@@ -34,10 +35,14 @@ const gatedAuth = {
 
 const clients = stubApiClients();
 
-function renderAt(path: string) {
+function renderAt(path: string, routeClients = clients) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <AppRoutes auth={gatedAuth} isAuthenticated={false} clients={clients} />
+      <AppRoutes
+        auth={gatedAuth}
+        isAuthenticated={false}
+        clients={routeClients}
+      />
     </MemoryRouter>,
   );
 }
@@ -99,6 +104,73 @@ describe("navigation reachability", () => {
       "application/42",
       expect.anything(),
     );
+  });
+
+  it.each(["understand", "qualify", "plan", "draft", "review"])(
+    "keeps the %s workflow stage directly addressable",
+    async (stage) => {
+      const routeClients = stubApiClients({
+        applications: {
+          ...clients.applications,
+          get: vi.fn(async () => ({
+            id: "a1",
+            tenderId: "t1",
+            status: "DRAFT",
+            submittedAt: null,
+            createdAt: "2026-08-01T00:00:00.000Z",
+            updatedAt: "2026-08-01T00:00:00.000Z",
+            notes: null,
+            isArchived: false,
+            tender: {
+              id: "t1",
+              title: "Security services",
+              referenceNumber: "RFQ-3",
+              sourceOrganization: "Dept of Health",
+              closingDate: "2099-01-01T00:00:00.000Z",
+            },
+          })),
+        } as unknown as ApiClients["applications"],
+      });
+      renderAt(`/applications/a1/${stage}`, routeClients);
+      expect(
+        await screen.findByRole("heading", {
+          level: 2,
+          name:
+            stage === "review"
+              ? "Review & Export"
+              : `${stage.charAt(0).toUpperCase()}${stage.slice(1)}`,
+        }),
+      ).toBeVisible();
+    },
+  );
+
+  it("redirects an unknown workflow stage to Understand", async () => {
+    const routeClients = stubApiClients({
+      applications: {
+        ...clients.applications,
+        get: vi.fn(async () => ({
+          id: "a1",
+          tenderId: "t1",
+          status: "DRAFT",
+          submittedAt: null,
+          createdAt: "2026-08-01T00:00:00.000Z",
+          updatedAt: "2026-08-01T00:00:00.000Z",
+          notes: null,
+          isArchived: false,
+          tender: {
+            id: "t1",
+            title: "Security services",
+            referenceNumber: "RFQ-3",
+            sourceOrganization: "Dept of Health",
+            closingDate: "2099-01-01T00:00:00.000Z",
+          },
+        })),
+      } as unknown as ApiClients["applications"],
+    });
+    renderAt("/applications/a1/not-a-stage", routeClients);
+    expect(
+      await screen.findByRole("heading", { level: 2, name: "Understand" }),
+    ).toBeVisible();
   });
 
   it("still sends a genuinely unknown path home", () => {
