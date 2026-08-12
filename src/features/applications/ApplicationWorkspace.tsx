@@ -28,12 +28,15 @@ import type { SaveDownloadPort } from "../../services/storage/save-download";
 import type { DocumentActionPort } from "../../services/storage/document-actions";
 import type { WorkflowStage } from "./workflow/workflow-state";
 import { ApplicationWorkflowShell } from "./workflow/ApplicationWorkflowShell";
+import type { TendersEndpoint } from "../../services/api/endpoints/tenders";
+import { UnderstandStage } from "./workflow/UnderstandStage";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
   applicationId: string;
   workflowStage?: WorkflowStage;
   documentKey?: string;
+  tenders?: Pick<TendersEndpoint, "get">;
   /**
    * Tender-document download client (Slice 7, R-D5). Optional so the screen
    * stays testable without it; the route passes `clients.documents`.
@@ -73,6 +76,7 @@ export function ApplicationWorkspace({
   endpoint,
   applicationId,
   workflowStage = "understand",
+  tenders,
   documents,
   savePort,
   documentActionPort,
@@ -111,6 +115,7 @@ export function ApplicationWorkspace({
               endpoint={endpoint}
               applicationId={applicationId}
               workflowStage={workflowStage}
+              tenders={tenders}
               cockpitState={cockpitState}
               onDetailReload={state.reload}
               documents={documents}
@@ -129,6 +134,7 @@ function WorkspaceBody({
   endpoint,
   applicationId,
   workflowStage,
+  tenders,
   cockpitState,
   onDetailReload,
   documents,
@@ -139,6 +145,7 @@ function WorkspaceBody({
   endpoint: ApplicationsEndpoint;
   applicationId: string;
   workflowStage: WorkflowStage;
+  tenders?: ApplicationWorkspaceProps["tenders"];
   cockpitState: AsyncState<CockpitPayload>;
   onDetailReload: () => void;
   documents?: ApplicationWorkspaceProps["documents"];
@@ -162,185 +169,201 @@ function WorkspaceBody({
           cockpitState.status === "ready" ? cockpitState.value : undefined,
       }}
     >
-      <div className="mt-4 flex flex-col gap-4">
-        <Panel title="Workspace stage">
-          <StageBar
-            endpoint={endpoint}
-            applicationId={applicationId}
-            applicationStatus={application.status}
-            onChanged={onDetailReload}
-          />
-        </Panel>
-        <UrgencyBanner state={cockpitState} />
-      </div>
+      {workflowStage === "understand" && tenders ? (
+        <UnderstandStage
+          tenderId={tender.id}
+          tenders={tenders}
+          documents={documents}
+          savePort={savePort}
+          documentActionPort={documentActionPort}
+        />
+      ) : (
+        <>
+          <div className="mt-4 flex flex-col gap-4">
+            <Panel title="Workspace stage">
+              <StageBar
+                endpoint={endpoint}
+                applicationId={applicationId}
+                applicationStatus={application.status}
+                onChanged={onDetailReload}
+              />
+            </Panel>
+            <UrgencyBanner state={cockpitState} />
+          </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Panel title="What the tender requires">
-          <FieldList heading="Requirements" value={tender.requirements} />
-          <FieldList
-            heading="Eligibility criteria"
-            value={tender.eligibilityCriteria}
-          />
-          <FieldList
-            heading="B-BBEE requirements"
-            value={tender.bbbeeRequirements}
-          />
-          <FieldList
-            heading="Required documents"
-            value={tender.requiredDocuments}
-          />
-          {!hasAnyField([
-            tender.requirements,
-            tender.eligibilityCriteria,
-            tender.bbbeeRequirements,
-            tender.requiredDocuments,
-          ]) && (
-            // Distinguishes "not extracted" from "none required". The parent
-            // defaults these to null when parsing fails, so an empty panel
-            // must not read as "this tender asks for nothing".
-            <p className="text-sm text-muted-foreground">
-              No requirements have been extracted from this tender's documents
-              yet.
-            </p>
-          )}
-        </Panel>
-
-        <Panel title="What your company has">
-          {company ? (
-            <dl className="flex flex-col gap-2">
-              <Row label="Company">{company.name}</Row>
-              {company.registrationNumber && (
-                <Row label="Registration">{company.registrationNumber}</Row>
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <Panel title="What the tender requires">
+              <FieldList heading="Requirements" value={tender.requirements} />
+              <FieldList
+                heading="Eligibility criteria"
+                value={tender.eligibilityCriteria}
+              />
+              <FieldList
+                heading="B-BBEE requirements"
+                value={tender.bbbeeRequirements}
+              />
+              <FieldList
+                heading="Required documents"
+                value={tender.requiredDocuments}
+              />
+              {!hasAnyField([
+                tender.requirements,
+                tender.eligibilityCriteria,
+                tender.bbbeeRequirements,
+                tender.requiredDocuments,
+              ]) && (
+                // Distinguishes "not extracted" from "none required". The parent
+                // defaults these to null when parsing fails, so an empty panel
+                // must not read as "this tender asks for nothing".
+                <p className="text-sm text-muted-foreground">
+                  No requirements have been extracted from this tender's
+                  documents yet.
+                </p>
               )}
-              <Row label="B-BBEE level">
-                {company.bbbeeLevel === null ||
-                company.bbbeeLevel === undefined ? (
-                  <span className="text-muted-foreground">Not recorded</span>
-                ) : (
-                  String(company.bbbeeLevel)
-                )}
-              </Row>
-              <Row label="Annual turnover">
-                {company.annualTurnover === null ||
-                company.annualTurnover === undefined ? (
-                  <span className="text-muted-foreground">Not recorded</span>
-                ) : typeof company.annualTurnover === "number" ? (
-                  ZAR.format(company.annualTurnover)
-                ) : (
-                  company.annualTurnover
-                )}
-              </Row>
-              <InlineFieldRow
-                label="Industry codes"
-                value={company.industryCodes}
-              />
-              <InlineFieldRow
-                label="Operating provinces"
-                value={company.provincesOperating}
-              />
-            </dl>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No company profile is attached to this application.
-            </p>
-          )}
-          <Link
-            to="/company"
-            className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
-          >
-            View full company profile
-          </Link>
-        </Panel>
-      </div>
+            </Panel>
 
-      <div className="mt-4">
-        <ReadinessPanel endpoint={endpoint} applicationId={applicationId} />
-      </div>
-
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <AnalysisStatusPanel state={cockpitState} />
-        <ValueEstimatePanel state={cockpitState} />
-        <ChecklistPanel state={cockpitState} />
-        <EventsPanel state={cockpitState} />
-        <ComplianceGapsPanel
-          endpoint={endpoint}
-          applicationId={applicationId}
-        />
-        <ResearchPanel endpoint={endpoint} applicationId={applicationId} />
-        <AdditionalInfoPanel
-          endpoint={endpoint}
-          applicationId={applicationId}
-        />
-        <ResponseBlueprintPanel
-          endpoint={endpoint}
-          applicationId={applicationId}
-        />
-      </div>
-
-      {application.notes && (
-        <div className="mt-4">
-          <Panel title="Notes">
-            <p className="whitespace-pre-line text-sm text-muted-foreground">
-              {application.notes}
-            </p>
-          </Panel>
-        </div>
-      )}
-
-      <div className="mt-4">
-        <Panel
-          title={`Tender documents${
-            tender.documents?.length ? ` (${tender.documents.length})` : ""
-          }`}
-        >
-          {tender.documents && tender.documents.length > 0 ? (
-            <>
-              {documents && tender.documents.length >= 2 && (
-                <div className="mb-2">
-                  <BatchDocumentDownloadButton
-                    endpoint={documents}
-                    documents={tender.documents}
-                    documentActionPort={documentActionPort}
+            <Panel title="What your company has">
+              {company ? (
+                <dl className="flex flex-col gap-2">
+                  <Row label="Company">{company.name}</Row>
+                  {company.registrationNumber && (
+                    <Row label="Registration">{company.registrationNumber}</Row>
+                  )}
+                  <Row label="B-BBEE level">
+                    {company.bbbeeLevel === null ||
+                    company.bbbeeLevel === undefined ? (
+                      <span className="text-muted-foreground">
+                        Not recorded
+                      </span>
+                    ) : (
+                      String(company.bbbeeLevel)
+                    )}
+                  </Row>
+                  <Row label="Annual turnover">
+                    {company.annualTurnover === null ||
+                    company.annualTurnover === undefined ? (
+                      <span className="text-muted-foreground">
+                        Not recorded
+                      </span>
+                    ) : typeof company.annualTurnover === "number" ? (
+                      ZAR.format(company.annualTurnover)
+                    ) : (
+                      company.annualTurnover
+                    )}
+                  </Row>
+                  <InlineFieldRow
+                    label="Industry codes"
+                    value={company.industryCodes}
                   />
-                </div>
+                  <InlineFieldRow
+                    label="Operating provinces"
+                    value={company.provincesOperating}
+                  />
+                </dl>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No company profile is attached to this application.
+                </p>
               )}
-              <ul className="flex flex-col gap-2">
-                {tender.documents.map((document) => (
-                  <li key={document.id} className="text-sm">
-                    {documents ? (
-                      <DocumentDownloadButton
+              <Link
+                to="/company"
+                className="mt-3 inline-block text-sm font-medium text-primary hover:underline"
+              >
+                View full company profile
+              </Link>
+            </Panel>
+          </div>
+
+          <div className="mt-4">
+            <ReadinessPanel endpoint={endpoint} applicationId={applicationId} />
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <AnalysisStatusPanel state={cockpitState} />
+            <ValueEstimatePanel state={cockpitState} />
+            <ChecklistPanel state={cockpitState} />
+            <EventsPanel state={cockpitState} />
+            <ComplianceGapsPanel
+              endpoint={endpoint}
+              applicationId={applicationId}
+            />
+            <ResearchPanel endpoint={endpoint} applicationId={applicationId} />
+            <AdditionalInfoPanel
+              endpoint={endpoint}
+              applicationId={applicationId}
+            />
+            <ResponseBlueprintPanel
+              endpoint={endpoint}
+              applicationId={applicationId}
+            />
+          </div>
+
+          {application.notes && (
+            <div className="mt-4">
+              <Panel title="Notes">
+                <p className="whitespace-pre-line text-sm text-muted-foreground">
+                  {application.notes}
+                </p>
+              </Panel>
+            </div>
+          )}
+
+          <div className="mt-4">
+            <Panel
+              title={`Tender documents${
+                tender.documents?.length ? ` (${tender.documents.length})` : ""
+              }`}
+            >
+              {tender.documents && tender.documents.length > 0 ? (
+                <>
+                  {documents && tender.documents.length >= 2 && (
+                    <div className="mb-2">
+                      <BatchDocumentDownloadButton
                         endpoint={documents}
-                        documentId={document.id}
-                        documentName={[
-                          document.fileName ?? "Unnamed document",
-                          document.documentCategory,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                        savePort={savePort}
+                        documents={tender.documents}
                         documentActionPort={documentActionPort}
                       />
-                    ) : (
-                      <>
-                        <span className="text-muted-foreground">
-                          {document.fileName ?? "Unnamed document"}
-                        </span>
-                        {document.documentCategory
-                          ? ` · ${document.documentCategory}`
-                          : ""}
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No documents are attached to this tender.
-            </p>
-          )}
-        </Panel>
-      </div>
+                    </div>
+                  )}
+                  <ul className="flex flex-col gap-2">
+                    {tender.documents.map((document) => (
+                      <li key={document.id} className="text-sm">
+                        {documents ? (
+                          <DocumentDownloadButton
+                            endpoint={documents}
+                            documentId={document.id}
+                            documentName={[
+                              document.fileName ?? "Unnamed document",
+                              document.documentCategory,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                            savePort={savePort}
+                            documentActionPort={documentActionPort}
+                          />
+                        ) : (
+                          <>
+                            <span className="text-muted-foreground">
+                              {document.fileName ?? "Unnamed document"}
+                            </span>
+                            {document.documentCategory
+                              ? ` · ${document.documentCategory}`
+                              : ""}
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No documents are attached to this tender.
+                </p>
+              )}
+            </Panel>
+          </div>
+        </>
+      )}
     </ApplicationWorkflowShell>
   );
 }
