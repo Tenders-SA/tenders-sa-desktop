@@ -38,14 +38,16 @@
 
 ## Phase 3 evaluation — Plan and Draft
 
-- [ ] One blueprint controller owns GET, overlays and generation refresh.
-- [ ] Plan retains all blueprint, questions, research, submission and risk data.
-- [ ] Draft uses a dedicated work-area editor, not inline card editing.
-- [ ] Save/generate/enrich semantics and error copy remain unchanged.
-- [ ] Bounded generation refresh stops early and cleans up on unmount.
-- [ ] Save/Discard/Stay prevents silent draft loss.
-- [ ] Draft content is absent from URLs, logs and persistent browser state.
-- [ ] Keyboard, focus and narrow-window flows pass.
+- [x] One blueprint controller owns GET, overlays and generation refresh.
+- [x] Plan retains all blueprint, questions, research, submission and risk data.
+- [x] Draft uses a viewport-filling dialog editor, not inline card editing.
+- [x] Save/generate/enrich semantics and error copy remain unchanged.
+- [x] Bounded generation refresh stops early and cleans up on unmount.
+- [x] Save/Discard/Stay prevents silent draft loss.
+- [x] Draft content is absent from URLs, logs and persistent browser state.
+- [x] Keyboard, focus and narrow-window composition checks pass.
+- [x] Phase boundary passed 119 focused tests plus TypeScript, ESLint,
+  Prettier, Rust and diff checks.
 
 ## Phase 4 evaluation — Review and migration
 

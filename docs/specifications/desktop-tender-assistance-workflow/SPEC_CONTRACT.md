@@ -57,11 +57,11 @@ authoring environment with unsaved-change protection.
 - [x] TASK-2.2: Build Understand stage with full analysis
 - [x] TASK-2.3: Compose Qualify stage from existing capability
 - [x] TASK-2.4: Phase 2 integration evaluation
-- [ ] TASK-3.1: Extract one blueprint workspace controller
-- [ ] TASK-3.2: Build Plan stage
-- [ ] TASK-3.3: Build response document navigator and editor
-- [ ] TASK-3.4: Protect unsaved edits
-- [ ] TASK-3.5: Phase 3 integration evaluation
+- [x] TASK-3.1: Extract one blueprint workspace controller
+- [x] TASK-3.2: Build Plan stage
+- [x] TASK-3.3: Build response document navigator and editor
+- [x] TASK-3.4: Protect unsaved edits
+- [x] TASK-3.5: Phase 3 integration evaluation
 - [ ] TASK-4.1: Build Review & Export stage
 - [ ] TASK-4.2: Remove old all-panels composition and reconcile capability
 - [ ] TASK-4.3: Accessibility, responsive and recovery verification

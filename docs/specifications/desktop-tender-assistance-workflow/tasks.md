@@ -8,7 +8,7 @@
 
 - [x] Phase 1 — workflow foundation complete
 - [x] Phase 2 — Understand and Qualify complete
-- [ ] Phase 3 — Plan and Draft complete
+- [x] Phase 3 — Plan and Draft complete
 - [ ] Phase 4 — Review, migration and verification complete
 - [ ] Integration evaluation passed
 - [ ] All requirements success criteria verified
@@ -107,7 +107,7 @@
 
 ## Phase 3 — Plan and full-work-area Draft
 
-- [ ] **TASK-3.1: Extract one blueprint workspace controller**
+- [x] **TASK-3.1: Extract one blueprint workspace controller**
   - *Refs:* REQ-5, REQ-8, REQ-10, INT-2
   - *Files:* create `use-response-blueprint-workspace.ts`; modify
     `ResponseBlueprintPanel.tsx` and focused tests.
@@ -119,7 +119,7 @@
     and at most one bounded timer are observable.
   - *Commit:* `refactor(assistance-workflow/3.1): centralise blueprint state`
 
-- [ ] **TASK-3.2: Build Plan stage**
+- [x] **TASK-3.2: Build Plan stage**
   - *Refs:* REQ-5, REQ-10, REQ-11
   - *Files:* create `PlanStage.tsx`; modify blueprint plan presentation,
     `ResponseBlueprintDocRow.tsx` and tests.
@@ -131,7 +131,7 @@
     no inline textarea remains in Plan.
   - *Commit:* `feat(assistance-workflow/3.2): organise response planning`
 
-- [ ] **TASK-3.3: Build response document navigator and editor**
+- [x] **TASK-3.3: Build response document navigator and editor**
   - *Refs:* REQ-6, REQ-8, UX-1, UX-2, A11Y-1
   - *Files:* create `DraftStage.tsx`, `ResponseDocumentNavigator.tsx`,
     `ResponseDocumentEditor.tsx`, reference-pane presentation and tests.
@@ -146,7 +146,7 @@
     Ctrl/Cmd+S, narrow drawer layout and no implicit mutation.
   - *Commit:* `feat(assistance-workflow/3.3): add full document editor`
 
-- [ ] **TASK-3.4: Protect unsaved edits**
+- [x] **TASK-3.4: Protect unsaved edits**
   - *Refs:* REQ-7, REL-1, SEC-1, A11Y-1
   - *Files:* create `UnsavedChangesDialog.tsx`; modify editor/shell navigation
     coordination and tests.
@@ -159,7 +159,7 @@
     appears in URL, storage or logs; dialog is keyboard accessible.
   - *Commit:* `feat(assistance-workflow/3.4): guard unsaved response drafts`
 
-- [ ] **TASK-3.5: Phase 3 integration evaluation**
+- [x] **TASK-3.5: Phase 3 integration evaluation**
   - *Refs:* REQ-5–REQ-8, INT-2
   - *Files:* `INTEGRATION_EVAL.md`, task/contract checkboxes only.
   - *Pre-check:* Run blueprint endpoint/screen tests with fake timers and router
