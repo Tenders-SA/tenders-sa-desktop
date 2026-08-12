@@ -34,6 +34,7 @@ import type { EligibilityEndpoint } from "../../services/api/endpoints/eligibili
 import { QualifyStage } from "./workflow/QualifyStage";
 import { PlanStage } from "./workflow/PlanStage";
 import { DraftStage } from "./workflow/DraftStage";
+import { ReviewStage } from "./workflow/ReviewStage";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
@@ -207,6 +208,13 @@ function WorkspaceBody({
           applicationId={applicationId}
           documentKey={documentKey}
           endpoint={endpoint}
+        />
+      ) : workflowStage === "review" ? (
+        <ReviewStage
+          applicationId={applicationId}
+          endpoint={endpoint}
+          cockpitState={cockpitState}
+          savePort={savePort}
         />
       ) : (
         <>
