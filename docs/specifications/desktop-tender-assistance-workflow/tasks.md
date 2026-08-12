@@ -6,7 +6,7 @@
 
 ## Current status
 
-- [ ] Phase 1 — workflow foundation complete
+- [x] Phase 1 — workflow foundation complete
 - [ ] Phase 2 — Understand and Qualify complete
 - [ ] Phase 3 — Plan and Draft complete
 - [ ] Phase 4 — Review, migration and verification complete
@@ -15,7 +15,7 @@
 
 ## Phase 1 — workflow foundation
 
-- [ ] **TASK-1.1: Pin the current workspace behavior and route contract**
+- [x] **TASK-1.1: Pin the current workspace behavior and route contract**
   - *Refs:* REQ-1, REQ-10, REQ-11, INT-7
   - *Files:* `src/tests/module-screens.test.tsx`,
     `src/tests/navigation-reachability.test.tsx`
@@ -27,7 +27,7 @@
     existing workspace tests remain green.
   - *Commit:* `test(assistance-workflow/1.1): pin workspace behavior`
 
-- [ ] **TASK-1.2: Add pure workflow stage model and derivation**
+- [x] **TASK-1.2: Add pure workflow stage model and derivation**
   - *Refs:* REQ-1, REQ-2, PERF-1
   - *Files:* create `workflow/workflow-state.ts`; add focused unit tests.
   - *Pre-check:* Enumerate available application/cockpit/blueprint fields and
@@ -38,7 +38,7 @@
     recalculating server-owned scores.
   - *Commit:* `feat(assistance-workflow/1.2): define workflow stages`
 
-- [ ] **TASK-1.3: Implement addressable workflow routes and shell**
+- [x] **TASK-1.3: Implement addressable workflow routes and shell**
   - *Refs:* REQ-1, UX-1, A11Y-1, INT-4, INT-7
   - *Files:* `routes.tsx`, `ApplicationWorkspace.tsx`; create
     `ApplicationWorkflowShell.tsx`, `WorkflowNavigation.tsx`.
@@ -50,7 +50,7 @@
     refresh, Back/Forward, headings and keyboard focus.
   - *Commit:* `feat(assistance-workflow/1.3): add staged workspace shell`
 
-- [ ] **TASK-1.4: Phase 1 integration evaluation**
+- [x] **TASK-1.4: Phase 1 integration evaluation**
   - *Refs:* REQ-1, REQ-2, REQ-11
   - *Files:* `INTEGRATION_EVAL.md`, task/contract checkboxes only.
   - *Pre-check:* Run Phase 1 focused tests and inspect scoped diff.

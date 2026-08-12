@@ -17,12 +17,13 @@
 
 ## Phase 1 evaluation — workflow foundation
 
-- [ ] Existing `/applications/:applicationId` link remains valid.
-- [ ] Five stage URLs, default redirect and invalid-stage fallback work.
-- [ ] Stage state uses existing data and reports unknown as Not assessed.
-- [ ] Parent application status remains separate from presentation progress.
-- [ ] Initial requests remain application detail plus cockpit only.
-- [ ] Existing workspace capability characterization tests pass.
+- [x] Existing `/applications/:applicationId` link remains valid.
+- [x] Five stage URLs, default redirect and invalid-stage fallback work.
+- [x] Stage state uses existing data and reports unknown as Not assessed.
+- [x] Parent application status remains separate from presentation progress.
+- [x] Initial requests remain application detail plus cockpit only.
+- [x] Existing workspace capability characterization tests pass (114 focused
+  tests plus 6 pure state tests; TypeScript, lint and formatting pass).
 
 ## Phase 2 evaluation — Understand and Qualify
 

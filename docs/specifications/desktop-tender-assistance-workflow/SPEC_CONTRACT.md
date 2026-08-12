@@ -47,10 +47,10 @@ full-work-area authoring environment with unsaved-change protection.
 
 ## Task checklist
 
-- [ ] TASK-1.1: Pin the current workspace behavior and route contract
-- [ ] TASK-1.2: Add pure workflow stage model and derivation
-- [ ] TASK-1.3: Implement addressable workflow routes and shell
-- [ ] TASK-1.4: Phase 1 integration evaluation
+- [x] TASK-1.1: Pin the current workspace behavior and route contract
+- [x] TASK-1.2: Add pure workflow stage model and derivation
+- [x] TASK-1.3: Implement addressable workflow routes and shell
+- [x] TASK-1.4: Phase 1 integration evaluation
 - [ ] TASK-2.1: Extract reusable tender intelligence presentation
 - [ ] TASK-2.2: Build Understand stage with full analysis
 - [ ] TASK-2.3: Compose Qualify stage from existing capability
