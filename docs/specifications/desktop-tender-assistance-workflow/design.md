@@ -27,7 +27,7 @@
 
 /applications/:applicationId/draft/:documentKey
 ┌──────────────┬───────────────────────────────────┬───────────────────┐
-│ response docs│ editable document canvas          │ references        │
+│ response docs│ full-screen modal editor canvas   │ references        │
 │ + statuses   │ toolbar · content · save state    │ brief/requirements│
 └──────────────┴───────────────────────────────────┴───────────────────┘
 ```
@@ -101,7 +101,7 @@ content. A route blocker and `beforeunload` guard share one `dirty` authority.
 | `UnderstandStage` | Tender overview, complete analysis and source documents |
 | `QualifyStage` | Company comparison, eligibility and compliance gaps |
 | `PlanStage` | Blueprint plan, evidence, questions, research, steps and dates |
-| `DraftStage` | Document navigator, full-work-area editor and reference pane |
+| `DraftStage` | Response-document overview and route-backed full-screen editor launcher |
 | `ResponseDocumentNavigator` | Response docs with statuses and keyboard selection |
 | `ResponseDocumentEditor` | Large controlled editor, formatting actions, save/revert/generate controls |
 | `DraftReferencePane` | Selected-document brief plus relevant tender intelligence |
@@ -143,12 +143,20 @@ move intact into `ResponseDocumentEditor`.
 
 ### Layout
 
+- Edit opens a fixed, viewport-filling modal (`role="dialog"`, `aria-modal`) at
+  the application root, above the persistent workflow shell. It uses the full
+  webview rather than inheriting page width or padding constraints.
+- A compact modal header identifies the response document and contains status,
+  Save/Revert/Generate actions and an explicit Close control.
 - Left: 14–18rem response-document navigator.
 - Centre: flexible editor with a readable inner measure and large vertical
   canvas; no card-within-card treatment.
 - Right: 18–22rem collapsible reference pane.
 - A sticky editor command bar contains Save, Revert, Generate/Regenerate,
   document status and dirty/saved feedback.
+- The modal body owns its overflow. The application page behind it does not
+  scroll and is inert while editing. At narrow widths, navigator and references
+  become explicit drawers; the editor remains the primary surface.
 
 ### Formatting
 
@@ -170,6 +178,9 @@ Failed Save keeps the dialog/editor open. `beforeunload` covers application
 window refresh/close. Router blocker availability must be verified against the
 installed React Router version before implementation; if the stable blocker API
 is unavailable, navigation flows must go through shell-owned guarded handlers.
+The same guard handles Close, Escape and backdrop attempts. Clean Close returns
+to Plan (or the prior workflow route) and restores focus to the launching Edit
+control; dirty Close never dismisses the editor without a decision.
 
 ## Stage composition
 

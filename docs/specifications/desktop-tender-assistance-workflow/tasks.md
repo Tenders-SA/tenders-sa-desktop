@@ -137,10 +137,13 @@
     `ResponseDocumentEditor.tsx`, reference-pane presentation and tests.
   - *Pre-check:* Verify save/generate contracts, unknown document keys,
     generated Markdown content and current 402/409/failed states.
-  - *Work:* Implement full-work-area layout, selection, formatting transforms,
-    Save/Revert and generation actions through the shared controller.
-  - *Verify:* Tests cover all document states, long content, key navigation,
-    Ctrl/Cmd+S, narrow layout and no implicit mutation.
+  - *Work:* Implement a route-backed, viewport-filling modal workbench,
+    document selection, formatting transforms, Save/Revert and generation
+    actions through the shared controller. Make the underlying workspace inert
+    and lock its scroll while the editor is open.
+  - *Verify:* Tests cover Edit launch, dialog semantics, focus trap/restore,
+    clean Close/Escape, all document states, long content, key navigation,
+    Ctrl/Cmd+S, narrow drawer layout and no implicit mutation.
   - *Commit:* `feat(assistance-workflow/3.3): add full document editor`
 
 - [ ] **TASK-3.4: Protect unsaved edits**
@@ -149,8 +152,9 @@
     coordination and tests.
   - *Pre-check:* Verify React Router blocker API and Tauri/webview unload
     behavior in the installed versions before choosing the adapter.
-  - *Work:* Implement one dirty authority, Save/Discard/Stay, unload warning,
-    focus management and failed-save retention.
+  - *Work:* Implement one dirty authority, Save/Discard/Stay for stage,
+    document, Close, Escape and backdrop attempts, unload warning, focus
+    management and failed-save retention.
   - *Verify:* Stage/document navigation cannot silently lose content; no draft
     appears in URL, storage or logs; dialog is keyboard accessible.
   - *Commit:* `feat(assistance-workflow/3.4): guard unsaved response drafts`

@@ -14,8 +14,8 @@ checklist identical to `tasks.md`. Do not implement while status is pending.
 
 Enhance the existing desktop application workspace into five addressable tender
 preparation stages. Reuse stored tender analysis and existing application
-assistance contracts, and move response-document editing into a dedicated
-full-work-area authoring environment with unsaved-change protection.
+assistance contracts, and make Edit open a dedicated viewport-filling modal
+authoring environment with unsaved-change protection.
 
 ## Key constraints
 
@@ -25,6 +25,8 @@ full-work-area authoring environment with unsaved-change protection.
   staged replacement is complete. No parallel workspace.
 - One shared blueprint controller, one generation refresh owner and one
   response editor.
+- The response editor is a route-backed full-screen dialog; the underlying
+  assistance workspace remains mounted but inert and cannot constrain it.
 - Full analysis is read through existing `TendersEndpoint.get`; never generated
   or recalculated locally.
 - Explicit human actions remain required for eligibility, generation, saving,
