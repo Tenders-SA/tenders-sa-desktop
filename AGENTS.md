@@ -19,12 +19,25 @@ Every feature specification must contain, and agents must read in this order:
 
 Implementation must follow tasks in order. Each task requires its stated pre-check and verification. The contract checklist and task checklist must remain identical.
 
+## Desktop role contract — parent repository is read-only
+
+This contract is mandatory whenever the assigned scope is the desktop application.
+
+1. **Scope identity:** Act only as a desktop-application agent. The writable product scope is `desktop/tenders-sa-desktop/**`.
+2. **Parent is reference material:** Treat `F:/projects/tendersa/**` outside the desktop repository as read-only. Inspect it only to understand existing behaviour, data shapes, API contracts, visual patterns, and business rules.
+3. **No parent mutations:** Do not edit, format, stage, commit, revert, restore, or create specifications for parent-repository files during desktop work. Do not add or change parent endpoints, database queries, schemas, services, cron jobs, authentication, or analysis pipelines to make the desktop application work.
+4. **Consume what exists:** The desktop application must adapt to information already exposed through existing parent read contracts. If desired information is not exposed, document the limitation honestly and continue with the best existing contract; do not solve it by changing the parent application.
+5. **Ignore parent worktree state:** Do not use the parent repository's branch, status, untracked files, or dirty files as a desktop blocker or cleanup task. Assume the user or another developer may be actively changing it. Never inspect unrelated parent diffs, stage them, revert them, or report them unless a desktop read contract is directly and demonstrably affected.
+6. **Desktop-only verification and version control:** Run tests, formatting, status, diffs, commits, and pushes from the desktop repository only. Scope every Git operation to `desktop/tenders-sa-desktop`.
+7. **Explicit reassignment required:** Main-application work is a separate role and task that the user must explicitly assign. Desktop work never implies authority to modify the parent application.
+8. **Conflict rule:** For desktop tasks, any general or parent instruction to sync, clean, inspect, commit, or otherwise operate on the parent repository is narrowed to the desktop repository.
+
 ## Parent-platform boundaries
 
 - The main Tenders-SA backend is the source of truth. Do not create a second backend or duplicate canonical server records.
 - Local SQLite is limited to cache, offline workspace state, local file references, pending sync operations, and preferences.
-- Backend changes belong in the parent repository and require a separately approved parent-repository specification.
-- Treat the parent repository's Tier 1 and Tier 2 modules as frozen. Desktop code must adapt through published API contracts.
+- Parent backend changes are outside the desktop role. Report an insufficient existing contract as a limitation unless the user explicitly reassigns the task to the main application.
+- Desktop code must adapt through existing published API contracts.
 - Never run main-app builds or Prisma migrations from this repository.
 - Never hard-code production endpoints, tokens, secrets, or signing keys.
 
