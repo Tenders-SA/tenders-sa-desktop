@@ -86,20 +86,41 @@ const tenderDetailSchema = tenderListItemSchema
     status: z.string().optional(),
     sourceUrl: z.string().nullable().optional(),
     updatedAt: z.string().optional(),
-    aiSummary: z.string().nullable().optional(),
-    aiKeyRequirements: z.string().nullable().optional(),
-    analysisAccess: z
+    requiredDocuments: z.array(z.unknown()).optional(),
+    sourceOrganizationRelation: z
       .object({
-        state: z.enum([
-          "available",
-          "locked",
-          "pending",
-          "partial",
-          "unavailable",
-        ]),
-        analysedDocuments: z.number(),
-        totalDocuments: z.number(),
+        name: z.string(),
+        organizationType: z.string().nullable().optional(),
+        contactEmail: z.string().nullable().optional(),
+        contactPhone: z.string().nullable().optional(),
+        physicalAddress: z.string().nullable().optional(),
       })
+      .nullable()
+      .optional(),
+    timeline: z
+      .array(
+        z.object({
+          id: z.string(),
+          eventType: z.string(),
+          eventDate: z.string(),
+          title: z.string(),
+          description: z.string().nullable().optional(),
+          isAutomatic: z.boolean().optional(),
+        }),
+      )
+      .optional(),
+    submissionRequirements: z
+      .array(
+        z.object({
+          id: z.string(),
+          category: z.string(),
+          requirement: z.string(),
+          isMandatory: z.boolean(),
+          dueDate: z.string().nullable().optional(),
+          orderIndex: z.number().optional(),
+          documentId: z.string().nullable().optional(),
+        }),
+      )
       .optional(),
     documents: z
       .array(
@@ -110,40 +131,24 @@ const tenderDetailSchema = tenderListItemSchema
           // /api/v1/documents/[id]/download-url?requireR2=1 (INT-4), which is
           // a later slice. This is metadata only.
           processingStatus: z.string().optional(),
+          fileSize: z.number().nullable().optional(),
+          mimeType: z.string().nullable().optional(),
+          summary: z.string().nullable().optional(),
+          keyPoints: z.array(z.unknown()).optional(),
+          hasExtractedText: z.boolean().optional(),
+          processedAt: z.string().nullable().optional(),
           analyses: z
             .array(
               z.object({
                 id: z.string(),
                 submissionGuidelines: z.string().nullable().optional(),
                 evaluationCriteria: z.string().nullable().optional(),
-                evaluationStructured: z.unknown().optional(),
                 importantDates: z.string().nullable().optional(),
                 contactInformation: z.string().nullable().optional(),
                 technicalSpecifications: z.string().nullable().optional(),
                 financialRequirements: z.string().nullable().optional(),
                 complianceRequirements: z.string().nullable().optional(),
-                localContentRequirement: z.string().nullable().optional(),
-                hdiRequirement: z.string().nullable().optional(),
-                analysisSections: z
-                  .array(
-                    z.object({
-                      sectionType: z.string(),
-                      content: z.string(),
-                      source: z
-                        .object({
-                          documentId: z.string().optional(),
-                          documentName: z.string().nullable().optional(),
-                          documentCategory: z.string().nullable().optional(),
-                        })
-                        .optional(),
-                    }),
-                  )
-                  .nullable()
-                  .optional(),
                 confidenceScore: z.number().nullable().optional(),
-                extractionMethod: z.string().nullable().optional(),
-                extractionVersion: z.number().nullable().optional(),
-                sectionTaxonomyVersion: z.number().nullable().optional(),
                 extractedAt: z.string().nullable().optional(),
               }),
             )

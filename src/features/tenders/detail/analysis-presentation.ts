@@ -14,26 +14,9 @@ const fields = [
   ["evaluationCriteria", "Evaluation criteria", 2],
   ["technicalSpecifications", "Technical requirements", 3],
   ["financialRequirements", "Financial requirements", 4],
-  ["localContentRequirement", "Local content", 5],
-  ["hdiRequirement", "HDI / subcontracting", 6],
   ["importantDates", "Important dates", 7],
   ["contactInformation", "Contacts", 8],
 ] as const;
-
-const priorityBySection: Record<string, number> = {
-  complianceRequirements: 0,
-  returnable_documents: 0,
-  eligibility: 0,
-  bbbee: 0,
-  health_safety: 0,
-  submissionGuidelines: 1,
-  evaluationCriteria: 2,
-  technicalSpecifications: 3,
-  financialRequirements: 4,
-  pricing_schedule: 4,
-  importantDates: 7,
-  contactInformation: 8,
-};
 
 export function analysisPoints(tender: TenderDetail): AnalysisPoint[] {
   const points: AnalysisPoint[] = [];
@@ -42,17 +25,6 @@ export function analysisPoints(tender: TenderDetail): AnalysisPoint[] {
     for (const analysis of document.analyses ?? []) {
       for (const [category, label, priority] of fields) {
         add(points, category, label, analysis[category], source, priority);
-      }
-      for (const section of analysis.analysisSections ?? []) {
-        const label = humanize(section.sectionType);
-        add(
-          points,
-          section.sectionType,
-          label,
-          section.content,
-          section.source?.documentName ?? source,
-          priorityBySection[section.sectionType] ?? 6,
-        );
       }
     }
   }
@@ -89,11 +61,4 @@ function add(
     if (clean)
       points.push({ category, label, content: clean, source, priority });
   }
-}
-
-function humanize(value: string) {
-  return value
-    .replace(/_/g, " ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/^./, (letter) => letter.toUpperCase());
 }

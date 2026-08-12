@@ -194,12 +194,23 @@ describe("tender detail", () => {
     const { endpoint } = makeEndpoint(async () =>
       jsonResponse({
         ...tender,
-        analysisAccess: {
-          state: "partial",
-          analysedDocuments: 1,
-          totalDocuments: 2,
-        },
-        aiSummary: "A concise bidder briefing",
+        timeline: [
+          {
+            id: "e1",
+            eventType: "briefing",
+            eventDate: "2026-09-01",
+            title: "Briefing",
+            isAutomatic: false,
+          },
+        ],
+        submissionRequirements: [
+          {
+            id: "s1",
+            category: "Returnable",
+            requirement: "Signed SBD 4",
+            isMandatory: true,
+          },
+        ],
         documents: [
           {
             id: "d1",
@@ -208,12 +219,6 @@ describe("tender detail", () => {
               {
                 id: "a1",
                 complianceRequirements: "Tax compliant",
-                analysisSections: [
-                  {
-                    sectionType: "health_safety",
-                    content: "Submit a safety plan",
-                  },
-                ],
                 confidenceScore: 0.91,
               },
             ],
@@ -222,10 +227,11 @@ describe("tender detail", () => {
       }),
     );
     const result = await endpoint.get("t1");
-    expect(result.analysisAccess?.state).toBe("partial");
-    expect(
-      result.documents?.[0]?.analyses?.[0]?.analysisSections?.[0]?.sectionType,
-    ).toBe("health_safety");
+    expect(result.documents?.[0]?.analyses?.[0]?.complianceRequirements).toBe(
+      "Tax compliant",
+    );
+    expect(result.timeline?.[0]?.title).toBe("Briefing");
+    expect(result.submissionRequirements?.[0]?.isMandatory).toBe(true);
   });
 
   it("encodes the id into the path", async () => {

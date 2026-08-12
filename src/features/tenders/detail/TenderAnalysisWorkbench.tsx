@@ -2,36 +2,23 @@ import type { TenderDetail } from "../../../services/api/endpoints/tenders";
 import { analysisPoints, type AnalysisPoint } from "./analysis-presentation";
 
 export function TenderAnalysisWorkbench({ tender }: { tender: TenderDetail }) {
-  const access = tender.analysisAccess;
   const points = analysisPoints(tender);
   const compliance = points.filter((point) => point.priority <= 1);
   const remaining = points.filter((point) => point.priority > 1);
+  const documents = tender.documents ?? [];
+  const analysedDocuments = documents.filter(
+    (document) => (document.analyses?.length ?? 0) > 0,
+  ).length;
+  const totalDocuments = tender.documentStats?.total ?? documents.length;
 
-  if (access?.state === "locked") {
-    return (
-      <section className="mt-6 rounded-xl border border-border bg-card p-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-          AI document intelligence
-        </p>
-        <h2 className="mt-1 text-lg font-semibold text-card-foreground">
-          AI-Analyzed Compliance Requirements
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your current access does not include the extracted requirement text.
-          Tender metadata and official document downloads remain available.
-        </p>
-      </section>
-    );
-  }
-
-  if (!access || access.state === "pending" || access.state === "unavailable") {
+  if (points.length === 0) {
     return (
       <section className="mt-6 rounded-xl border border-border bg-card p-5">
         <h2 className="text-lg font-semibold text-card-foreground">
           AI-Analyzed Compliance Requirements
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          {access?.state === "pending"
+          {tender.documentStats?.pending
             ? "Tender documents are still being analysed. Requirements may appear progressively."
             : "No analysed document requirements are available yet. Verify the official tender documents before applying."}
         </p>
@@ -58,31 +45,13 @@ export function TenderAnalysisWorkbench({ tender }: { tender: TenderDetail }) {
               </span>
             </div>
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              Consolidated from {access.analysedDocuments} of{" "}
-              {access.totalDocuments} tender documents. Verify every item
-              against the official source before submission.
+              Consolidated from {analysedDocuments} of {totalDocuments} tender
+              documents. Verify every item against the official source before
+              submission.
             </p>
           </header>
           <PointGroups points={compliance} />
         </section>
-
-        {(tender.aiSummary || tender.aiKeyRequirements) && (
-          <section className="rounded-xl border border-border bg-card p-5">
-            <h2 className="text-base font-semibold text-card-foreground">
-              Bid team briefing
-            </h2>
-            {tender.aiSummary && (
-              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-muted-foreground">
-                {tender.aiSummary}
-              </p>
-            )}
-            {tender.aiKeyRequirements && (
-              <div className="mt-4 border-l-4 border-warning pl-4 text-sm leading-6 text-foreground whitespace-pre-line">
-                {tender.aiKeyRequirements}
-              </div>
-            )}
-          </section>
-        )}
 
         {remaining.length > 0 && (
           <section className="rounded-xl border border-border bg-card p-5">
@@ -102,15 +71,13 @@ export function TenderAnalysisWorkbench({ tender }: { tender: TenderDetail }) {
           Preparation coverage
         </h2>
         <div className="mt-3 text-3xl font-semibold text-primary">
-          {access.totalDocuments
-            ? Math.round(
-                (access.analysedDocuments / access.totalDocuments) * 100,
-              )
+          {totalDocuments
+            ? Math.round((analysedDocuments / totalDocuments) * 100)
             : 0}
           %
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          {access.state === "partial"
+          {analysedDocuments < totalDocuments
             ? "Analysis is partial. Use the available findings, but review every unprocessed document."
             : "All currently listed documents have analysis records."}
         </p>

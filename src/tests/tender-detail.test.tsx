@@ -146,11 +146,7 @@ describe("TenderDetail", () => {
       <TenderDetail
         endpoint={endpointReturning({
           ...tender,
-          analysisAccess: {
-            state: "available",
-            analysedDocuments: 1,
-            totalDocuments: 1,
-          },
+          documentStats: { total: 1, processed: 1, pending: 0, failed: 0 },
           documents: [
             {
               id: "d1",
@@ -158,13 +154,8 @@ describe("TenderDetail", () => {
               analyses: [
                 {
                   id: "a1",
-                  complianceRequirements: "Valid tax compliance status",
-                  analysisSections: [
-                    {
-                      sectionType: "returnable_documents",
-                      content: "Signed SBD forms",
-                    },
-                  ],
+                  complianceRequirements:
+                    "Valid tax compliance status\nSigned SBD forms",
                 },
               ],
             },
@@ -185,24 +176,20 @@ describe("TenderDetail", () => {
     ).toHaveLength(2);
   });
 
-  it("never renders analysis text in the locked state", async () => {
+  it("reports existing document processing without inventing missing requirements", async () => {
     render(
       <TenderDetail
         endpoint={endpointReturning({
           ...tender,
-          analysisAccess: {
-            state: "locked",
-            analysedDocuments: 1,
-            totalDocuments: 1,
-          },
-          documents: [{ id: "d1", analyses: [] }],
+          documentStats: { total: 1, processed: 0, pending: 1, failed: 0 },
+          documents: [
+            { id: "d1", processingStatus: "PROCESSING", analyses: [] },
+          ],
         })}
         tenderId="t1"
       />,
     );
-    expect(
-      await screen.findByText(/current access does not include/i),
-    ).toBeVisible();
+    expect(await screen.findByText(/still being analysed/i)).toBeVisible();
     expect(screen.queryByText("Valid tax compliance status")).toBeNull();
   });
 

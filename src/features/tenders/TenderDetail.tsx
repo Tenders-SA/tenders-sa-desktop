@@ -223,6 +223,8 @@ export function TenderDetail({
 
           <TenderAnalysisWorkbench tender={tender} />
 
+          <ApplicationFacts tender={tender} />
+
           {tender.description && (
             <section className="mt-6">
               <h2 className="text-sm font-medium text-foreground">
@@ -256,6 +258,66 @@ export function TenderDetail({
 
           {actions}
         </>
+      )}
+    </section>
+  );
+}
+
+function ApplicationFacts({ tender }: { tender: TenderDetailData }) {
+  const requirements = tender.submissionRequirements ?? [];
+  const timeline = tender.timeline ?? [];
+  if (requirements.length === 0 && timeline.length === 0) return null;
+  return (
+    <section className="mt-6 grid gap-4 lg:grid-cols-2">
+      {requirements.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h2 className="text-base font-semibold text-card-foreground">
+            Submission checklist
+          </h2>
+          <ul className="mt-3 space-y-3">
+            {requirements.map((item) => (
+              <li key={item.id} className="flex items-start gap-3 text-sm">
+                <span
+                  className={`mt-0.5 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    item.isMandatory
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {item.isMandatory ? "Mandatory" : "Supporting"}
+                </span>
+                <span>
+                  <span className="text-foreground">{item.requirement}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {item.category}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {timeline.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h2 className="text-base font-semibold text-card-foreground">
+            Important tender dates
+          </h2>
+          <ol className="mt-3 space-y-3 border-l border-border pl-4">
+            {timeline.map((event) => (
+              <li key={event.id} className="text-sm">
+                <p className="font-medium text-foreground">{event.title}</p>
+                <time className="text-xs text-muted-foreground">
+                  {new Date(event.eventDate).toLocaleString("en-ZA")}
+                </time>
+                {event.description && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {event.description}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
     </section>
   );
