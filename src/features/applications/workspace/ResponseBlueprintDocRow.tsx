@@ -12,11 +12,7 @@
 import { useState } from "react";
 import { ApiError } from "../../../services/api/errors";
 import { describeApiError } from "../../../services/api/describe-error";
-import type {
-  GenerateResponseDocResult,
-  ResponseBlueprintDoc,
-  ResponseDocSaveResult,
-} from "../../../services/api/endpoints/applications";
+import type { ResponseBlueprintDoc } from "../../../services/api/endpoints/applications";
 
 export interface ResponseBlueprintDocRowProps {
   doc: ResponseBlueprintDoc;
@@ -25,25 +21,8 @@ export interface ResponseBlueprintDocRowProps {
   hasContent: boolean;
   /** Merged saved content (fetched payload ∪ panel overlay). */
   content?: string;
-  endpoint: {
-    generateResponseDocument: (
-      id: string,
-      key: string,
-      prompt?: string,
-      signal?: AbortSignal,
-    ) => Promise<GenerateResponseDocResult>;
-    saveResponseDocument: (
-      id: string,
-      key: string,
-      content: string,
-      signal?: AbortSignal,
-    ) => Promise<ResponseDocSaveResult>;
-  };
-  applicationId: string;
-  /** 202 accepted: the panel marks the key generating and starts the bounded refresh. */
-  onGenerateAccepted: (key: string) => void;
-  /** Save succeeded: the panel records the content so the row reads "Saved". */
-  onSaved: (key: string, content: string) => void;
+  onGenerate: (key: string) => Promise<void>;
+  onSave: (key: string, content: string) => Promise<void>;
 }
 
 type ActionState =
@@ -56,10 +35,8 @@ export function ResponseBlueprintDocRow({
   status,
   hasContent,
   content,
-  endpoint,
-  applicationId,
-  onGenerateAccepted,
-  onSaved,
+  onGenerate,
+  onSave,
 }: ResponseBlueprintDocRowProps) {
   const key = doc.key ?? "";
   const title = doc.title ?? "Response document";
@@ -85,11 +62,9 @@ export function ResponseBlueprintDocRow({
 
   function generateNow() {
     setAction({ status: "working" });
-    endpoint
-      .generateResponseDocument(applicationId, key)
+    onGenerate(key)
       .then(() => {
         setAction({ status: "idle" });
-        onGenerateAccepted(key);
       })
       .catch((error: unknown) => {
         setAction({ status: "error", message: describeGenerateError(error) });
@@ -98,12 +73,10 @@ export function ResponseBlueprintDocRow({
 
   function saveNow() {
     setAction({ status: "working" });
-    endpoint
-      .saveResponseDocument(applicationId, key, draft)
+    onSave(key, draft)
       .then(() => {
         setAction({ status: "idle" });
         setEditing(false);
-        onSaved(key, draft);
       })
       .catch((error: unknown) => {
         const described = describeApiError(error, "this document");

@@ -15,9 +15,8 @@
  * analysis exists, and the panel must say so honestly (R-B-5).
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AsyncSection, Panel } from "../../../components/common/AsyncSection";
-import { useAsync } from "../../../hooks/use-async";
 import { ApiError } from "../../../services/api/errors";
 import { describeApiError } from "../../../services/api/describe-error";
 import type {
@@ -35,16 +34,10 @@ import {
   type SaveDownloadPort,
 } from "../../../services/storage/save-download";
 import { ResponseBlueprintDocRow } from "./ResponseBlueprintDocRow";
-
-/** Follow-up refresh cadence after a Generate 202 (R-A-3). */
-const POLL_INTERVAL_MS = 4000;
-const POLL_MAX_TICKS = 15;
-
-/** Panel-local results merged over the fetched payload until the next natural read. */
-interface Overlay {
-  docs?: Record<string, string>;
-  status?: Record<string, { state?: string; error?: string }>;
-}
+import {
+  useResponseBlueprintWorkspace,
+  type ResponseBlueprintOverlay,
+} from "../workflow/use-response-blueprint-workspace";
 
 export interface ResponseBlueprintPanelProps {
   endpoint: {
@@ -88,62 +81,13 @@ export function ResponseBlueprintPanel({
   applicationId,
   savePort = createTauriSavePort(),
 }: ResponseBlueprintPanelProps) {
-  const state = useAsync(
-    (signal) => endpoint.getResponseBlueprint(applicationId, signal),
-    [endpoint, applicationId],
-  );
-  const [overlay, setOverlay] = useState<Overlay>({});
-  const [pendingKeys, setPendingKeys] = useState<string[]>([]);
-
-  // Bounded follow-up refresh (R-A-3): after a Generate 202 the panel fetches
-  // the blueprint directly (never reload() — no loading flash) and merges the
-  // fresh status into the overlay. It stops once no pending key is generating
-  // and is bounded to POLL_MAX_TICKS; a failed tick just keeps polling within
-  // the bound.
-  useEffect(() => {
-    if (pendingKeys.length === 0) return;
-    let remaining = POLL_MAX_TICKS;
-    const interval = setInterval(() => {
-      remaining -= 1;
-      void endpoint
-        .getResponseBlueprint(applicationId)
-        .then((fresh) => {
-          setOverlay((prev) => ({
-            docs: { ...prev.docs, ...(fresh.responseDocs ?? {}) },
-            status: { ...prev.status, ...(fresh.responseDocStatus ?? {}) },
-          }));
-          const stillGenerating = pendingKeys.some(
-            (key) => fresh.responseDocStatus?.[key]?.state === "generating",
-          );
-          if (!stillGenerating || remaining <= 0) setPendingKeys([]);
-        })
-        .catch(() => {
-          // Ignored: the loop is bounded and the chip keeps the last state.
-        });
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [endpoint, applicationId, pendingKeys]);
-
-  function acceptGenerate(key: string) {
-    setOverlay((prev) => ({
-      ...prev,
-      status: { ...prev.status, [key]: { state: "generating" } },
-    }));
-    setPendingKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
-  }
-
-  function acceptSaved(key: string, content: string) {
-    setOverlay((prev) => ({
-      ...prev,
-      docs: { ...prev.docs, [key]: content },
-    }));
-  }
+  const workspace = useResponseBlueprintWorkspace(endpoint, applicationId);
 
   return (
     <AsyncSection
-      state={state}
+      state={workspace.state}
       subject="the response blueprint"
-      onRetry={state.reload}
+      onRetry={workspace.reload}
       isEmpty={(payload) => !payload.blueprint}
       empty={
         <Panel title="Response blueprint">
@@ -159,13 +103,13 @@ export function ResponseBlueprintPanel({
           enriched={payload.enriched === true}
           responseDocs={payload.responseDocs ?? {}}
           responseDocStatus={payload.responseDocStatus ?? {}}
-          overlay={overlay}
+          overlay={workspace.overlay}
           endpoint={endpoint}
           applicationId={applicationId}
           savePort={savePort}
-          onGenerateAccepted={acceptGenerate}
-          onSaved={acceptSaved}
-          onReload={state.reload}
+          onGenerate={workspace.generate}
+          onSave={workspace.save}
+          onReload={workspace.reload}
         />
       )}
     </AsyncSection>
@@ -199,8 +143,8 @@ function BlueprintView({
   endpoint,
   applicationId,
   savePort,
-  onGenerateAccepted,
-  onSaved,
+  onGenerate,
+  onSave,
   onReload,
 }: {
   blueprint: ResponseBlueprint;
@@ -210,12 +154,12 @@ function BlueprintView({
     string,
     { state?: string; error?: string; isFallback?: boolean }
   >;
-  overlay: Overlay;
+  overlay: ResponseBlueprintOverlay;
   endpoint: ResponseBlueprintPanelProps["endpoint"];
   applicationId: string;
   savePort: SaveDownloadPort;
-  onGenerateAccepted: (key: string) => void;
-  onSaved: (key: string, content: string) => void;
+  onGenerate: (key: string) => Promise<void>;
+  onSave: (key: string, content: string) => Promise<void>;
   onReload: () => void;
 }) {
   const aiTailored = blueprint.generatedBy === "ai" || enriched;
@@ -354,10 +298,8 @@ function BlueprintView({
                   status={status}
                   hasContent={Boolean(content)}
                   content={content}
-                  endpoint={endpoint}
-                  applicationId={applicationId}
-                  onGenerateAccepted={onGenerateAccepted}
-                  onSaved={onSaved}
+                  onGenerate={onGenerate}
+                  onSave={onSave}
                 />
               );
             })}
