@@ -32,6 +32,7 @@ import type { TendersEndpoint } from "../../services/api/endpoints/tenders";
 import { UnderstandStage } from "./workflow/UnderstandStage";
 import type { EligibilityEndpoint } from "../../services/api/endpoints/eligibility";
 import { QualifyStage } from "./workflow/QualifyStage";
+import { PlanStage } from "./workflow/PlanStage";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
@@ -194,6 +195,8 @@ function WorkspaceBody({
           applications={endpoint}
           eligibility={eligibility}
         />
+      ) : workflowStage === "plan" ? (
+        <PlanStage applicationId={applicationId} endpoint={endpoint} />
       ) : (
         <>
           <div className="mt-4 flex flex-col gap-4">

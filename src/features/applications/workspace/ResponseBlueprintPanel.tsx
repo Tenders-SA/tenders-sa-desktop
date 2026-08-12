@@ -74,12 +74,14 @@ export interface ResponseBlueprintPanelProps {
    * without a Tauri runtime (Slice 6, R-Ex-3).
    */
   savePort?: SaveDownloadPort;
+  onEditDocument?: (key: string) => void;
 }
 
 export function ResponseBlueprintPanel({
   endpoint,
   applicationId,
   savePort = createTauriSavePort(),
+  onEditDocument,
 }: ResponseBlueprintPanelProps) {
   const workspace = useResponseBlueprintWorkspace(endpoint, applicationId);
 
@@ -110,6 +112,7 @@ export function ResponseBlueprintPanel({
           onGenerate={workspace.generate}
           onSave={workspace.save}
           onReload={workspace.reload}
+          onEditDocument={onEditDocument}
         />
       )}
     </AsyncSection>
@@ -146,6 +149,7 @@ function BlueprintView({
   onGenerate,
   onSave,
   onReload,
+  onEditDocument,
 }: {
   blueprint: ResponseBlueprint;
   enriched: boolean;
@@ -161,6 +165,7 @@ function BlueprintView({
   onGenerate: (key: string) => Promise<void>;
   onSave: (key: string, content: string) => Promise<void>;
   onReload: () => void;
+  onEditDocument?: (key: string) => void;
 }) {
   const aiTailored = blueprint.generatedBy === "ai" || enriched;
   const [enrich, setEnrich] = useState<EnrichState>({ status: "idle" });
@@ -300,6 +305,7 @@ function BlueprintView({
                   content={content}
                   onGenerate={onGenerate}
                   onSave={onSave}
+                  onEditDocument={onEditDocument}
                 />
               );
             })}

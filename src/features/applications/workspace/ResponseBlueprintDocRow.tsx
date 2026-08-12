@@ -23,6 +23,7 @@ export interface ResponseBlueprintDocRowProps {
   content?: string;
   onGenerate: (key: string) => Promise<void>;
   onSave: (key: string, content: string) => Promise<void>;
+  onEditDocument?: (key: string) => void;
 }
 
 type ActionState =
@@ -37,6 +38,7 @@ export function ResponseBlueprintDocRow({
   content,
   onGenerate,
   onSave,
+  onEditDocument,
 }: ResponseBlueprintDocRowProps) {
   const key = doc.key ?? "";
   const title = doc.title ?? "Response document";
@@ -153,7 +155,9 @@ export function ResponseBlueprintDocRow({
               {hasContent && (
                 <button
                   type="button"
-                  onClick={startEdit}
+                  onClick={() =>
+                    onEditDocument ? onEditDocument(key) : startEdit()
+                  }
                   disabled={working}
                   aria-label={`Edit ${title}`}
                   className="rounded border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"
