@@ -1,7 +1,7 @@
 # SPEC CONTRACT — Desktop tender assistance workflow
 
 **Generated:** 2026-08-12
-**Status:** PENDING APPROVAL
+**Status:** APPROVED — user authorised implementation on 2026-08-12
 
 ## Coder instructions
 
@@ -32,7 +32,7 @@ full-work-area authoring environment with unsaved-change protection.
 - Draft content is component memory until Save; never log/store/place it in URL.
 - Existing endpoint retry, entitlement, error and owner-authorization behavior
   must remain intact.
-- No implementation begins without explicit user approval.
+- Implementation was explicitly approved by the user on 2026-08-12.
 
 ## Integration warnings
 

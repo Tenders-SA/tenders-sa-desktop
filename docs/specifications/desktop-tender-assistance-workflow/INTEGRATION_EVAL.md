@@ -12,8 +12,8 @@
 - [x] Main application classified as read-only reference.
 - [x] Document-analysis pipeline rule loaded; no pipeline change proposed.
 - [x] Existing read/mutation contracts are sufficient for the design.
-- [ ] User approved this specification.
-- [ ] Implementation baseline rechecked immediately before TASK-1.1.
+- [x] User approved this specification on 2026-08-12.
+- [x] Implementation baseline rechecked immediately before TASK-1.1.
 
 ## Phase 1 evaluation — workflow foundation
 
@@ -68,6 +68,6 @@
 
 ## Result
 
-- **Status:** PENDING APPROVAL
+- **Status:** IN PROGRESS
 - **Remaining issues:** Implementation has not started.
-- **Approved by:** Not yet approved.
+- **Approved by:** User on 2026-08-12.
