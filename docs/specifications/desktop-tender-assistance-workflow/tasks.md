@@ -170,7 +170,7 @@
 
 ## Phase 4 — Review, migration and verification
 
-- [ ] **TASK-4.1: Build Review & Export stage**
+- [x] **TASK-4.1: Build Review & Export stage**
   - *Refs:* REQ-9, REQ-10, REQ-11
   - *Files:* create `ReviewStage.tsx`; adapt readiness/export/checklist/events
     presentation and tests.

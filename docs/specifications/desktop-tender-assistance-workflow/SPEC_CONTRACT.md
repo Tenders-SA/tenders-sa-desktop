@@ -62,7 +62,7 @@ authoring environment with unsaved-change protection.
 - [x] TASK-3.3: Build response document navigator and editor
 - [x] TASK-3.4: Protect unsaved edits
 - [x] TASK-3.5: Phase 3 integration evaluation
-- [ ] TASK-4.1: Build Review & Export stage
+- [x] TASK-4.1: Build Review & Export stage
 - [ ] TASK-4.2: Remove old all-panels composition and reconcile capability
 - [ ] TASK-4.3: Accessibility, responsive and recovery verification
 - [ ] TASK-4.4: Complete quality gates and changelog
