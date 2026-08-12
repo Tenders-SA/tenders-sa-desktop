@@ -8,7 +8,7 @@
  *   GET  /api/v1/applications/[id]/workspace        -> workspace state
  *   POST /api/v1/applications/[id]/validate         -> submission readiness
  *   GET  /api/v1/applications/status/[tenderId]     -> whether this tender is already an application
- *   POST /api/v1/applications/new                   -> start one
+ *   POST /api/v1/applications                       -> start one
  *
  * `GET /api/v1/applications` returns **400, not 401**, when the user has no
  * company profile ("Company profile required"). That is a real state for a
@@ -836,7 +836,7 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
   ): Promise<string | undefined> {
     const body = await this.transport.request({
       method: "POST",
-      path: "/api/v1/applications/new",
+      path: "/api/v1/applications",
       body: { tenderId },
       schema: z
         .object({

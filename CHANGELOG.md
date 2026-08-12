@@ -38,5 +38,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Starting a tender application now creates or opens the company application
+  workspace instead of incorrectly reporting that a company profile is missing.
 - Tender detail responses that omit list-only identifiers now load correctly
   instead of showing an unsupported-format message.

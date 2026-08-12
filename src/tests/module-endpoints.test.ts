@@ -498,6 +498,19 @@ describe("applications endpoint", () => {
     },
   };
 
+  it("creates through the existing applications route and returns its id", async () => {
+    const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({ application: { id: "a-new" }, isExisting: false }),
+    );
+
+    await expect(endpoint.create("t1")).resolves.toBe("a-new");
+
+    const [url, init] = lastCall(fetchImpl);
+    expect(url).toBe("http://localhost:3000/api/v1/applications");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ tenderId: "t1" });
+  });
+
   it("reads the offset-style pagination this route uses", async () => {
     const { endpoint } = harness(ApplicationsEndpoint, () =>
       jsonResponse({
