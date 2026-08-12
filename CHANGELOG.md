@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A full-screen response-document editor for tender applications, with a
+  document navigator, drafting references, Markdown formatting controls and
+  explicit save, revert and generation actions.
 - A desktop tender analysis workbench that puts AI-analyzed compliance and
   submission requirements first, retains source-document references, shows
   analysis coverage, and keeps the application workspace as the next step.

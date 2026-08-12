@@ -33,6 +33,7 @@ import { UnderstandStage } from "./workflow/UnderstandStage";
 import type { EligibilityEndpoint } from "../../services/api/endpoints/eligibility";
 import { QualifyStage } from "./workflow/QualifyStage";
 import { PlanStage } from "./workflow/PlanStage";
+import { DraftStage } from "./workflow/DraftStage";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
@@ -80,6 +81,7 @@ export function ApplicationWorkspace({
   endpoint,
   applicationId,
   workflowStage = "understand",
+  documentKey,
   tenders,
   eligibility,
   documents,
@@ -123,6 +125,7 @@ export function ApplicationWorkspace({
               endpoint={endpoint}
               applicationId={applicationId}
               workflowStage={workflowStage}
+              documentKey={documentKey}
               tenders={tenders}
               eligibility={eligibility}
               cockpitState={cockpitState}
@@ -143,6 +146,7 @@ function WorkspaceBody({
   endpoint,
   applicationId,
   workflowStage,
+  documentKey,
   tenders,
   eligibility,
   cockpitState,
@@ -155,6 +159,7 @@ function WorkspaceBody({
   endpoint: ApplicationsEndpoint;
   applicationId: string;
   workflowStage: WorkflowStage;
+  documentKey?: string;
   tenders?: ApplicationWorkspaceProps["tenders"];
   eligibility?: EligibilityEndpoint;
   cockpitState: AsyncState<CockpitPayload>;
@@ -197,6 +202,12 @@ function WorkspaceBody({
         />
       ) : workflowStage === "plan" ? (
         <PlanStage applicationId={applicationId} endpoint={endpoint} />
+      ) : workflowStage === "draft" ? (
+        <DraftStage
+          applicationId={applicationId}
+          documentKey={documentKey}
+          endpoint={endpoint}
+        />
       ) : (
         <>
           <div className="mt-4 flex flex-col gap-4">
