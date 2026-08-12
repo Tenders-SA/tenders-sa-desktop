@@ -8,6 +8,7 @@ export function ResponseDocumentEditor({
   onSave,
   onGenerate,
   onDirtyChange,
+  onDraftChange,
 }: {
   title: string;
   content: string;
@@ -15,6 +16,7 @@ export function ResponseDocumentEditor({
   onSave: (content: string) => Promise<void>;
   onGenerate: () => Promise<void>;
   onDirtyChange: (dirty: boolean) => void;
+  onDraftChange: (content: string) => void;
 }) {
   const [draft, setDraft] = useState(content);
   const [state, setState] = useState<"idle" | "saving" | "generating">("idle");
@@ -29,6 +31,7 @@ export function ResponseDocumentEditor({
   }, [content, title]);
 
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
+  useEffect(() => onDraftChange(draft), [draft, onDraftChange]);
 
   async function save() {
     setState("saving");

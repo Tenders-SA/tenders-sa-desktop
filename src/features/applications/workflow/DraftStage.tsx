@@ -6,6 +6,7 @@ import type { ApplicationsEndpoint } from "../../../services/api/endpoints/appli
 import { ResponseDocumentEditor } from "./ResponseDocumentEditor";
 import { ResponseDocumentNavigator } from "./ResponseDocumentNavigator";
 import { useResponseBlueprintWorkspace } from "./use-response-blueprint-workspace";
+import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 
 export function DraftStage({
   applicationId,
@@ -20,11 +21,22 @@ export function DraftStage({
   const workspace = useResponseBlueprintWorkspace(endpoint, applicationId);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [dirty, setDirty] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [pendingUrl, setPendingUrl] = useState<string>();
+
+  const requestNavigation = useCallback(
+    (url: string) => {
+      if (dirty) setPendingUrl(url);
+      else navigate(url);
+    },
+    [dirty, navigate],
+  );
 
   const close = useCallback(() => {
-    if (!dirty)
-      navigate(`/applications/${encodeURIComponent(applicationId)}/plan`);
-  }, [applicationId, dirty, navigate]);
+    requestNavigation(
+      `/applications/${encodeURIComponent(applicationId)}/plan`,
+    );
+  }, [applicationId, requestNavigation]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -33,6 +45,16 @@ export function DraftStage({
       document.body.style.overflow = previousOverflow;
     };
   }, []);
+
+  useEffect(() => {
+    function beforeUnload(event: BeforeUnloadEvent) {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
+  }, [dirty]);
 
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
@@ -119,7 +141,7 @@ export function DraftStage({
                     responseDocs={responseDocs}
                     status={statuses}
                     onSelect={(nextKey) =>
-                      navigate(
+                      requestNavigation(
                         `/applications/${encodeURIComponent(applicationId)}/draft/${encodeURIComponent(nextKey)}`,
                       )
                     }
@@ -133,6 +155,7 @@ export function DraftStage({
                   onSave={(content) => workspace.save(key, content)}
                   onGenerate={() => workspace.generate(key)}
                   onDirtyChange={setDirty}
+                  onDraftChange={setDraft}
                 />
                 <aside
                   className="min-h-0 overflow-y-auto border-l border-border bg-card p-5 max-lg:hidden"
@@ -155,6 +178,24 @@ export function DraftStage({
                   </p>
                 </aside>
               </div>
+              {pendingUrl && (
+                <UnsavedChangesDialog
+                  onStay={() => setPendingUrl(undefined)}
+                  onDiscard={() => {
+                    const url = pendingUrl;
+                    setDirty(false);
+                    setPendingUrl(undefined);
+                    navigate(url);
+                  }}
+                  onSave={async () => {
+                    await workspace.save(key, draft);
+                    const url = pendingUrl;
+                    setDirty(false);
+                    setPendingUrl(undefined);
+                    navigate(url);
+                  }}
+                />
+              )}
             </>
           );
         }}
