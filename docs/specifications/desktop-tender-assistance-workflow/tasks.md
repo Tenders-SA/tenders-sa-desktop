@@ -9,6 +9,7 @@
 - [x] Phase 1 — workflow foundation complete
 - [x] Phase 2 — Understand and Qualify complete
 - [x] Phase 3 — Plan and Draft complete
+- [ ] Phase 3A — dynamic tender-driven document fidelity approved and complete
 - [ ] Phase 4 — Review, migration and verification complete
 - [ ] Integration evaluation passed
 - [ ] All requirements success criteria verified
@@ -167,6 +168,58 @@
   - *Verify:* One blueprint controller, bounded refresh cleanup, no duplicate
     editor, no lost drafts and no new API contract.
   - *Commit:* `docs(assistance-workflow/3.5): evaluate planning and authoring`
+
+## Phase 3A — Dynamic tender-driven document fidelity
+
+- [ ] **TASK-3A.1: Characterize the parent blueprint contract read-only**
+  - *Refs:* REQ-6A, REQ-6B, INT-2, INT-5
+  - *Files:* specification evidence and desktop endpoint/fixture tests only.
+  - *Pre-check:* Re-read the parent `response-blueprint`, blueprint builder,
+    enrichment merge and generate-response-doc implementations without editing
+    them. Record the exact dynamic identity and content/status fields.
+  - *Work:* Add contract fixtures containing deterministic conditional docs,
+    cached AI-enriched docs, unknown kinds and URL-reserved keys. Confirm the
+    permissive desktop schema retains every entry and field.
+  - *Verify:* No parent file changes; parsed order/count/keys equal the response;
+    endpoint parity and capability-scope tests remain green.
+  - *Commit:* `test(assistance-workflow/3a.1): pin dynamic blueprint documents`
+
+- [ ] **TASK-3A.2: Make Draft selection strictly key-driven**
+  - *Refs:* REQ-6A, REQ-7, REQ-8, REL-1
+  - *Files:* `DraftStage.tsx`, `ResponseDocumentNavigator.tsx`, shared blueprint
+    controller only if reconciliation requires it, and focused tests.
+  - *Pre-check:* Inventory every fallback to `documents[0]`, title/kind switch
+    and navigation redirect in the Draft path.
+  - *Work:* Preserve selection across add/reorder refreshes, support every
+    unknown kind, open saved content or an empty generatable editor, and replace
+    silent missing-key fallback with the specified recovery state. Preserve the
+    current dirty-document decision flow.
+  - *Verify:* Capability Statement, Pricing Schedule and an AI-added unknown
+    document switch within the full-screen editor; none routes to Understand;
+    removal is explicit; no local document allow-list exists.
+  - *Commit:* `fix(assistance-workflow/3a.2): honor dynamic draft inventory`
+
+- [ ] **TASK-3A.3: Separate working drafts from official returnables**
+  - *Refs:* REQ-6B, UX-2, INT-3, INT-4
+  - *Files:* Draft reference-pane presentation and focused screen tests; reuse
+    existing tender document/download presentation where practical.
+  - *Pre-check:* Confirm which source-document names/actions are already
+    available in the application workflow without widening an endpoint.
+  - *Work:* Add clear working-draft language, show `brief`/`requiredBy`, and
+    surface the existing official attachment action/list for pricing schedules,
+    BOQs and form-like returnables. Do not implement XLSX/PDF editing.
+  - *Verify:* A pricing fixture cannot be mistaken for a completed official
+    workbook; download/open remains explicit and uses the existing port.
+  - *Commit:* `feat(assistance-workflow/3a.3): distinguish official returnables`
+
+- [ ] **TASK-3A.4: Dynamic-document integration evaluation**
+  - *Refs:* REQ-6A, REQ-6B, REQ-8, INT-1–INT-8
+  - *Files:* `INTEGRATION_EVAL.md`, `SPEC_CONTRACT.md`, task checkboxes only.
+  - *Pre-check:* Run focused endpoint, Draft, Plan, navigation and tender-
+    document tests plus TypeScript, ESLint, Prettier, Rust and diff checks.
+  - *Verify:* Desktop remains a pure consumer; no endpoint/schema/pipeline/main-
+    repo change; every server blueprint entry is usable; one editor/controller.
+  - *Commit:* `docs(assistance-workflow/3a.4): evaluate dynamic documents`
 
 ## Phase 4 — Review, migration and verification
 

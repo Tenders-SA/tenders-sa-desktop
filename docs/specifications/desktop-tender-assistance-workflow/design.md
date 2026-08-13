@@ -139,6 +139,63 @@ The current 565-line `ResponseBlueprintPanel` becomes three responsibilities:
 plan/navigator row that routes to Draft. Its current mutation/error semantics
 move intact into `ResponseDocumentEditor`.
 
+### Canonical dynamic-document contract
+
+The parent application's existing chain is authoritative and read-only:
+
+```text
+stored TenderDocumentAnalysis + tender fields + industry context
+  -> deriveBlueprint (deterministic baseline)
+  -> mergeBlueprintEnrichment (cached application-focused AI additions)
+  -> GET assist/response-blueprint
+  -> desktop blueprint controller
+  -> Plan coverage + Draft navigator/editor
+  -> POST generate-response-doc / PUT response-doc using the exact key
+```
+
+The desktop begins at `GET assist/response-blueprint`; none of the parent-side
+derivation or enrichment logic is copied into desktop code. The current schema
+already passes `kind` through as a string, which is the required forward-
+compatibility seam. UI behavior branches only on document state (saved,
+generating, failed, not started), never on a closed set of kinds.
+
+`DraftStage` owns a selected blueprint key while the full-screen workbench is
+open. Document-to-document selection is local to the workbench so it does not
+tear down the application stage. The initially requested route key is decoded
+once at the router boundary. Reconciliation after each blueprint refresh is:
+
+1. retain the selected key when it remains in `responseDocuments`;
+2. if no key was requested, select the first returned document;
+3. if an explicitly requested/selected key disappears, show a missing-document
+   recovery state and the navigator; do not substitute index zero;
+4. never derive identity from title, kind or array position.
+
+### Document capability classes
+
+The UI may derive presentation-only capability from existing fields, without
+changing document identity or generation behavior:
+
+| Class | Existing evidence | Desktop treatment |
+|---|---|---|
+| Generated narrative | Blueprint entry plus string content/status | Full Markdown-compatible editor and existing Generate/Save actions |
+| Generated structured working draft | `kind` such as `pricing` with string content | Same editor, table-friendly readability, explicit “working draft” label |
+| Official returnable/source attachment | Tender document inventory/download contract | Reference/download action; never claim it was edited or completed |
+| Unknown future kind | Any blueprint entry with an unrecognized `kind` | Generic document icon/label; full generation and editing capability |
+
+This is deliberately not a local taxonomy allow-list. It controls labels and
+reference presentation only. The exact blueprint key remains sufficient for
+the parent generator, including AI-enriched documents.
+
+### Blueprint-to-source references
+
+The selected document's `brief` and `requiredBy` are always shown. Related
+source attachments may be suggested only from data already returned by the
+tender detail/document contracts. Matching is advisory and presentation-only;
+failure to identify a related source file must show the full tender document
+list rather than hide it or invent a citation. Pricing, BOQ and returnable-form
+documents should be prominent because the generated string draft cannot mutate
+their original XLSX/PDF structure.
+
 ## Editor interaction design
 
 ### Layout
@@ -209,9 +266,10 @@ control; dirty Close never dismisses the editor without a decision.
 
 ### Draft
 
-- controller-backed response documents;
+- every controller-backed response document, independent of kind or count;
 - dedicated editor and reference pane;
 - existing bounded generation refresh;
+- generated-working-draft versus official-returnable guidance;
 - no export control competing with authoring.
 
 ### Review
@@ -298,6 +356,14 @@ endpoint clients and server records. No data migration or rollback is needed.
   Understand and no analysis mutation occurs.
 - Authoring tests for open/edit/save/revert, Ctrl/Cmd+S, dirty guard,
   Save/Discard/Stay, save failure, generation lifecycle and cleanup.
+- Contract-driven inventory tests with zero, one and many response documents;
+  base, conditional, AI-enriched and unknown kinds; reserved-character keys;
+  saved, empty, generating and failed content states.
+- Refresh reconciliation tests proving add/reorder retains the selected key and
+  removal shows recovery instead of falling back to the first document or the
+  Understand stage.
+- Pricing/official-returnable presentation tests proving the generated Markdown
+  draft and buyer-supplied source attachment are not conflated.
 - Accessibility tests for navigation semantics, focus movement, dialog focus
   restoration and text status.
 - Long-content/narrow-window tests for reference and generated text wrapping.

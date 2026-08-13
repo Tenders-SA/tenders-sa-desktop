@@ -59,6 +59,23 @@
 - [ ] One response editor and one blueprint refresh owner remain.
 - [ ] User-visible changelog entry added.
 
+## Phase 3A pre-implementation evaluation — dynamic documents
+
+- [x] Main application inspected read-only: deterministic blueprint derivation,
+  cached AI enrichment merge and generic keyed generation already exist.
+- [x] Desktop inspected: response schema is permissive and Draft currently maps
+  `blueprint.responseDocuments[]`; document names seen in tests are fixtures,
+  not a runtime catalogue.
+- [x] Decision: enhance this workflow specification; do not create a parallel
+  spec, endpoint, generator, analysis path or desktop document taxonomy.
+- [x] Existing parent contracts are sufficient for dynamic Markdown response
+  authoring; no endpoint or schema change is proposed.
+- [x] Contract limitation recorded: existing string content cannot represent
+  in-place editing of an official XLSX/PDF returnable.
+- [ ] User approves the Phase 3A amendment.
+- [ ] Dynamic fixture and selection/reconciliation implementation verified.
+- [ ] Official-returnable presentation verified.
+
 ## Final evaluation
 
 - [ ] Every REQ, INT and success criterion has implementation evidence.

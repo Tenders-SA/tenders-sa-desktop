@@ -3,6 +3,9 @@
 **Generated:** 2026-08-12
 **Status:** APPROVED — user authorised implementation on 2026-08-12
 
+**Dynamic-document amendment:** AWAITING APPROVAL — specified 2026-08-13;
+implementation must not start until explicitly approved.
+
 ## Coder instructions
 
 This contract governs the workflow redesign. Read `requirements.md`,
@@ -25,6 +28,10 @@ authoring environment with unsaved-change protection.
   staged replacement is complete. No parallel workspace.
 - One shared blueprint controller, one generation refresh owner and one
   response editor.
+- `blueprint.responseDocuments[]` is the only Draft inventory. No desktop
+  document catalogue, kind allow-list or title/index identity is permitted.
+- Generated Markdown working content must not be presented as completion of an
+  official buyer-supplied XLSX/PDF returnable.
 - The response editor is a route-backed full-screen dialog; the underlying
   assistance workspace remains mounted but inert and cannot constrain it.
 - Full analysis is read through existing `TendersEndpoint.get`; never generated
@@ -62,6 +69,10 @@ authoring environment with unsaved-change protection.
 - [x] TASK-3.3: Build response document navigator and editor
 - [x] TASK-3.4: Protect unsaved edits
 - [x] TASK-3.5: Phase 3 integration evaluation
+- [ ] TASK-3A.1: Characterize the parent blueprint contract read-only
+- [ ] TASK-3A.2: Make Draft selection strictly key-driven
+- [ ] TASK-3A.3: Separate working drafts from official returnables
+- [ ] TASK-3A.4: Dynamic-document integration evaluation
 - [x] TASK-4.1: Build Review & Export stage
 - [ ] TASK-4.2: Remove old all-panels composition and reconcile capability
 - [ ] TASK-4.3: Accessibility, responsive and recovery verification

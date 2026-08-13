@@ -169,6 +169,57 @@ contract. Formatting controls may insert or transform headings, bold,
 bullets and numbered lists in that text; they must not introduce a second
 document format or silently strip unknown content.
 
+### REQ-6A — Tender-driven document inventory
+
+The Draft document list is owned exclusively by the response blueprint returned
+from the existing parent application. The desktop must not define a fixed
+catalogue of cover letters, capability statements, methodologies, pricing
+schedules or any other response type. It must render every valid entry in
+`blueprint.responseDocuments[]`, in server order, using the server-provided
+`key`, `title`, `kind`, `brief`, `requiredBy` and `mandatory` values.
+
+- An unknown or newly introduced `kind` must remain usable as a normal response
+  document; it must not be filtered, renamed to a known type or redirect the
+  workspace.
+- A document with saved content in `responseDocs[key]` opens that content.
+- A document without saved content opens an empty editor with Generate enabled
+  when the existing generation preconditions permit it.
+- Generate, Save, status and placeholder lookups must use the exact blueprint
+  key. Positional indexes, titles and desktop-owned aliases are not document
+  identities.
+- Blueprint refresh may add, remove or reorder documents after server-side AI
+  enrichment. The navigator must reconcile by key, keep the current selection
+  when it still exists, and choose the first available document only when the
+  selected key genuinely disappears.
+- No default document may be silently substituted when a requested key is
+  present in the route but absent from the current blueprint. The UI must show
+  an honest “document is no longer in this response plan” recovery state with a
+  return to the document list.
+- Opening or moving between documents must not call document analysis or
+  blueprint enrichment. Enrichment and generation remain explicit existing
+  parent actions.
+
+The response blueprint is already produced from stored tender/document
+analysis and optional cached AI enrichment by the parent application. The
+desktop consumes that result and must not recreate its keyword rules, AI prompt,
+document taxonomy or merge logic.
+
+### REQ-6B — Generated drafts versus official returnables
+
+The workbench must distinguish assistant-authored response content from an
+official tender attachment that the bidder must complete in its original
+format. In particular, a blueprint item titled “Pricing Schedule” currently
+uses the existing string/Markdown response-document contract; it is not proof
+that a buyer-supplied XLSX, PDF form or bill of quantities has been completed.
+
+For each blueprint document, the reference pane must show its `brief` and
+`requiredBy` source text. Where related tender source documents are available
+through the existing tender-detail/document data, the workbench must offer the
+existing download/open action and use clear copy such as “Working draft” and
+“Complete the official returnable” rather than claiming the source file was
+edited. No spreadsheet or PDF mutation, upload or new artifact endpoint is in
+scope for this specification.
+
 ### REQ-7 — Unsaved-change protection
 
 While a response document contains unsaved edits:
@@ -191,6 +242,10 @@ behaviour. A generating document remains usable as navigation context but its
 editor is read-only until ready. The workflow must preserve current 402 plan,
 409 precondition, failed-generation and timeout guidance. It must never start
 generation simply because the Draft stage was opened.
+
+Generation must accept every key present in the current blueprint, including
+AI-enriched `other` kinds. The desktop must never gate Generate by a local
+allow-list of document names or kinds.
 
 ### REQ-9 — Review and export
 
@@ -291,6 +346,14 @@ content. Mutation controls remain disabled while their own request is active.
 - A response document opens in a dedicated editor using the majority of the
   application work area and saves through the existing mutation.
 - Unsaved changes cannot be silently lost through stage/document navigation.
+- A fixture blueprint containing base, conditional and AI-enriched documents
+  (including `pricing`, an unknown kind and a key with URL-reserved characters)
+  renders every item and opens the correct saved or empty editor.
+- A blueprint refresh that adds or reorders documents preserves selection by
+  key; removal produces an explicit recovery state rather than silently opening
+  Cover Letter or returning to Understand.
+- Pricing Schedule is presented as editable generated working content alongside
+  an honest path to the official tender attachment, never as an edited XLSX/PDF.
 - Review & Export identifies blockers before presenting export actions.
 - No parent files, endpoints, schemas or analysis pipeline components change.
 - Focused tests, full TypeScript check, lint, formatting and Rust check pass.
