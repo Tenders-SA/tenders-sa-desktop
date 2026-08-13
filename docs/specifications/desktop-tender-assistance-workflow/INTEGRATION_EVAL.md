@@ -84,6 +84,18 @@
 
 ## Final evaluation
 
+## Phase 3B evaluation — route-level WYSIWYG workbench
+
+- [x] Existing editor, blueprint controller, local-first store, dirty guard,
+  official references and package export identified as canonical owners.
+- [x] Decision: enhance the existing workflow specification; no parallel spec,
+  persistence mechanism, export pipeline or parent change.
+- [x] Draft deep-link mounts without `AppLayout`/workspace underneath.
+- [x] Canonical Markdown renders and round-trips through the WYSIWYG model.
+- [x] Dirty PDF/DOCX export saves first and never exports after save failure.
+- [x] Focused and full desktop gates pass (focused 22/22; full 835/835,
+  TypeScript, ESLint, Prettier and Rust clean).
+
 - [ ] Every REQ, INT and success criterion has implementation evidence.
 - [ ] Focused and adjacent Vitest suites pass.
 - [ ] Full TypeScript check passes.

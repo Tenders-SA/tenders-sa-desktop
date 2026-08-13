@@ -1479,6 +1479,61 @@ describe("applications endpoint — response blueprint", () => {
     expect(payload.responseDocs).toBeUndefined();
   });
 
+  it("preserves valid response documents when stored legacy entries contain nulls", async () => {
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        blueprint: {
+          ...liveBlueprint,
+          industry: { id: null, name: "Construction" },
+          responseDocuments: [
+            {
+              key: "cover_letter",
+              title: "Cover Letter",
+              kind: "cover_letter",
+              brief: null,
+              requiredBy: null,
+              mandatory: true,
+            },
+          ],
+          submission: null,
+          risks: ["Check the closing date", null],
+        },
+        responseDocs: {
+          cover_letter: "# Current cover letter",
+          legacy_empty_document: null,
+        },
+        responseDocStatus: {
+          cover_letter: {
+            state: "ready",
+            startedAt: null,
+            updatedAt: null,
+            error: null,
+            unresolvedPlaceholders: ["[COMPANY NAME]", null],
+          },
+          legacy_invalid_status: null,
+        },
+      }),
+    );
+
+    const payload = await endpoint.getResponseBlueprint("a1");
+
+    expect(payload.responseDocs).toEqual({
+      cover_letter: "# Current cover letter",
+    });
+    expect(payload.responseDocStatus).toEqual({
+      cover_letter: {
+        state: "ready",
+        startedAt: undefined,
+        updatedAt: undefined,
+        error: undefined,
+        unresolvedPlaceholders: ["[COMPANY NAME]"],
+      },
+    });
+    expect(payload.blueprint?.responseDocuments?.[0].brief).toBeUndefined();
+    expect(payload.blueprint?.submission).toBeUndefined();
+    expect(payload.blueprint?.risks).toEqual(["Check the closing date"]);
+  });
+
   it("defaults missing docs and status maps to empty records", async () => {
     const { endpoint } = harness(ApplicationsEndpoint, () =>
       jsonResponse({

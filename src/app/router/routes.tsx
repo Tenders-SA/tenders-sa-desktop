@@ -30,6 +30,7 @@ import {
   type WorkflowStage,
 } from "../../features/applications/workflow/workflow-state";
 import { decodeDraftDocumentKey } from "../../features/applications/workflow/document-route";
+import { ResponseDocumentWorkbench } from "../../features/applications/workflow/ResponseDocumentWorkbench";
 
 export interface AppRoutesProps {
   auth: AuthPort;
@@ -159,6 +160,10 @@ export function AppRoutes({
           />
         }
       >
+        <Route
+          path="applications/:applicationId/draft/:documentKey"
+          element={<ResponseDocumentWorkbench clients={clients} />}
+        />
         <Route element={<AppLayout session={session} onSignOut={onSignOut} />}>
           <Route
             index
@@ -193,10 +198,6 @@ export function AppRoutes({
           />
           <Route
             path="applications/:applicationId/:stage"
-            element={<ApplicationWorkspaceRoute clients={clients} />}
-          />
-          <Route
-            path="applications/:applicationId/draft/:documentKey"
             element={<ApplicationWorkspaceRoute clients={clients} />}
           />
           <Route

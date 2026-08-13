@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AsyncSection } from "../../../components/common/AsyncSection";
 import type {
@@ -21,6 +20,7 @@ import { ResponseDocumentList } from "./ResponseDocumentList";
 import { ResponseDocumentNavigator } from "./ResponseDocumentNavigator";
 import { useResponseBlueprintWorkspace } from "./use-response-blueprint-workspace";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
+import { useWorkspaceExport } from "./use-workspace-export";
 
 const DRAFT_PERSIST_DEBOUNCE_MS = 800;
 
@@ -36,6 +36,7 @@ export function DraftStage({
   savePort,
   documentActionPort,
   localStore = defaultLocalStore,
+  onNavigate,
 }: {
   applicationId: string;
   documentKey?: string;
@@ -51,10 +52,11 @@ export function DraftStage({
   documentActionPort?: DocumentActionPort;
   /** Slice 10 — local-first drafting store; fakes in tests. */
   localStore?: ResponseDocLocalStore;
+  onNavigate?: (url: string) => void;
 }) {
   const navigate = useNavigate();
   const workspace = useResponseBlueprintWorkspace(endpoint, applicationId);
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const exporter = useWorkspaceExport(endpoint, applicationId, savePort);
   const [dirty, setDirty] = useState(false);
   const [draft, setDraft] = useState("");
   const [pendingUrl, setPendingUrl] = useState<string>();
@@ -69,6 +71,8 @@ export function DraftStage({
   const [versions, setVersions] = useState<
     Record<string, ResponseDocVersionEntry[]>
   >({});
+  const [showDocuments, setShowDocuments] = useState(true);
+  const [showReferences, setShowReferences] = useState(true);
 
   useEffect(() => {
     setSelectedDocumentKey(documentKey);
@@ -77,9 +81,9 @@ export function DraftStage({
   const requestNavigation = useCallback(
     (url: string) => {
       if (dirty) setPendingUrl(url);
-      else navigate(url);
+      else (onNavigate ?? navigate)(url);
     },
-    [dirty, navigate],
+    [dirty, navigate, onNavigate],
   );
 
   const close = useCallback(() => {
@@ -92,18 +96,15 @@ export function DraftStage({
     (nextKey: string) => {
       if (nextKey === selectedDocumentKey) return;
       if (dirty) setPendingDocumentKey(nextKey);
-      else setSelectedDocumentKey(nextKey);
+      else {
+        setSelectedDocumentKey(nextKey);
+        (onNavigate ?? navigate)(
+          `/applications/${encodeURIComponent(applicationId)}/draft/${encodeURIComponent(nextKey)}`,
+        );
+      }
     },
-    [dirty, selectedDocumentKey],
+    [dirty, selectedDocumentKey, applicationId, navigate, onNavigate],
   );
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
 
   useEffect(() => {
     function beforeUnload(event: BeforeUnloadEvent) {
@@ -185,35 +186,11 @@ export function DraftStage({
     return () => clearTimeout(timer);
   }, [localStore, applicationId, selectedDocumentKey, draft, dirty]);
 
-  useEffect(() => {
-    function keydown(event: KeyboardEvent) {
-      if (event.key === "Escape") close();
-      if (event.key !== "Tab") return;
-      const controls = dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
-      );
-      if (!controls?.length) return;
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-    document.addEventListener("keydown", keydown);
-    return () => document.removeEventListener("keydown", keydown);
-  }, [close]);
-
-  return createPortal(
+  return (
     <div
-      ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
+      role="region"
       aria-labelledby="response-editor-title"
-      className="fixed inset-0 z-50 flex min-h-0 flex-col bg-background text-foreground"
+      className="flex h-full min-h-0 flex-col bg-background text-foreground"
     >
       <AsyncSection
         state={workspace.state}
@@ -246,12 +223,14 @@ export function DraftStage({
           async function saveWithLocalStore(
             targetKey: string,
             content: string,
+            allowOfflineQueue = true,
           ): Promise<void> {
             const previousContent = responseDocs[targetKey] ?? "";
             try {
               await workspace.save(targetKey, content);
             } catch (cause) {
               if (
+                allowOfflineQueue &&
                 cause instanceof ApiError &&
                 (cause.kind === "offline" || cause.kind === "timeout")
               ) {
@@ -419,24 +398,44 @@ export function DraftStage({
                     {selected.title ?? "Response document"}
                   </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={close}
-                  className="rounded border border-border px-3 py-2 text-sm"
-                >
-                  Close editor
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDocuments((value) => !value)}
+                    className="rounded border border-border px-3 py-2 text-sm"
+                  >
+                    {showDocuments ? "Hide documents" : "Show documents"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowReferences((value) => !value)}
+                    className="rounded border border-border px-3 py-2 text-sm"
+                  >
+                    {showReferences ? "Hide references" : "Show references"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="rounded border border-border px-3 py-2 text-sm"
+                  >
+                    Close editor
+                  </button>
+                </div>
               </header>
-              <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_20rem] max-lg:grid-cols-[13rem_minmax(0,1fr)] max-md:grid-cols-1">
-                <aside className="min-h-0 border-r border-border max-md:hidden">
-                  <ResponseDocumentNavigator
-                    documents={usableDocuments}
-                    selectedKey={key}
-                    responseDocs={responseDocs}
-                    status={statuses}
-                    onSelect={selectDocument}
-                  />
-                </aside>
+              <div
+                className={`grid min-h-0 flex-1 ${showDocuments && showReferences ? "grid-cols-[16rem_minmax(0,1fr)_20rem]" : showDocuments ? "grid-cols-[16rem_minmax(0,1fr)]" : showReferences ? "grid-cols-[minmax(0,1fr)_20rem]" : "grid-cols-1"} max-lg:grid-cols-[minmax(0,1fr)]`}
+              >
+                {showDocuments && (
+                  <aside className="min-h-0 border-r border-border max-lg:hidden">
+                    <ResponseDocumentNavigator
+                      documents={usableDocuments}
+                      selectedKey={key}
+                      responseDocs={responseDocs}
+                      status={statuses}
+                      onSelect={selectDocument}
+                    />
+                  </aside>
+                )}
                 <ResponseDocumentEditor
                   key={key}
                   title={selected.title ?? "Response document"}
@@ -459,18 +458,26 @@ export function DraftStage({
                     }));
                   }}
                   onSave={(content) => saveWithLocalStore(key, content)}
+                  onSaveBeforeExport={(content) =>
+                    saveWithLocalStore(key, content, false)
+                  }
                   onGenerate={(prompt) => workspace.generate(key, prompt)}
                   onRecheck={() => workspace.recheck()}
                   onDirtyChange={setDirty}
                   onDraftChange={setDraft}
+                  exportState={exporter.state}
+                  exportError={exporter.error}
+                  onExport={(format) => exporter.exportPackage(format)}
                 />
-                <DraftDocumentReferences
-                  selected={selected}
-                  tenderDocuments={tenderDocuments}
-                  documentsEndpoint={documentsEndpoint}
-                  savePort={savePort}
-                  documentActionPort={documentActionPort}
-                />
+                {showReferences && (
+                  <DraftDocumentReferences
+                    selected={selected}
+                    tenderDocuments={tenderDocuments}
+                    documentsEndpoint={documentsEndpoint}
+                    savePort={savePort}
+                    documentActionPort={documentActionPort}
+                  />
+                )}
               </div>
               {(pendingUrl || pendingDocumentKey) && (
                 <UnsavedChangesDialog
@@ -484,8 +491,8 @@ export function DraftStage({
                     setDirty(false);
                     setPendingUrl(undefined);
                     setPendingDocumentKey(undefined);
-                    if (nextKey) setSelectedDocumentKey(nextKey);
-                    else if (url) navigate(url);
+                    if (nextKey) selectDocument(nextKey);
+                    else if (url) (onNavigate ?? navigate)(url);
                   }}
                   onSave={async () => {
                     await saveWithLocalStore(key, draft);
@@ -494,8 +501,8 @@ export function DraftStage({
                     setDirty(false);
                     setPendingUrl(undefined);
                     setPendingDocumentKey(undefined);
-                    if (nextKey) setSelectedDocumentKey(nextKey);
-                    else if (url) navigate(url);
+                    if (nextKey) selectDocument(nextKey);
+                    else if (url) (onNavigate ?? navigate)(url);
                   }}
                 />
               )}
@@ -503,7 +510,6 @@ export function DraftStage({
           );
         }}
       </AsyncSection>
-    </div>,
-    document.body,
+    </div>
   );
 }

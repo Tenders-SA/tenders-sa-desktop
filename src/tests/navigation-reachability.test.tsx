@@ -106,6 +106,15 @@ describe("navigation reachability", () => {
     );
   });
 
+  it("mounts a draft document as a route-level workbench without AppLayout", async () => {
+    renderAt("/applications/a1/draft/capability");
+    expect(screen.queryByText(/Press Ctrl\+K/)).toBeNull();
+    expect(clients.applications.get).toHaveBeenCalledWith(
+      "a1",
+      expect.anything(),
+    );
+  });
+
   it.each(["understand", "qualify", "plan", "draft", "review"])(
     "keeps the %s workflow stage directly addressable",
     async (stage) => {

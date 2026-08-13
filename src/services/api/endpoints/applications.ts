@@ -576,6 +576,19 @@ export type AdditionalInfoField = z.infer<typeof additionalInfoFieldSchema>;
 export type AdditionalInfoValues = Record<string, string | boolean>;
 export type AdditionalInfoSaveResult = z.infer<typeof additionalInfoSaveSchema>;
 
+const nullableOptionalStringSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z.string().optional(),
+);
+const nullableOptionalBooleanSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z.boolean().optional(),
+);
+const nullableOptionalNumberSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  z.number().optional(),
+);
+
 /**
  * Response-blueprint contracts (desktop-workspace-response-blueprint design.md).
  * Every section is optional (R-B-5): the parent may omit `blueprint` entirely
@@ -586,83 +599,123 @@ export type AdditionalInfoSaveResult = z.infer<typeof additionalInfoSaveSchema>;
  */
 const requiredUserDocumentSchema = z
   .object({
-    name: z.string().optional(),
-    canonicalType: z.string().optional(),
-    source: z.string().optional(),
-    mandatory: z.boolean().optional(),
-    note: z.string().optional(),
+    name: nullableOptionalStringSchema,
+    canonicalType: nullableOptionalStringSchema,
+    source: nullableOptionalStringSchema,
+    mandatory: nullableOptionalBooleanSchema,
+    note: nullableOptionalStringSchema,
   })
   .passthrough();
 
 const responseBlueprintDocSchema = z
   .object({
-    key: z.string().optional(),
-    title: z.string().optional(),
-    kind: z.string().optional(),
-    brief: z.string().optional(),
-    requiredBy: z.string().optional(),
-    mandatory: z.boolean().optional(),
+    key: nullableOptionalStringSchema,
+    title: nullableOptionalStringSchema,
+    kind: nullableOptionalStringSchema,
+    brief: nullableOptionalStringSchema,
+    requiredBy: nullableOptionalStringSchema,
+    mandatory: nullableOptionalBooleanSchema,
   })
   .passthrough();
 
 const blueprintStepSchema = z
   .object({
-    key: z.string().optional(),
-    title: z.string().optional(),
-    detail: z.string().optional(),
+    key: nullableOptionalStringSchema,
+    title: nullableOptionalStringSchema,
+    detail: nullableOptionalStringSchema,
     dueDate: z.string().nullable().optional(),
-    category: z.string().optional(),
-    mandatory: z.boolean().optional(),
-    source: z.string().optional(),
+    category: nullableOptionalStringSchema,
+    mandatory: nullableOptionalBooleanSchema,
+    source: nullableOptionalStringSchema,
   })
   .passthrough();
 
 const blueprintSubmissionSchema = z
   .object({
-    method: z.string().optional(),
-    address: z.string().optional(),
-    portalUrl: z.string().optional(),
+    method: nullableOptionalStringSchema,
+    address: nullableOptionalStringSchema,
+    portalUrl: nullableOptionalStringSchema,
     deadline: z.string().nullable().optional(),
-    contact: z.string().optional(),
-    notes: z.string().optional(),
+    contact: nullableOptionalStringSchema,
+    notes: nullableOptionalStringSchema,
   })
   .passthrough();
 
 const blueprintSchema = z
   .object({
-    tenderId: z.string().optional(),
+    tenderId: nullableOptionalStringSchema,
     industry: z
-      .object({ id: z.string().optional(), name: z.string().optional() })
+      .object({
+        id: nullableOptionalStringSchema,
+        name: nullableOptionalStringSchema,
+      })
       .nullable()
       .optional(),
     requiredUserDocuments: z.array(requiredUserDocumentSchema).optional(),
     responseDocuments: z.array(responseBlueprintDocSchema).optional(),
     steps: z.array(blueprintStepSchema).optional(),
-    submission: blueprintSubmissionSchema.optional(),
-    risks: z.array(z.string()).optional(),
-    confidence: z.string().optional(),
-    generatedBy: z.string().optional(),
+    submission: blueprintSubmissionSchema
+      .nullish()
+      .transform((value) => value ?? undefined),
+    risks: z
+      .array(z.unknown())
+      .nullish()
+      .transform((values) =>
+        values?.filter((value): value is string => typeof value === "string"),
+      ),
+    confidence: nullableOptionalStringSchema,
+    generatedBy: nullableOptionalStringSchema,
   })
   .passthrough();
 
 const responseDocStatusSchema = z
   .object({
-    state: z.string().optional(),
-    startedAt: z.number().optional(),
-    updatedAt: z.number().optional(),
-    isFallback: z.boolean().optional(),
-    error: z.string().optional(),
-    unresolvedPlaceholders: z.array(z.string()).optional(),
+    state: nullableOptionalStringSchema,
+    startedAt: nullableOptionalNumberSchema,
+    updatedAt: nullableOptionalNumberSchema,
+    isFallback: nullableOptionalBooleanSchema,
+    error: nullableOptionalStringSchema,
+    unresolvedPlaceholders: z
+      .array(z.unknown())
+      .nullish()
+      .transform((values) =>
+        values?.filter((value): value is string => typeof value === "string"),
+      ),
   })
   .passthrough();
+
+const responseDocsSchema = z
+  .record(z.string(), z.unknown())
+  .nullish()
+  .transform((documents) => {
+    if (!documents) return undefined;
+    return Object.fromEntries(
+      Object.entries(documents).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    );
+  });
+
+const responseDocStatusMapSchema = z
+  .record(z.string(), z.unknown())
+  .nullish()
+  .transform((statuses) => {
+    if (!statuses) return undefined;
+    return Object.fromEntries(
+      Object.entries(statuses).flatMap(([key, value]) => {
+        const parsed = responseDocStatusSchema.safeParse(value);
+        return parsed.success ? [[key, parsed.data]] : [];
+      }),
+    );
+  });
 
 const blueprintPayloadSchema = z
   .object({
     blueprint: blueprintSchema.nullable().optional(),
     hasAnalysis: z.boolean().optional(),
     enriched: z.boolean().optional(),
-    responseDocs: z.record(z.string(), z.string()).optional(),
-    responseDocStatus: z.record(z.string(), responseDocStatusSchema).optional(),
+    responseDocs: responseDocsSchema,
+    responseDocStatus: responseDocStatusMapSchema,
   })
   .passthrough();
 

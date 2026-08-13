@@ -221,6 +221,29 @@
     repo change; every server blueprint entry is usable; one editor/controller.
   - *Commit:* `docs(assistance-workflow/3a.4): evaluate dynamic documents`
 
+## Phase 3B — Route-level WYSIWYG workbench (superseding amendment)
+
+- [x] **TASK-3B.1: Replace modal route composition with the route-level workbench**
+  - *Refs:* REQ-6, REQ-7, UX-1, A11Y-1
+  - *Files:* router, `DraftStage`, application workspace and route tests.
+  - *Work:* Mount the draft deep-link outside `AppLayout`, remove portal/dialog
+    semantics and retain keyed switching plus dirty guards.
+- [x] **TASK-3B.2: Replace raw Markdown textarea with WYSIWYG Markdown adapter**
+  - *Refs:* REQ-6, UX-2, SEC-1
+  - *Files:* editor components, package manifest and authoring tests.
+  - *Work:* Import canonical Markdown into Tiptap, edit visually, serialize
+    Markdown for every draft/save path, including tables and links.
+- [x] **TASK-3B.3: Reuse export flow with save-before-export safety**
+  - *Refs:* REQ-6C, REQ-7, REQ-9
+  - *Files:* reusable export hook/buttons, Draft and Review, export tests.
+  - *Work:* Share the endpoint/native-save flow; save dirty Markdown before
+    package export and stop when save fails.
+- [x] **TASK-3B.4: Verify authoring, routing, accessibility and round trips**
+  - *Refs:* REQ-6–REQ-9, A11Y-1, REL-1
+  - *Files:* focused and adjacent tests, changelog and evaluation.
+  - *Work:* Cover Markdown rendering/round trips, formatting, tables, keyboard
+    save, route ownership, dirty navigation/export and responsive rails.
+
 ## Phase 4 — Review, migration and verification
 
 - [x] **TASK-4.1: Build Review & Export stage**

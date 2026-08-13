@@ -137,13 +137,13 @@ coverage, additional-information questions, research, submission details,
 risks, steps and dates. Each response-document row opens the Draft stage for
 that document. Deep-analyse remains an explicit, entitlement-aware action.
 
-### REQ-6 — Full-screen response-document editor
+### REQ-6 — Route-level full-screen response-document workbench
 
-Selecting **Edit** for a generated response document must open a dedicated,
-viewport-filling modal workbench above the application-assistance screen. The
-underlying workspace remains mounted as context but is visually and
-interactively inert until the editor closes. The editor must not be embedded
-inside a response-document row or constrained by the normal page container.
+Selecting **Edit** for a generated response document must navigate to a
+dedicated, viewport-filling route-level workbench. The normal application shell
+and assistance workspace must not be mounted underneath it. The editor must not
+be embedded inside a response-document row or constrained by the normal page
+container.
 It shall contain:
 
 - a document navigator showing every blueprint response document and its
@@ -157,17 +157,30 @@ It shall contain:
 - Save state and last successful save feedback;
 - keyboard-accessible movement between response documents.
 
-The modal must provide a clearly labelled Close control, use dialog semantics,
-move focus to the document editor on open, trap focus while open, close on
-Escape only when no unsaved change would be lost, and restore focus to the Edit
-button that launched it. At narrow widths the navigator and reference pane may
-collapse into labelled drawers while the editing canvas retains the available
-height and width.
+The workbench must provide a clearly labelled Close control, page/workbench
+semantics (not dialog semantics), and move focus to the document editor on
+open. Close and document switching must preserve the existing dirty-document
+decision. At narrow widths the navigator and reference pane collapse into
+labelled drawers while the editing canvas retains the available height and
+width.
 
 The editor must preserve the current string/Markdown-compatible content
-contract. Formatting controls may insert or transform headings, bold,
-bullets and numbered lists in that text; they must not introduce a second
-document format or silently strip unknown content.
+contract while presenting a WYSIWYG document model by default. Markdown import
+and serialization must preserve headings, emphasis, lists, blockquotes, links,
+horizontal rules and tables. Visual controls must cover headings 1–4, bold,
+italic, strike, lists/indentation,
+links, tables, clear formatting and undo/redo. Source Markdown may be exposed
+only as an optional advanced view.
+
+### REQ-6C — Editor export and latest-content safety
+
+The workbench header must expose honest **Download response PDF** and
+**Download response Word** actions using the existing
+`exportWorkspacePackage` and native `saveDownload` path. When the selected
+document is dirty, export must first save its serialized Markdown through
+`saveResponseDocument`; export may proceed only after that save succeeds.
+The controls export the full branded response package, not only the selected
+document.
 
 ### REQ-6A — Tender-driven document inventory
 

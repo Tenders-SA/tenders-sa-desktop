@@ -6,6 +6,9 @@
 **Dynamic-document amendment:** APPROVED AND IMPLEMENTED — user authorised
 implementation on 2026-08-13.
 
+**WYSIWYG workbench amendment:** APPROVED — user authorised implementation on
+2026-08-13. This supersedes the modal and raw-textarea decisions.
+
 ## Coder instructions
 
 This contract governs the workflow redesign. Read `requirements.md`,
@@ -28,6 +31,11 @@ authoring environment with unsaved-change protection.
   staged replacement is complete. No parallel workspace.
 - One shared blueprint controller, one generation refresh owner and one
   response editor.
+- The draft route owns the viewport outside `AppLayout`; no application shell
+  is mounted underneath and no dialog semantics are used.
+- Tiptap provides WYSIWYG editing while Markdown remains canonical persistence.
+- Workbench PDF/DOCX actions reuse the package export and save ports; dirty
+  content must save successfully before export.
 - `blueprint.responseDocuments[]` is the only Draft inventory. No desktop
   document catalogue, kind allow-list or title/index identity is permitted.
 - Generated Markdown working content must not be presented as completion of an
@@ -74,6 +82,10 @@ authoring environment with unsaved-change protection.
 - [x] TASK-3A.3: Separate working drafts from official returnables
 - [x] TASK-3A.4: Dynamic-document integration evaluation
 - [x] TASK-4.1: Build Review & Export stage
+- [x] TASK-3B.1: Replace modal route composition with the route-level workbench
+- [x] TASK-3B.2: Replace raw Markdown textarea with WYSIWYG Markdown adapter
+- [x] TASK-3B.3: Reuse export flow with save-before-export safety
+- [x] TASK-3B.4: Verify authoring, routing, accessibility and round trips
 - [ ] TASK-4.2: Remove old all-panels composition and reconcile capability
 - [ ] TASK-4.3: Accessibility, responsive and recovery verification
 - [ ] TASK-4.4: Complete quality gates and changelog

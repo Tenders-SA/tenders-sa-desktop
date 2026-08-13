@@ -45,6 +45,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The tender response editor is now a full-screen visual document workbench:
+  headings, lists, links and tables render as normal document content, the
+  document/reference rails can be collapsed, and PDF or Word response packages
+  can be downloaded without leaving the editor. Unsaved edits are saved before
+  export so the downloaded package cannot silently lag behind the draft.
 - Draft now follows each tender's complete response blueprint, including
   AI-added and tender-specific documents, while keeping the selected document
   stable as the plan refreshes.
@@ -65,6 +70,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Response documents now continue loading when older stored workspace data
+  contains nullable metadata or invalid empty map entries; valid Markdown
+  drafts are preserved instead of rejecting the entire response as unsupported.
 - The full-screen response editor now reports generation failures inline — a
   missing paid plan, incomplete required information, or a failed generation
   each show their own clear message and a Retry action instead of silently

@@ -1,17 +1,14 @@
 import { useState } from "react";
 import { Panel } from "../../../components/common/AsyncSection";
 import type { AsyncState } from "../../../hooks/use-async";
-import { ApiError } from "../../../services/api/errors";
 import { describeApiError } from "../../../services/api/describe-error";
 import type {
   ApplicationsEndpoint,
   CockpitPayload,
-  ExportPackageFormat,
   SubmissionReadiness,
 } from "../../../services/api/endpoints/applications";
 import {
   createTauriSavePort,
-  saveDownload,
   type SaveDownloadPort,
 } from "../../../services/storage/save-download";
 import { ChecklistPanel } from "../workspace/ChecklistPanel";
@@ -21,6 +18,7 @@ import { useResponseBlueprintWorkspace } from "./use-response-blueprint-workspac
 import { AnalysisStatusPanel } from "../workspace/AnalysisStatusPanel";
 import { ValueEstimatePanel } from "../workspace/ValueEstimatePanel";
 import { StageBar } from "../workspace/StageBar";
+import { useWorkspaceExport } from "./use-workspace-export";
 
 export function ReviewStage({
   applicationId,
@@ -43,10 +41,7 @@ export function ReviewStage({
     | { state: "ready"; value: SubmissionReadiness }
     | { state: "error"; message: string }
   >({ state: "idle" });
-  const [exportState, setExportState] = useState<
-    "idle" | "exporting" | "error"
-  >("idle");
-  const [exportError, setExportError] = useState<string>();
+  const exporter = useWorkspaceExport(endpoint, applicationId, savePort);
 
   function validate() {
     setReadiness({ state: "checking" });
@@ -59,19 +54,6 @@ export function ReviewStage({
           message: describeApiError(error, "the readiness check").message,
         }),
       );
-  }
-
-  function exportPackage(format: ExportPackageFormat) {
-    setExportState("exporting");
-    setExportError(undefined);
-    endpoint
-      .exportWorkspacePackage(applicationId, format)
-      .then((result) => saveDownload(savePort, result))
-      .then(() => setExportState("idle"))
-      .catch((error: unknown) => {
-        setExportState("error");
-        setExportError(describeExportError(error));
-      });
   }
 
   return (
@@ -159,29 +141,29 @@ export function ReviewStage({
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => exportPackage("pdf")}
-            disabled={exportState === "exporting"}
+            onClick={() => void exporter.exportPackage("pdf").catch(() => {})}
+            disabled={exporter.state === "exporting"}
             className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
             Export PDF
           </button>
           <button
             type="button"
-            onClick={() => exportPackage("docx")}
-            disabled={exportState === "exporting"}
+            onClick={() => void exporter.exportPackage("docx").catch(() => {})}
+            disabled={exporter.state === "exporting"}
             className="rounded border border-border px-4 py-2 text-sm disabled:opacity-50"
           >
             Export Word
           </button>
         </div>
-        {exportState === "exporting" && (
+        {exporter.state === "exporting" && (
           <p role="status" className="mt-2 text-sm text-muted-foreground">
             Exporting package…
           </p>
         )}
-        {exportState === "error" && (
+        {exporter.state === "error" && (
           <p role="alert" className="mt-2 text-sm text-destructive">
-            {exportError}
+            {exporter.error}
           </p>
         )}
       </Panel>
@@ -258,17 +240,4 @@ function Coverage({
       </ul>
     </div>
   );
-}
-
-function describeExportError(error: unknown): string {
-  if (error instanceof ApiError && error.status === 409)
-    return "Generate your proposal documents before exporting.";
-  if (
-    !(error instanceof ApiError) ||
-    error.kind === "server" ||
-    error.kind === "offline" ||
-    error.kind === "timeout"
-  )
-    return "Could not export right now.";
-  return describeApiError(error, "the export").message;
 }

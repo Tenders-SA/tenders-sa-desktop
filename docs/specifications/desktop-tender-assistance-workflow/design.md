@@ -27,7 +27,7 @@
 
 /applications/:applicationId/draft/:documentKey
 ┌──────────────┬───────────────────────────────────┬───────────────────┐
-│ response docs│ full-screen modal editor canvas   │ references        │
+│ response docs│ route-level WYSIWYG document      │ references        │
 │ + statuses   │ toolbar · content · save state    │ brief/requirements│
 └──────────────┴───────────────────────────────────┴───────────────────┘
 ```
@@ -101,7 +101,7 @@ content. A route blocker and `beforeunload` guard share one `dirty` authority.
 | `UnderstandStage` | Tender overview, complete analysis and source documents |
 | `QualifyStage` | Company comparison, eligibility and compliance gaps |
 | `PlanStage` | Blueprint plan, evidence, questions, research, steps and dates |
-| `DraftStage` | Response-document overview and route-backed full-screen editor launcher |
+| `DraftStage` | Route-level response-document workbench and state authority |
 | `ResponseDocumentNavigator` | Response docs with statuses and keyboard selection |
 | `ResponseDocumentEditor` | Large controlled editor, formatting actions, save/revert/generate controls |
 | `DraftReferencePane` | Selected-document brief plus relevant tender intelligence |
@@ -200,10 +200,9 @@ their original XLSX/PDF structure.
 
 ### Layout
 
-- Edit opens a fixed, viewport-filling modal (`role="dialog"`, `aria-modal`) at
-  the application root, above the persistent workflow shell. It uses the full
-  webview rather than inheriting page width or padding constraints.
-- A compact modal header identifies the response document and contains status,
+- The draft deep-link is a protected route outside `AppLayout`; it owns the
+  webview and does not mount `ApplicationWorkspace` underneath it.
+- A compact workbench header identifies the response document and contains status,
   Save/Revert/Generate actions and an explicit Close control.
 - Left: 14–18rem response-document navigator.
 - Centre: flexible editor with a readable inner measure and large vertical
@@ -211,16 +210,17 @@ their original XLSX/PDF structure.
 - Right: 18–22rem collapsible reference pane.
 - A sticky editor command bar contains Save, Revert, Generate/Regenerate,
   document status and dirty/saved feedback.
-- The modal body owns its overflow. The application page behind it does not
-  scroll and is inert while editing. At narrow widths, navigator and references
+- The workbench body owns its overflow. At narrow widths, navigator and references
   become explicit drawers; the editor remains the primary surface.
 
 ### Formatting
 
-Use the existing string content contract. A lightweight toolbar performs
-selection-aware Markdown-compatible transformations for heading, bold, bullet
-and numbered list. Keyboard shortcuts include Ctrl/Cmd+S for Save and standard
-text editing. No HTML persistence and no new rich-text dependency are required.
+Use the existing string content contract through a Tiptap/ProseMirror document
+model. Tiptap imports Markdown, provides the WYSIWYG surface, and serializes
+back to Markdown for local drafts and `saveResponseDocument`. No HTML is
+persisted. Tables use the editor's table nodes and Markdown table serializer.
+The toolbar is selection-aware and includes headings 1–4, emphasis, underline,
+strike, lists, blockquote, rule, links, tables, clear formatting, undo and redo.
 
 ### Navigation guard
 
@@ -270,7 +270,7 @@ control; dirty Close never dismisses the editor without a decision.
 - dedicated editor and reference pane;
 - existing bounded generation refresh;
 - generated-working-draft versus official-returnable guidance;
-- no export control competing with authoring.
+- PDF and Word package export in the workbench header; dirty export saves first.
 
 ### Review
 

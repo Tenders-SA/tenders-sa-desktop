@@ -113,7 +113,7 @@ function singleDocumentEndpoint(overrides: Partial<ApplicationsEndpoint> = {}) {
 }
 
 describe("DraftStage", () => {
-  it("opens a full-screen dialog and edits the generated response through existing contracts", async () => {
+  it("opens a full-screen workbench and edits the generated response through existing contracts", async () => {
     const user = userEvent.setup();
     const save = vi.fn(async () => ({ ok: true, key: "technical" }));
     const endpoint = {
@@ -185,10 +185,13 @@ describe("DraftStage", () => {
       </MemoryRouter>,
     );
 
-    const dialog = await screen.findByRole("dialog", {
+    const dialog = await screen.findByRole("region", {
       name: "Technical Proposal",
     });
-    expect(dialog).toHaveClass("fixed", "inset-0");
+    expect(dialog).toHaveClass("h-full");
+    expect(
+      screen.queryByRole("dialog", { name: "Technical Proposal" }),
+    ).toBeNull();
     expect(
       screen.getByText("Address the technical specification."),
     ).toBeVisible();
@@ -198,15 +201,15 @@ describe("DraftStage", () => {
     );
     expect(
       screen.getByRole("textbox", { name: "Edit Capability Statement" }),
-    ).toHaveValue("");
-    expect(screen.getByRole("dialog")).toHaveAccessibleName(
-      "Capability Statement",
-    );
+    ).toHaveTextContent("");
+    expect(
+      screen.getByRole("region", { name: "Capability Statement" }),
+    ).toHaveAccessibleName("Capability Statement");
 
     await user.click(screen.getByRole("button", { name: /pricing schedule/i }));
     expect(
       screen.getByRole("textbox", { name: "Edit Pricing Schedule" }),
-    ).toHaveValue("");
+    ).toHaveTextContent("");
     expect(screen.getByText("Complete the official returnable")).toBeVisible();
     expect(screen.getByText("Annexure B Pricing Schedule.xlsx")).toBeVisible();
 
@@ -215,7 +218,7 @@ describe("DraftStage", () => {
     );
     expect(
       screen.getByRole("textbox", { name: "Edit Transformation Commitments" }),
-    ).toHaveValue("");
+    ).toHaveTextContent("");
     await user.click(screen.getByRole("button", { name: "Generate" }));
     expect(endpoint.generateResponseDocument).toHaveBeenCalledWith(
       "a1",
@@ -230,21 +233,18 @@ describe("DraftStage", () => {
     const editor = screen.getByRole("textbox", {
       name: "Edit Technical Proposal",
     });
-    fireEvent.change(editor, { target: { value: "Our delivery method" } });
-    await user.click(screen.getByRole("button", { name: "Heading" }));
-    expect(editor).toHaveValue("## Our delivery method");
+    await user.click(editor);
+    await user.keyboard("{Control>}a{/Control}Our delivery method");
+    await user.click(screen.getByRole("button", { name: "Heading 2" }));
+    expect(editor.querySelector("h2")).toHaveTextContent("Our delivery method");
 
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() =>
-      expect(save).toHaveBeenCalledWith(
-        "a1",
-        "technical",
-        "## Our delivery method",
-      ),
-    );
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    const savedMarkdown = (save.mock.calls as unknown[][])[0]?.[2];
+    expect(String(savedMarkdown).trim()).toBe("## Our delivery method");
     await user.click(screen.getByRole("button", { name: "Close editor" }));
     expect(await screen.findByText("Returned to plan")).toBeVisible();
-  });
+  }, 10_000);
 
   it("guards dirty Close with Stay, Discard and Save choices", async () => {
     const user = userEvent.setup();
@@ -287,7 +287,8 @@ describe("DraftStage", () => {
     const editor = await screen.findByRole("textbox", {
       name: "Edit Technical Proposal",
     });
-    fireEvent.change(editor, { target: { value: "Unsaved response" } });
+    await user.click(editor);
+    await user.keyboard("{Control>}a{/Control}Unsaved response");
     fireEvent(
       window,
       new Event("beforeunload", { bubbles: false, cancelable: true }),
@@ -302,7 +303,7 @@ describe("DraftStage", () => {
 
     await user.click(screen.getByRole("button", { name: "Stay" }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(editor).toHaveValue("Unsaved response");
+    expect(editor).toHaveTextContent("Unsaved response");
 
     await user.click(screen.getByRole("button", { name: "Close editor" }));
     await user.click(screen.getByRole("button", { name: "Save and continue" }));
@@ -339,7 +340,7 @@ describe("DraftStage", () => {
     );
 
     expect(
-      await screen.findByRole("dialog", {
+      await screen.findByRole("region", {
         name: "Document no longer in this response plan",
       }),
     ).toBeVisible();
@@ -417,13 +418,13 @@ describe("DraftStage", () => {
           screen.getByRole("button", { name: /ai returnable/i }),
         ).toBeVisible(),
       );
-      expect(screen.getByRole("dialog")).toHaveAccessibleName(
-        "Technical Proposal",
-      );
+      expect(
+        screen.getByRole("region", { name: "Technical Proposal" }),
+      ).toHaveAccessibleName("Technical Proposal");
       await waitFor(() =>
         expect(
           screen.getByRole("textbox", { name: "Edit Technical Proposal" }),
-        ).toHaveValue("Generated technical response"),
+        ).toHaveTextContent("Generated technical response"),
       );
     } finally {
       interval.mockRestore();
@@ -744,13 +745,14 @@ describe("DraftStage", () => {
     await waitFor(() =>
       expect(
         screen.getByRole("textbox", { name: "Edit Technical Proposal" }),
-      ).toHaveValue("Local draft v1"),
+      ).toHaveTextContent("Local draft v1"),
     );
     expect(screen.getByText(/unsaved local draft restored/i)).toBeVisible();
     expect(store.loadDraft).toHaveBeenCalledWith("a1", "technical");
   });
 
   it("persists edits locally after the debounce, encrypted through the store", async () => {
+    const user = userEvent.setup();
     const store = fakeLocalStore();
 
     render(
@@ -767,7 +769,8 @@ describe("DraftStage", () => {
     const editor = await screen.findByRole("textbox", {
       name: "Edit Technical Proposal",
     });
-    fireEvent.change(editor, { target: { value: "Edited locally" } });
+    await user.click(editor);
+    await user.keyboard("{Control>}a{/Control}Edited locally");
     await waitFor(
       () =>
         expect(store.persistDraft).toHaveBeenCalledWith(
@@ -802,7 +805,8 @@ describe("DraftStage", () => {
     const editor = await screen.findByRole("textbox", {
       name: "Edit Technical Proposal",
     });
-    fireEvent.change(editor, { target: { value: "Offline content" } });
+    await user.click(editor);
+    await user.keyboard("{Control>}a{/Control}Offline content");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
@@ -843,7 +847,8 @@ describe("DraftStage", () => {
     const editor = await screen.findByRole("textbox", {
       name: "Edit Technical Proposal",
     });
-    fireEvent.change(editor, { target: { value: "Offline content" } });
+    await user.click(editor);
+    await user.keyboard("{Control>}a{/Control}Offline content");
     await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Sync now" })).toBeVisible(),
@@ -897,10 +902,11 @@ describe("DraftStage", () => {
     await user.click(screen.getByText(/local history \(1\)/i));
     await user.click(screen.getByRole("button", { name: "Restore" }));
 
-    expect(editor).toHaveValue("Older saved version");
+    expect(editor).toHaveTextContent("Older saved version");
     expect(screen.getByText("Unsaved changes")).toBeVisible();
 
-    fireEvent.change(editor, { target: { value: "More edits" } });
+    await user.click(editor);
+    await user.keyboard("{Control>}a{/Control}More edits");
     expect(screen.getByRole("button", { name: "Restore" })).toBeDisabled();
   });
 });
