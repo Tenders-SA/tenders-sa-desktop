@@ -7,6 +7,7 @@ import { ResponseDocumentEditor } from "./ResponseDocumentEditor";
 import { ResponseDocumentNavigator } from "./ResponseDocumentNavigator";
 import { useResponseBlueprintWorkspace } from "./use-response-blueprint-workspace";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
+import { draftDocumentPath } from "./document-route";
 
 export function DraftStage({
   applicationId,
@@ -142,7 +143,7 @@ export function DraftStage({
                     status={statuses}
                     onSelect={(nextKey) =>
                       requestNavigation(
-                        `/applications/${encodeURIComponent(applicationId)}/draft/${encodeURIComponent(nextKey)}`,
+                        draftDocumentPath(applicationId, nextKey),
                       )
                     }
                   />

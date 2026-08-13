@@ -29,6 +29,7 @@ import {
   isWorkflowStage,
   type WorkflowStage,
 } from "../../features/applications/workflow/workflow-state";
+import { decodeDraftDocumentKey } from "../../features/applications/workflow/document-route";
 
 export interface AppRoutesProps {
   auth: AuthPort;
@@ -108,7 +109,7 @@ function ApplicationWorkspaceRoute({ clients }: { clients: ApiClients }) {
       endpoint={clients.applications}
       applicationId={applicationId}
       workflowStage={stage as WorkflowStage}
-      documentKey={documentKey}
+      documentKey={decodeDraftDocumentKey(documentKey)}
       tenders={clients.tenders}
       eligibility={clients.eligibility}
       documents={clients.documents}

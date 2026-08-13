@@ -3,6 +3,7 @@ import type { ApplicationsEndpoint } from "../../../services/api/endpoints/appli
 import { AdditionalInfoPanel } from "../workspace/AdditionalInfoPanel";
 import { ResearchPanel } from "../workspace/ResearchPanel";
 import { ResponseBlueprintPanel } from "../workspace/ResponseBlueprintPanel";
+import { draftDocumentPath } from "./document-route";
 
 export interface PlanStageProps {
   applicationId: string;
@@ -51,9 +52,7 @@ export function PlanStage({ applicationId, endpoint }: PlanStageProps) {
           endpoint={endpoint}
           applicationId={applicationId}
           onEditDocument={(key) =>
-            navigate(
-              `/applications/${encodeURIComponent(applicationId)}/draft/${encodeURIComponent(key)}`,
-            )
+            navigate(draftDocumentPath(applicationId, key))
           }
         />
       </section>

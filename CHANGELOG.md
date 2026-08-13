@@ -42,6 +42,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Every Draft response-document link now opens its intended full-screen editor,
+  including document names containing spaces, slashes or other URL characters.
 - The tender application assistance workspace now uses the available desktop
   window width, giving analysis, qualification and document work a practical
   full-size working area.

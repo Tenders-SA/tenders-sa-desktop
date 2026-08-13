@@ -1,9 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { PlanStage } from "../features/applications/workflow/PlanStage";
 import type { ApplicationsEndpoint } from "../services/api/endpoints/applications";
+import { decodeDraftDocumentKey } from "../features/applications/workflow/document-route";
+
+function DraftDestination() {
+  const { documentKey } = useParams();
+  return <p>Draft key: {decodeDraftDocumentKey(documentKey)}</p>;
+}
 
 function endpoint(): ApplicationsEndpoint {
   return {
@@ -56,7 +62,7 @@ describe("PlanStage", () => {
           />
           <Route
             path="/applications/:applicationId/draft/:documentKey"
-            element={<p>Full-screen draft destination</p>}
+            element={<DraftDestination />}
           />
         </Routes>
       </MemoryRouter>,
@@ -74,6 +80,8 @@ describe("PlanStage", () => {
     await userEvent.click(
       screen.getByRole("button", { name: /edit technical proposal/i }),
     );
-    expect(screen.getByText("Full-screen draft destination")).toBeVisible();
+    expect(
+      screen.getByText("Draft key: technical proposal/works"),
+    ).toBeVisible();
   });
 });
