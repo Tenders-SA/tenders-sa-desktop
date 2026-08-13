@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { DraftStage } from "../features/applications/workflow/DraftStage";
+import { ResponseDocumentEditor } from "../features/applications/workflow/ResponseDocumentEditor";
 import { UnsavedChangesDialog } from "../features/applications/workflow/UnsavedChangesDialog";
+import { ApiError } from "../services/api/errors";
 import type { ApplicationsEndpoint } from "../services/api/endpoints/applications";
 
 describe("DraftStage", () => {
@@ -321,6 +323,205 @@ describe("DraftStage", () => {
     } finally {
       interval.mockRestore();
     }
+  });
+
+  it("surfaces a 402 generate failure in the full-screen editor", async () => {
+    const user = userEvent.setup();
+    const endpoint = {
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint: {
+          tenderId: "t1",
+          responseDocuments: [
+            { key: "technical", title: "Technical Proposal" },
+          ],
+        },
+      })),
+      saveResponseDocument: vi.fn(),
+      generateResponseDocument: vi.fn(async () => {
+        throw new ApiError({
+          kind: "payment-required",
+          status: 402,
+          code: "SUBSCRIPTION_REQUIRED",
+          message: "Subscription required",
+        });
+      }),
+    } as unknown as ApplicationsEndpoint;
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={endpoint}
+        />
+      </MemoryRouter>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Generate" }));
+    expect(
+      await screen.findByText(/generating this document needs a paid plan/i),
+    ).toBeVisible();
+  });
+
+  it("surfaces a 409 precondition failure in the full-screen editor", async () => {
+    const user = userEvent.setup();
+    const endpoint = {
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint: {
+          tenderId: "t1",
+          responseDocuments: [
+            { key: "technical", title: "Technical Proposal" },
+          ],
+        },
+      })),
+      saveResponseDocument: vi.fn(),
+      generateResponseDocument: vi.fn(async () => {
+        throw new ApiError({
+          kind: "validation",
+          status: 409,
+          code: "PRECONDITIONS_NOT_MET",
+          message: "Generation preconditions not met",
+        });
+      }),
+    } as unknown as ApplicationsEndpoint;
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={endpoint}
+        />
+      </MemoryRouter>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Generate" }));
+    expect(
+      await screen.findByText(
+        /complete the required additional information before generating/i,
+      ),
+    ).toBeVisible();
+  });
+
+  it("shows a failed generation with a Retry action and no raw error", async () => {
+    const endpoint = {
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint: {
+          tenderId: "t1",
+          responseDocuments: [
+            { key: "technical", title: "Technical Proposal" },
+          ],
+        },
+        responseDocs: {},
+        responseDocStatus: {
+          technical: { state: "failed", error: "AI service was busy" },
+        },
+      })),
+      saveResponseDocument: vi.fn(),
+      generateResponseDocument: vi.fn(),
+    } as unknown as ApplicationsEndpoint;
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={endpoint}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("button", { name: "Retry" })).toBeVisible();
+    expect(screen.getByText(/generation failed — retry it/i)).toBeVisible();
+    expect(screen.queryByText("AI service was busy")).toBeNull();
+  });
+
+  it("shows a template indicator for fallback content", async () => {
+    const endpoint = {
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint: {
+          tenderId: "t1",
+          responseDocuments: [
+            { key: "technical", title: "Technical Proposal" },
+          ],
+        },
+        responseDocs: { technical: "Template content" },
+        responseDocStatus: { technical: { state: "ready", isFallback: true } },
+      })),
+      saveResponseDocument: vi.fn(),
+      generateResponseDocument: vi.fn(),
+    } as unknown as ApplicationsEndpoint;
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={endpoint}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      (await screen.findAllByText("Saved · template")).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("warns about unresolved placeholders in a generated document", async () => {
+    const endpoint = {
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint: {
+          tenderId: "t1",
+          responseDocuments: [
+            { key: "technical", title: "Technical Proposal" },
+          ],
+        },
+        responseDocs: { technical: "Content with {{company_name}}" },
+        responseDocStatus: {
+          technical: {
+            state: "ready",
+            unresolvedPlaceholders: ["company_name"],
+          },
+        },
+      })),
+      saveResponseDocument: vi.fn(),
+      generateResponseDocument: vi.fn(),
+    } as unknown as ApplicationsEndpoint;
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={endpoint}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByText(/1 unresolved placeholder remains/i),
+    ).toBeVisible();
+  });
+
+  it("offers Check again when a generation is stale and still generating", async () => {
+    const user = userEvent.setup();
+    const recheck = vi.fn(async () => true);
+    render(
+      <ResponseDocumentEditor
+        title="Technical Proposal"
+        content=""
+        status={{ state: "generating" }}
+        staleGenerating
+        onSave={vi.fn()}
+        onGenerate={vi.fn()}
+        onRecheck={recheck}
+        onDirtyChange={vi.fn()}
+        onDraftChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Check again" }));
+    expect(recheck).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type {
   ApplicationDetail,
   ResponseBlueprintDoc,
@@ -11,42 +12,7 @@ type TenderDocument = NonNullable<
   ApplicationDetail["tender"]["documents"]
 >[number];
 
-const REFERENCE_TERMS: Record<string, string[]> = {
-  pricing: ["pricing", "price", "rates", "boq", "bill of quantities"],
-  technical: ["technical", "scope", "specification", "works"],
-  quality: ["quality"],
-  sheq: ["sheq", "safety", "health", "environment"],
-  declaration: ["declaration", "sbd"],
-  undertaking: ["undertaking", "local content", "sbd"],
-  acknowledgement: ["acknowledgement", "conditions", "returnable"],
-};
-
-function relatedDocuments(
-  selected: ResponseBlueprintDoc,
-  documents: TenderDocument[],
-) {
-  const kindTerms = selected.kind ? (REFERENCE_TERMS[selected.kind] ?? []) : [];
-  const titleTerms = [selected.title, selected.requiredBy]
-    .filter((value): value is string => Boolean(value))
-    .flatMap((value) => value.toLowerCase().split(/[^a-z0-9]+/))
-    .filter((value) => value.length >= 4);
-  const terms = [...new Set([...kindTerms, ...titleTerms])];
-  if (terms.length === 0) return documents;
-  const matches = documents.filter((document) => {
-    const name =
-      `${document.fileName ?? ""} ${document.documentCategory ?? ""}`.toLowerCase();
-    return terms.some((term) => name.includes(term));
-  });
-  return matches.length > 0 ? matches : documents;
-}
-
-export function DraftDocumentReferences({
-  selected,
-  tenderDocuments = [],
-  documentsEndpoint,
-  savePort,
-  documentActionPort,
-}: {
+interface DraftDocumentReferencesProps {
   selected: ResponseBlueprintDoc;
   tenderDocuments?: TenderDocument[];
   documentsEndpoint?: {
@@ -57,15 +23,108 @@ export function DraftDocumentReferences({
   };
   savePort?: SaveDownloadPort;
   documentActionPort?: DocumentActionPort;
-}) {
-  const sources = relatedDocuments(selected, tenderDocuments);
+}
+
+interface ReferencesBodyProps {
+  selected: ResponseBlueprintDoc;
+  tenderDocuments: TenderDocument[];
+  documentsEndpoint?: {
+    downloadTenderDocument: (
+      id: string,
+      signal?: AbortSignal,
+    ) => Promise<DownloadResult>;
+  };
+  savePort?: SaveDownloadPort;
+  documentActionPort?: DocumentActionPort;
+}
+
+/**
+ * Reference pane for the full-screen editor. Related files are the
+ * server-provided tender documents — no desktop keyword table or taxonomy
+ * (RH-7, conforms REQ-6A). Reachable below `lg` as a labelled drawer rather
+ * than disappearing (RH-6).
+ */
+export function DraftDocumentReferences({
+  selected,
+  tenderDocuments = [],
+  documentsEndpoint,
+  savePort,
+  documentActionPort,
+}: DraftDocumentReferencesProps) {
+  const [open, setOpen] = useState(false);
+  const documents = tenderDocuments ?? [];
+
+  return (
+    <>
+      <aside
+        className="hidden min-h-0 overflow-y-auto border-l border-border bg-card p-5 lg:block"
+        aria-label="Document references"
+      >
+        <ReferencesBody
+          selected={selected}
+          tenderDocuments={documents}
+          documentsEndpoint={documentsEndpoint}
+          savePort={savePort}
+          documentActionPort={documentActionPort}
+        />
+      </aside>
+
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="fixed bottom-4 right-4 z-40 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow lg:hidden"
+      >
+        References
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-foreground/30"
+            aria-hidden="true"
+            onClick={() => setOpen(false)}
+          />
+          <aside
+            className="absolute right-0 top-0 flex h-full w-80 max-w-[85vw] flex-col border-l border-border bg-card"
+            aria-label="Document references"
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <p className="text-sm font-semibold">Document references</p>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded border border-border px-2 py-1 text-sm"
+              >
+                Close
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <ReferencesBody
+                selected={selected}
+                tenderDocuments={documents}
+                documentsEndpoint={documentsEndpoint}
+                savePort={savePort}
+                documentActionPort={documentActionPort}
+              />
+            </div>
+          </aside>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ReferencesBody({
+  selected,
+  tenderDocuments,
+  documentsEndpoint,
+  savePort,
+  documentActionPort,
+}: ReferencesBodyProps) {
   const isStructuredDraft = selected.kind === "pricing";
 
   return (
-    <aside
-      className="min-h-0 overflow-y-auto border-l border-border bg-card p-5 max-lg:hidden"
-      aria-label="Document references"
-    >
+    <>
       <p className="text-xs font-semibold uppercase tracking-wide text-primary">
         {isStructuredDraft ? "Working draft" : "Drafting brief"}
       </p>
@@ -95,15 +154,17 @@ export function DraftDocumentReferences({
         </div>
       )}
 
-      {sources.length > 0 && (
-        <section className="mt-5" aria-labelledby="official-files-heading">
-          <h3 id="official-files-heading" className="text-sm font-semibold">
-            {sources.length === tenderDocuments.length
-              ? "Official tender files"
-              : "Likely related tender files"}
-          </h3>
+      <section className="mt-5" aria-labelledby="official-files-heading">
+        <h3 id="official-files-heading" className="text-sm font-semibold">
+          Official tender files
+        </h3>
+        {tenderDocuments.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            No related tender files identified.
+          </p>
+        ) : (
           <div className="mt-2 space-y-3">
-            {sources.map((document) =>
+            {tenderDocuments.map((document) =>
               documentsEndpoint ? (
                 <DocumentDownloadButton
                   key={document.id}
@@ -126,13 +187,13 @@ export function DraftDocumentReferences({
               ),
             )}
           </div>
-        </section>
-      )}
+        )}
+      </section>
 
       <p className="mt-5 text-xs leading-5 text-muted-foreground">
         Verify generated content against every official tender document before
         submission.
       </p>
-    </aside>
+    </>
   );
 }

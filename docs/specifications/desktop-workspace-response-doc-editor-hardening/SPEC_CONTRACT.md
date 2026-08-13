@@ -1,10 +1,10 @@
 # Desktop Workspace — Response Document Editor Hardening — SPEC_CONTRACT (Slice 8)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-13
 - **Scope**: Slice 8 — response-document editor hardening (RH-1..RH-7). Closes
   gap-analysis findings G1, G2, G3, G5, G6, G10, G11.
-- **Approved by**: _(pending)_
+- **Approved by**: user (2026-08-13)
 
 ## Contract checklist (mirrors tasks.md)
 

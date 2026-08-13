@@ -1,4 +1,8 @@
 import type { ResponseBlueprintDoc } from "../../../services/api/endpoints/applications";
+import {
+  docStatusLabel,
+  type ResponseDocStatusSummary,
+} from "./response-doc-status";
 
 export function ResponseDocumentNavigator({
   documents,
@@ -10,7 +14,7 @@ export function ResponseDocumentNavigator({
   documents: ResponseBlueprintDoc[];
   selectedKey: string;
   responseDocs: Record<string, string>;
-  status: Record<string, { state?: string }>;
+  status: Record<string, ResponseDocStatusSummary>;
   onSelect: (key: string) => void;
 }) {
   return (
@@ -22,15 +26,7 @@ export function ResponseDocumentNavigator({
         {documents.map((document) => {
           const key = document.key;
           if (!key) return null;
-          const state = status[key]?.state;
-          const label =
-            state === "generating"
-              ? "Generating"
-              : state === "failed"
-                ? "Failed"
-                : responseDocs[key] || state === "ready"
-                  ? "Saved"
-                  : "Not started";
+          const label = docStatusLabel(status[key], Boolean(responseDocs[key]));
           return (
             <li key={key}>
               <button

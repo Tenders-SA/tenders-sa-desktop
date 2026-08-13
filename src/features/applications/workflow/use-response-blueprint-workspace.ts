@@ -35,6 +35,22 @@ export interface ResponseBlueprintOverlay {
   status?: Record<string, { state?: string; error?: string }>;
 }
 
+/** Merges a fresh blueprint payload over the last-known overlay (RH-3). */
+function mergeBlueprintOverlay(
+  previous: ResponseBlueprintOverlay,
+  fresh: BlueprintPayload,
+): ResponseBlueprintOverlay {
+  return {
+    blueprint:
+      fresh.blueprint === undefined ? previous.blueprint : fresh.blueprint,
+    docs: { ...previous.docs, ...(fresh.responseDocs ?? {}) },
+    status: {
+      ...previous.status,
+      ...(fresh.responseDocStatus ?? {}),
+    },
+  };
+}
+
 /** One read, overlay and bounded-generation-refresh owner for Plan and Draft. */
 export function useResponseBlueprintWorkspace(
   endpoint: ResponseBlueprintWorkspaceEndpoint,
@@ -46,6 +62,9 @@ export function useResponseBlueprintWorkspace(
   );
   const [overlay, setOverlay] = useState<ResponseBlueprintOverlay>({});
   const [pendingKeys, setPendingKeys] = useState<string[]>([]);
+  const [staleGenerating, setStaleGenerating] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     if (pendingKeys.length === 0) return;
@@ -55,21 +74,25 @@ export function useResponseBlueprintWorkspace(
       void endpoint
         .getResponseBlueprint(applicationId)
         .then((fresh) => {
-          setOverlay((previous) => ({
-            blueprint:
-              fresh.blueprint === undefined
-                ? previous.blueprint
-                : fresh.blueprint,
-            docs: { ...previous.docs, ...(fresh.responseDocs ?? {}) },
-            status: {
-              ...previous.status,
-              ...(fresh.responseDocStatus ?? {}),
-            },
-          }));
-          const stillGenerating = pendingKeys.some(
+          setOverlay((previous) => mergeBlueprintOverlay(previous, fresh));
+          const stillGenerating = pendingKeys.filter(
             (key) => fresh.responseDocStatus?.[key]?.state === "generating",
           );
-          if (!stillGenerating || remaining <= 0) setPendingKeys([]);
+          if (stillGenerating.length > 0 && remaining <= 0) {
+            setStaleGenerating((previousFlags) => {
+              const next = { ...previousFlags };
+              for (const key of stillGenerating) next[key] = true;
+              return next;
+            });
+            setPendingKeys([]);
+          } else if (stillGenerating.length === 0) {
+            setStaleGenerating((previousFlags) => {
+              const next = { ...previousFlags };
+              for (const key of pendingKeys) delete next[key];
+              return next;
+            });
+            setPendingKeys([]);
+          }
         })
         .catch(() => {
           // A failed refresh does not erase the last known document state.
@@ -84,6 +107,11 @@ export function useResponseBlueprintWorkspace(
       ...previous,
       status: { ...previous.status, [key]: { state: "generating" } },
     }));
+    setStaleGenerating((previousFlags) => {
+      const next = { ...previousFlags };
+      delete next[key];
+      return next;
+    });
     setPendingKeys((previous) =>
       previous.includes(key) ? previous : [...previous, key],
     );
@@ -97,11 +125,37 @@ export function useResponseBlueprintWorkspace(
     }));
   }
 
+  /**
+   * One direct blueprint read, merged into the overlay, to recover a document
+   * whose bounded generation window ended while it was still generating
+   * (RH-3). Returns `false` when the read fails so the caller can say so.
+   */
+  async function recheck(): Promise<boolean> {
+    try {
+      const fresh = await endpoint.getResponseBlueprint(applicationId);
+      setOverlay((previous) => mergeBlueprintOverlay(previous, fresh));
+      setStaleGenerating((previousFlags) => {
+        const next = { ...previousFlags };
+        for (const key of Object.keys(next)) {
+          if (fresh.responseDocStatus?.[key]?.state !== "generating") {
+            delete next[key];
+          }
+        }
+        return next;
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   return {
     state,
     overlay,
+    staleGenerating,
     reload: state.reload,
     generate,
     save,
+    recheck,
   };
 }

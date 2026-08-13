@@ -1,32 +1,51 @@
 import { useEffect, useRef, useState } from "react";
 import { describeApiError } from "../../../services/api/describe-error";
+import {
+  describeGenerateError,
+  type ResponseDocStatusSummary,
+} from "./response-doc-status";
 
 export function ResponseDocumentEditor({
   title,
   content,
-  generating,
+  status,
+  staleGenerating = false,
   onSave,
   onGenerate,
+  onRecheck,
   onDirtyChange,
   onDraftChange,
 }: {
   title: string;
   content: string;
-  generating: boolean;
+  status?: ResponseDocStatusSummary;
+  staleGenerating?: boolean;
   onSave: (content: string) => Promise<void>;
   onGenerate: () => Promise<void>;
+  onRecheck?: () => Promise<boolean>;
   onDirtyChange: (dirty: boolean) => void;
   onDraftChange: (content: string) => void;
 }) {
   const [draft, setDraft] = useState(content);
-  const [state, setState] = useState<"idle" | "saving" | "generating">("idle");
+  const [state, setState] = useState<"idle" | "saving">("idle");
   const [error, setError] = useState<string>();
+  const [generateError, setGenerateError] = useState<string>();
+  const [recheckError, setRecheckError] = useState<string>();
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const dirty = draft !== content;
+
+  const isGenerating = status?.state === "generating";
+  const failed = status?.state === "failed";
+  const isTemplate =
+    status?.isFallback === true &&
+    Boolean(content || status?.state === "ready");
+  const unresolved = status?.unresolvedPlaceholders?.length ?? 0;
 
   useEffect(() => {
     setDraft(content);
     setError(undefined);
+    setGenerateError(undefined);
+    setRecheckError(undefined);
     requestAnimationFrame(() => editorRef.current?.focus());
   }, [content, title]);
 
@@ -43,6 +62,22 @@ export function ResponseDocumentEditor({
       setState("idle");
       setError(describeApiError(cause, "this document").message);
     }
+  }
+
+  async function generate() {
+    setGenerateError(undefined);
+    try {
+      await onGenerate();
+    } catch (cause) {
+      setGenerateError(describeGenerateError(cause));
+    }
+  }
+
+  async function recheckNow() {
+    setRecheckError(undefined);
+    const ok = await onRecheck?.();
+    if (ok === false)
+      setRecheckError("Could not refresh the status right now.");
   }
 
   function transform(prefix: string, suffix = "") {
@@ -97,16 +132,31 @@ export function ResponseDocumentEditor({
           </button>
           <button
             type="button"
-            onClick={() => void onGenerate()}
-            disabled={generating || state !== "idle"}
+            onClick={() => void generate()}
+            disabled={isGenerating || state !== "idle"}
             className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-50"
           >
-            {generating ? "Generating…" : content ? "Regenerate" : "Generate"}
+            {isGenerating
+              ? "Generating…"
+              : failed
+                ? "Retry"
+                : content
+                  ? "Regenerate"
+                  : "Generate"}
           </button>
+          {isGenerating && staleGenerating && (
+            <button
+              type="button"
+              onClick={() => void recheckNow()}
+              className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-50"
+            >
+              Check again
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void save()}
-            disabled={!dirty || state !== "idle" || generating}
+            disabled={!dirty || state !== "idle" || isGenerating}
             className="rounded bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
             {state === "saving" ? "Saving…" : "Save"}
@@ -121,12 +171,55 @@ export function ResponseDocumentEditor({
           {error}
         </p>
       )}
+      {generateError && (
+        <p
+          role="alert"
+          className="border-b border-border px-5 py-2 text-sm text-destructive"
+        >
+          {generateError}
+        </p>
+      )}
+      {recheckError && (
+        <p
+          role="alert"
+          className="border-b border-border px-5 py-2 text-sm text-destructive"
+        >
+          {recheckError}
+        </p>
+      )}
+      {failed && !generateError && (
+        <p
+          role="status"
+          className="border-b border-border px-5 py-2 text-sm text-muted-foreground"
+        >
+          Generation failed — retry it.
+        </p>
+      )}
+      {isTemplate && (
+        <p
+          role="status"
+          className="border-b border-border px-5 py-2 text-sm text-muted-foreground"
+        >
+          Saved · template
+        </p>
+      )}
+      {unresolved > 0 && (
+        <p
+          role="status"
+          className="border-b border-border px-5 py-2 text-sm text-warning"
+        >
+          {unresolved} unresolved{" "}
+          {unresolved === 1 ? "placeholder" : "placeholders"}{" "}
+          {unresolved === 1 ? "remains" : "remain"} in this document — verify
+          them before submitting.
+        </p>
+      )}
       <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
         <textarea
           ref={editorRef}
           aria-label={`Edit ${title}`}
           value={draft}
-          readOnly={generating}
+          readOnly={isGenerating}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (
@@ -134,7 +227,7 @@ export function ResponseDocumentEditor({
               event.key.toLowerCase() === "s"
             ) {
               event.preventDefault();
-              if (dirty && !generating) void save();
+              if (dirty && !isGenerating) void save();
             }
           }}
           className="mx-auto min-h-full w-full max-w-4xl resize-none rounded-lg border border-border bg-card p-6 font-mono text-sm leading-7 text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"

@@ -10,14 +10,18 @@
  */
 
 import { useState } from "react";
-import { ApiError } from "../../../services/api/errors";
 import { describeApiError } from "../../../services/api/describe-error";
 import type { ResponseBlueprintDoc } from "../../../services/api/endpoints/applications";
+import {
+  describeGenerateError,
+  docStatusChip,
+  type ResponseDocStatusSummary,
+} from "../workflow/response-doc-status";
 
 export interface ResponseBlueprintDocRowProps {
   doc: ResponseBlueprintDoc;
   /** Merged status (fetched payload ∪ panel overlay). */
-  status: { state?: string; error?: string; isFallback?: boolean };
+  status: ResponseDocStatusSummary;
   hasContent: boolean;
   /** Merged saved content (fetched payload ∪ panel overlay). */
   content?: string;
@@ -101,8 +105,10 @@ export function ResponseBlueprintDocRow({
           Required by: {doc.requiredBy}
         </span>
       )}
-      {status.error && (
-        <span className="block text-xs text-destructive">{status.error}</span>
+      {failed && (
+        <span className="block text-xs text-destructive">
+          This document could not be generated — retry it.
+        </span>
       )}
 
       {editing ? (
@@ -185,37 +191,4 @@ export function ResponseBlueprintDocRow({
       )}
     </li>
   );
-}
-
-function docStatusChip(
-  status: { state?: string; error?: string; isFallback?: boolean },
-  hasContent: boolean,
-): { label: string; className: string } | undefined {
-  if (status.state === "generating") {
-    return { label: "Generating…", className: "text-xs text-muted-foreground" };
-  }
-  if (status.state === "failed") {
-    return { label: "Failed", className: "text-xs text-destructive" };
-  }
-  if (hasContent || status.state === "ready") {
-    return {
-      label: status.isFallback ? "Saved · template" : "Saved",
-      className: "text-xs text-success",
-    };
-  }
-  return undefined;
-}
-
-/**
- * 409 `PRECONDITIONS_NOT_MET` is the parent's only hard generation blocker
- * (unfilled required additional info). The parent's `blockedReason` is its
- * own prose and is never shown verbatim — this fixed copy points at the fix
- * path instead (R-A-5). Every other failure goes through `describeApiError`
- * (a 402 `SUBSCRIPTION_REQUIRED` reads "…needs a paid plan.", R-A-4).
- */
-function describeGenerateError(error: unknown): string {
-  if (error instanceof ApiError && error.code === "PRECONDITIONS_NOT_MET") {
-    return "Complete the required additional information before generating.";
-  }
-  return describeApiError(error, "this document").message;
 }

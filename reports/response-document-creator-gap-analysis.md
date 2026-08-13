@@ -26,7 +26,7 @@ The authoring flow is not greenfield. These are in place and correct:
 - Stale-document-key recovery (does not silently substitute the first document, `DraftStage.tsx:154-208`).
 - Entitlement/precondition honesty — but **only in the inline row** (`ResponseBlueprintDocRow.tsx:216-221`, `describe-error.ts:59-66`).
 
-The gaps below are what is *missing or inconsistent* on top of that foundation.
+The gaps below are what is _missing or inconsistent_ on top of that foundation.
 
 ---
 
@@ -64,7 +64,7 @@ The desktop's SQLite boundary explicitly allows "offline workspace state … and
 
 The editor keeps its draft in React state alone (`ResponseDocumentEditor.tsx:21`) and saves via a direct synchronous PUT (`use-response-blueprint-workspace.ts:92-98`). Consequences:
 
-- A crash / force-close loses all unsaved edits (the `beforeunload` guard only *warns*).
+- A crash / force-close loses all unsaved edits (the `beforeunload` guard only _warns_).
 - There is no offline authoring; a lost connection makes the creator read-only in practice.
 
 This is a "find it before you build it" observation: the local-first plumbing exists and is simply not wired to this surface.
@@ -73,14 +73,14 @@ This is a "find it before you build it" observation: the local-first plumbing ex
 
 `ResponseBlueprintDocRow.tsx` (inline) and `ResponseDocumentEditor.tsx` (full-screen) are two implementations of the same Generate/Save/Edit contract with different behaviour:
 
-| Concern | Inline row | Full-screen editor |
-|---|---|---|
-| 402/409 generate handling | Yes (`describeGenerateError`) | **No** (G1) |
-| Failed-status Retry | "Retry" label on `failed` | No Retry; button still reads Generate/Regenerate |
-| `isFallback` chip | "Saved · template" | Never shown |
-| Save UX | Save+Cancel buttons | Save+Revert, dirty indicator, Ctrl+S |
+| Concern                   | Inline row                    | Full-screen editor                               |
+| ------------------------- | ----------------------------- | ------------------------------------------------ |
+| 402/409 generate handling | Yes (`describeGenerateError`) | **No** (G1)                                      |
+| Failed-status Retry       | "Retry" label on `failed`     | No Retry; button still reads Generate/Regenerate |
+| `isFallback` chip         | "Saved · template"            | Never shown                                      |
+| Save UX                   | Save+Cancel buttons           | Save+Revert, dirty indicator, Ctrl+S             |
 
-This is the same "parallel implementation" smell the parent `AGENTS.md` warns about, reproduced *inside* the desktop app. One of the two should be the single owner of these rules, or the shared `useResponseBlueprintWorkspace` hook should own them.
+This is the same "parallel implementation" smell the parent `AGENTS.md` warns about, reproduced _inside_ the desktop app. One of the two should be the single owner of these rules, or the shared `useResponseBlueprintWorkspace` hook should own them.
 
 ### G6 — Raw server string rendered verbatim in the inline row (LOW)
 
@@ -92,7 +92,7 @@ The parent mutation already accepts `prompt` (`applications.ts:1061-1078`), and 
 
 ### G8 — No recovery of a prior generation (LOW)
 
-Regenerate overwrites the saved content with no version history. "Revert" only discards *unsaved editor edits* (`ResponseDocumentEditor.tsx:92-97`), not a completed regeneration. A worse AI draft cannot be rolled back to the previous saved version.
+Regenerate overwrites the saved content with no version history. "Revert" only discards _unsaved editor edits_ (`ResponseDocumentEditor.tsx:92-97`), not a completed regeneration. A worse AI draft cannot be rolled back to the previous saved version.
 
 ### G9 — No batch generate (LOW)
 
@@ -104,30 +104,30 @@ Each unsaved document needs an individual Generate press. There is no "generate 
 
 ### G11 — Naive substring matching for related documents (LOW)
 
-`relatedDocuments` (`DraftDocumentReferences.tsx:24-41`) matches `name.includes(term)` over kind/title terms, and returns *all* documents when no terms match (line 34). This both over-matches ("quality" hits any filename containing that substring) and under-matches, and the "all documents" fallback defeats the "Likely related tender files" framing.
+`relatedDocuments` (`DraftDocumentReferences.tsx:24-41`) matches `name.includes(term)` over kind/title terms, and returns _all_ documents when no terms match (line 34). This both over-matches ("quality" hits any filename containing that substring) and under-matches, and the "all documents" fallback defeats the "Likely related tender files" framing.
 
 ### G12 — The Draft stage is not a real "drafts menu" (LOW)
 
-Navigating to `/applications/:id/draft` opens the **first** document full-screen immediately (`DraftStage.tsx:135-136`). There is no list/index landing view that shows every draft and its status at a glance; the only list is the navigator sidebar *inside* the modal. For a workflow stage named "Draft", users land in a document rather than on a draft list.
+Navigating to `/applications/:id/draft` opens the **first** document full-screen immediately (`DraftStage.tsx:135-136`). There is no list/index landing view that shows every draft and its status at a glance; the only list is the navigator sidebar _inside_ the modal. For a workflow stage named "Draft", users land in a document rather than on a draft list.
 
 ---
 
 ## 4. Summary table
 
-| # | Severity | Gap | Primary evidence |
-|---|----------|-----|------------------|
-| G1 | CRITICAL | Silent generate failure (402/409) in full-screen editor | `ResponseDocumentEditor.tsx:100`, `use-response-blueprint-workspace.ts:81-90` |
-| G2 | HIGH | Generation outcome (failed / fallback / unresolved placeholders) not surfaced | `DraftStage.tsx:245`, `applications.ts:648-657` |
-| G3 | MEDIUM | Stuck "Generating…" locks editor, no refresh | `use-response-blueprint-workspace.ts:10-11,74` |
-| G4 | MEDIUM | No local draft / offline editing; sync infra unused | `ResponseDocumentEditor.tsx:21`, `db/repositories/sync-operations.ts` |
-| G5 | MEDIUM | Two divergent editors for one contract | `ResponseBlueprintDocRow.tsx` vs `ResponseDocumentEditor.tsx` |
-| G6 | LOW | Raw server error string shown verbatim | `ResponseBlueprintDocRow.tsx:104-106` |
-| G7 | LOW | `prompt` contract unused ("regenerate with custom prompt") | `applications.ts:1061-1078`, `requirements.md:137` |
-| G8 | LOW | No rollback of a regeneration | `ResponseDocumentEditor.tsx:92-97` |
-| G9 | LOW | No batch generate | `ResponseBlueprintPanel.tsx:286-314` |
-| G10 | LOW | References sidebar hidden below `lg` | `DraftDocumentReferences.tsx:66` |
-| G11 | LOW | Naive substring document matching | `DraftDocumentReferences.tsx:24-41` |
-| G12 | LOW | No draft-list landing view | `DraftStage.tsx:135-136` |
+| #   | Severity | Gap                                                                           | Primary evidence                                                              |
+| --- | -------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| G1  | CRITICAL | Silent generate failure (402/409) in full-screen editor                       | `ResponseDocumentEditor.tsx:100`, `use-response-blueprint-workspace.ts:81-90` |
+| G2  | HIGH     | Generation outcome (failed / fallback / unresolved placeholders) not surfaced | `DraftStage.tsx:245`, `applications.ts:648-657`                               |
+| G3  | MEDIUM   | Stuck "Generating…" locks editor, no refresh                                  | `use-response-blueprint-workspace.ts:10-11,74`                                |
+| G4  | MEDIUM   | No local draft / offline editing; sync infra unused                           | `ResponseDocumentEditor.tsx:21`, `db/repositories/sync-operations.ts`         |
+| G5  | MEDIUM   | Two divergent editors for one contract                                        | `ResponseBlueprintDocRow.tsx` vs `ResponseDocumentEditor.tsx`                 |
+| G6  | LOW      | Raw server error string shown verbatim                                        | `ResponseBlueprintDocRow.tsx:104-106`                                         |
+| G7  | LOW      | `prompt` contract unused ("regenerate with custom prompt")                    | `applications.ts:1061-1078`, `requirements.md:137`                            |
+| G8  | LOW      | No rollback of a regeneration                                                 | `ResponseDocumentEditor.tsx:92-97`                                            |
+| G9  | LOW      | No batch generate                                                             | `ResponseBlueprintPanel.tsx:286-314`                                          |
+| G10 | LOW      | References sidebar hidden below `lg`                                          | `DraftDocumentReferences.tsx:66`                                              |
+| G11 | LOW      | Naive substring document matching                                             | `DraftDocumentReferences.tsx:24-41`                                           |
+| G12 | LOW      | No draft-list landing view                                                    | `DraftStage.tsx:135-136`                                                      |
 
 ## 5. Recommended next steps
 

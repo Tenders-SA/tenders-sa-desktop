@@ -47,6 +47,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The full-screen response editor now reports generation failures inline — a
+  missing paid plan, incomplete required information, or a failed generation
+  each show their own clear message and a Retry action instead of silently
+  doing nothing or showing raw server text.
+- Generated documents now indicate when they are a saved template or still
+  contain unresolved placeholders, and a generation that outlives the status
+  refresh window offers a "Check again" action instead of locking the editor.
+- Document references no longer disappear at narrower window sizes — they open
+  in a labelled drawer — and no longer use the desktop's own keyword matching to
+  guess which tender files are relevant.
 - Missing or retired response-document keys now show a clear recovery screen
   instead of silently opening Cover Letter or leaving the Draft workflow.
 - Every Draft response-document link now opens its intended full-screen editor,

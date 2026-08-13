@@ -80,3 +80,17 @@ reference requirements RH-1..RH-7 and the design's shared helper.
   "Saved · template"; a long generation is recoverable via "Check again"; the
   reference pane opens as a drawer below `lg`.
 - **Verification**: user sign-off recorded in `INTEGRATION_EVAL.md`.
+
+## Status (2026-08-13)
+
+- T1: DONE — shared `response-doc-status.ts` helper; row + navigator import it;
+  raw `status.error` rendering removed.
+- T2: DONE — full-screen editor surfaces 402/409 via shared `describeGenerateError`;
+  failed/template/unresolved-placeholder notices; Retry label.
+- T3: DONE — `recheck()` + `staleGenerating`; "Check again" action; `readOnly` only
+  while `state === "generating"`.
+- T4: DONE — keyword table removed; server-provided files only; honest empty state;
+  references drawer below `lg`.
+- T5: DONE — full suite 805/805, `tsc --noEmit`, `eslint`, `prettier --check` clean.
+- T6: OPEN — human verification pending (requires `pnpm tauri dev`).
+

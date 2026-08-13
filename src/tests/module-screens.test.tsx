@@ -1260,7 +1260,7 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
     expect(screen.getAllByText("Generating…").length).toBeGreaterThan(0);
   });
 
-  it("shows a failed generation with its error", async () => {
+  it("shows a failed generation with component-owned copy, not the raw error", async () => {
     const ep = endpoint({
       getResponseBlueprint: vi.fn(async () => ({
         blueprint,
@@ -1277,7 +1277,11 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
     });
     wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);
     expect(await screen.findByText("Failed")).toBeVisible();
-    expect(screen.getByText("AI service was busy")).toBeVisible();
+    expect(
+      screen.getByText(/this document could not be generated/i),
+    ).toBeVisible();
+    // The parent's raw error string is never rendered verbatim (RH-5).
+    expect(screen.queryByText("AI service was busy")).toBeNull();
   });
 
   it("shows an honest empty state for a null blueprint", async () => {

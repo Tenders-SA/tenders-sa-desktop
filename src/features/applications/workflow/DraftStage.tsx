@@ -242,9 +242,11 @@ export function DraftStage({
                   key={key}
                   title={selected.title ?? "Response document"}
                   content={responseDocs[key] ?? ""}
-                  generating={statuses[key]?.state === "generating"}
+                  status={statuses[key]}
+                  staleGenerating={workspace.staleGenerating[key] ?? false}
                   onSave={(content) => workspace.save(key, content)}
                   onGenerate={() => workspace.generate(key)}
+                  onRecheck={() => workspace.recheck()}
                   onDirtyChange={setDirty}
                   onDraftChange={setDraft}
                 />
