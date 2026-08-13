@@ -7,7 +7,6 @@ import { ResponseDocumentEditor } from "./ResponseDocumentEditor";
 import { ResponseDocumentNavigator } from "./ResponseDocumentNavigator";
 import { useResponseBlueprintWorkspace } from "./use-response-blueprint-workspace";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
-import { draftDocumentPath } from "./document-route";
 
 export function DraftStage({
   applicationId,
@@ -24,6 +23,8 @@ export function DraftStage({
   const [dirty, setDirty] = useState(false);
   const [draft, setDraft] = useState("");
   const [pendingUrl, setPendingUrl] = useState<string>();
+  const [selectedDocumentKey, setSelectedDocumentKey] = useState(documentKey);
+  const [pendingDocumentKey, setPendingDocumentKey] = useState<string>();
 
   const requestNavigation = useCallback(
     (url: string) => {
@@ -38,6 +39,15 @@ export function DraftStage({
       `/applications/${encodeURIComponent(applicationId)}/plan`,
     );
   }, [applicationId, requestNavigation]);
+
+  const selectDocument = useCallback(
+    (nextKey: string) => {
+      if (nextKey === selectedDocumentKey) return;
+      if (dirty) setPendingDocumentKey(nextKey);
+      else setSelectedDocumentKey(nextKey);
+    },
+    [dirty, selectedDocumentKey],
+  );
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -95,7 +105,8 @@ export function DraftStage({
         {(payload) => {
           const documents = payload.blueprint?.responseDocuments ?? [];
           const selected =
-            documents.find((item) => item.key === documentKey) ?? documents[0];
+            documents.find((item) => item.key === selectedDocumentKey) ??
+            documents[0];
           const key = selected?.key ?? "";
           const responseDocs = {
             ...(payload.responseDocs ?? {}),
@@ -141,11 +152,7 @@ export function DraftStage({
                     selectedKey={key}
                     responseDocs={responseDocs}
                     status={statuses}
-                    onSelect={(nextKey) =>
-                      requestNavigation(
-                        draftDocumentPath(applicationId, nextKey),
-                      )
-                    }
+                    onSelect={selectDocument}
                   />
                 </aside>
                 <ResponseDocumentEditor
@@ -179,21 +186,30 @@ export function DraftStage({
                   </p>
                 </aside>
               </div>
-              {pendingUrl && (
+              {(pendingUrl || pendingDocumentKey) && (
                 <UnsavedChangesDialog
-                  onStay={() => setPendingUrl(undefined)}
+                  onStay={() => {
+                    setPendingUrl(undefined);
+                    setPendingDocumentKey(undefined);
+                  }}
                   onDiscard={() => {
                     const url = pendingUrl;
+                    const nextKey = pendingDocumentKey;
                     setDirty(false);
                     setPendingUrl(undefined);
-                    navigate(url);
+                    setPendingDocumentKey(undefined);
+                    if (nextKey) setSelectedDocumentKey(nextKey);
+                    else if (url) navigate(url);
                   }}
                   onSave={async () => {
                     await workspace.save(key, draft);
                     const url = pendingUrl;
+                    const nextKey = pendingDocumentKey;
                     setDirty(false);
                     setPendingUrl(undefined);
-                    navigate(url);
+                    setPendingDocumentKey(undefined);
+                    if (nextKey) setSelectedDocumentKey(nextKey);
+                    else if (url) navigate(url);
                   }}
                 />
               )}

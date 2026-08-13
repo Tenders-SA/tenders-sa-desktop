@@ -21,6 +21,11 @@ describe("DraftStage", () => {
               brief: "Address the technical specification.",
               requiredBy: "Technical returnable",
             },
+            {
+              key: "capability statement",
+              title: "Capability Statement",
+              brief: "Show the company's relevant capability.",
+            },
           ],
         },
         responseDocs: { technical: "Existing response" },
@@ -61,6 +66,20 @@ describe("DraftStage", () => {
     expect(
       screen.getByText("Address the technical specification."),
     ).toBeVisible();
+
+    await user.click(
+      screen.getByRole("button", { name: /capability statement/i }),
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Edit Capability Statement" }),
+    ).toHaveValue("");
+    expect(screen.getByRole("dialog")).toHaveAccessibleName(
+      "Capability Statement",
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /technical proposal/i }),
+    );
 
     const editor = screen.getByRole("textbox", {
       name: "Edit Technical Proposal",
