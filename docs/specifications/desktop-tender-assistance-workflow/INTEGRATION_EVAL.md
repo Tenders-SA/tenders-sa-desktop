@@ -72,9 +72,15 @@
   authoring; no endpoint or schema change is proposed.
 - [x] Contract limitation recorded: existing string content cannot represent
   in-place editing of an official XLSX/PDF returnable.
-- [ ] User approves the Phase 3A amendment.
-- [ ] Dynamic fixture and selection/reconciliation implementation verified.
-- [ ] Official-returnable presentation verified.
+- [x] User approved the Phase 3A amendment on 2026-08-13.
+- [x] Dynamic fixture and selection/reconciliation implementation verified:
+  server order and arbitrary kinds survive parsing; refreshed additions and
+  reordering retain the selected exact key; stale keys show recovery.
+- [x] Official-returnable presentation verified: Pricing Schedule is labelled
+  as a working draft and existing tender files remain available through the
+  established download/open component and ports.
+- [x] Main application remained read-only; no endpoint, schema, AI prompt,
+  analysis path or parent service changed.
 
 ## Final evaluation
 

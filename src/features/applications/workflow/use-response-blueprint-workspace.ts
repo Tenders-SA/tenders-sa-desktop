@@ -3,6 +3,7 @@ import { useAsync } from "../../../hooks/use-async";
 import type {
   BlueprintPayload,
   GenerateResponseDocResult,
+  ResponseBlueprint,
   ResponseDocSaveResult,
 } from "../../../services/api/endpoints/applications";
 
@@ -29,6 +30,7 @@ export interface ResponseBlueprintWorkspaceEndpoint {
 }
 
 export interface ResponseBlueprintOverlay {
+  blueprint?: ResponseBlueprint | null;
   docs?: Record<string, string>;
   status?: Record<string, { state?: string; error?: string }>;
 }
@@ -54,6 +56,10 @@ export function useResponseBlueprintWorkspace(
         .getResponseBlueprint(applicationId)
         .then((fresh) => {
           setOverlay((previous) => ({
+            blueprint:
+              fresh.blueprint === undefined
+                ? previous.blueprint
+                : fresh.blueprint,
             docs: { ...previous.docs, ...(fresh.responseDocs ?? {}) },
             status: {
               ...previous.status,

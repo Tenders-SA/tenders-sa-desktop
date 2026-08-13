@@ -2,7 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AsyncSection } from "../../../components/common/AsyncSection";
-import type { ApplicationsEndpoint } from "../../../services/api/endpoints/applications";
+import type {
+  ApplicationDetail,
+  ApplicationsEndpoint,
+} from "../../../services/api/endpoints/applications";
+import type { DownloadResult } from "../../../services/api/transport";
+import type { DocumentActionPort } from "../../../services/storage/document-actions";
+import type { SaveDownloadPort } from "../../../services/storage/save-download";
+import { DraftDocumentReferences } from "./DraftDocumentReferences";
 import { ResponseDocumentEditor } from "./ResponseDocumentEditor";
 import { ResponseDocumentNavigator } from "./ResponseDocumentNavigator";
 import { useResponseBlueprintWorkspace } from "./use-response-blueprint-workspace";
@@ -12,10 +19,23 @@ export function DraftStage({
   applicationId,
   documentKey,
   endpoint,
+  tenderDocuments,
+  documentsEndpoint,
+  savePort,
+  documentActionPort,
 }: {
   applicationId: string;
   documentKey?: string;
   endpoint: ApplicationsEndpoint;
+  tenderDocuments?: ApplicationDetail["tender"]["documents"];
+  documentsEndpoint?: {
+    downloadTenderDocument: (
+      id: string,
+      signal?: AbortSignal,
+    ) => Promise<DownloadResult>;
+  };
+  savePort?: SaveDownloadPort;
+  documentActionPort?: DocumentActionPort;
 }) {
   const navigate = useNavigate();
   const workspace = useResponseBlueprintWorkspace(endpoint, applicationId);
@@ -25,6 +45,10 @@ export function DraftStage({
   const [pendingUrl, setPendingUrl] = useState<string>();
   const [selectedDocumentKey, setSelectedDocumentKey] = useState(documentKey);
   const [pendingDocumentKey, setPendingDocumentKey] = useState<string>();
+
+  useEffect(() => {
+    setSelectedDocumentKey(documentKey);
+  }, [applicationId, documentKey]);
 
   const requestNavigation = useCallback(
     (url: string) => {
@@ -103,10 +127,14 @@ export function DraftStage({
         onRetry={workspace.reload}
       >
         {(payload) => {
-          const documents = payload.blueprint?.responseDocuments ?? [];
-          const selected =
-            documents.find((item) => item.key === selectedDocumentKey) ??
-            documents[0];
+          const blueprint = workspace.overlay.blueprint ?? payload.blueprint;
+          const documents = blueprint?.responseDocuments ?? [];
+          const usableDocuments = documents.filter(
+            (item): item is typeof item & { key: string } => Boolean(item.key),
+          );
+          const selected = selectedDocumentKey
+            ? usableDocuments.find((item) => item.key === selectedDocumentKey)
+            : usableDocuments[0];
           const key = selected?.key ?? "";
           const responseDocs = {
             ...(payload.responseDocs ?? {}),
@@ -116,11 +144,66 @@ export function DraftStage({
             ...(payload.responseDocStatus ?? {}),
             ...(workspace.overlay.status ?? {}),
           };
-          if (!selected) {
+          if (usableDocuments.length === 0) {
             return (
               <p className="p-6 text-sm text-muted-foreground">
                 No response documents are available yet.
               </p>
+            );
+          }
+          if (!selected) {
+            return (
+              <>
+                <header className="flex items-center justify-between gap-4 border-b border-border bg-card px-4 py-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      Response editor
+                    </p>
+                    <h2
+                      id="response-editor-title"
+                      className="text-lg font-semibold"
+                    >
+                      Document no longer in this response plan
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="rounded border border-border px-3 py-2 text-sm"
+                  >
+                    Close editor
+                  </button>
+                </header>
+                <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)] max-md:grid-cols-1">
+                  <aside className="min-h-0 border-r border-border max-md:hidden">
+                    <ResponseDocumentNavigator
+                      documents={usableDocuments}
+                      selectedKey=""
+                      responseDocs={responseDocs}
+                      status={statuses}
+                      onSelect={selectDocument}
+                    />
+                  </aside>
+                  <div className="flex items-center justify-center p-8 text-center">
+                    <div className="max-w-md">
+                      <p className="text-sm text-muted-foreground">
+                        The selected document is not part of the latest tender
+                        response blueprint. Choose another response document or
+                        return to the preparation plan.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedDocumentKey(usableDocuments[0].key)
+                        }
+                        className="mt-4 rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+                      >
+                        Open {usableDocuments[0].title ?? "first document"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
             );
           }
           return (
@@ -148,7 +231,7 @@ export function DraftStage({
               <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_20rem] max-lg:grid-cols-[13rem_minmax(0,1fr)] max-md:grid-cols-1">
                 <aside className="min-h-0 border-r border-border max-md:hidden">
                   <ResponseDocumentNavigator
-                    documents={documents}
+                    documents={usableDocuments}
                     selectedKey={key}
                     responseDocs={responseDocs}
                     status={statuses}
@@ -165,26 +248,13 @@ export function DraftStage({
                   onDirtyChange={setDirty}
                   onDraftChange={setDraft}
                 />
-                <aside
-                  className="min-h-0 overflow-y-auto border-l border-border bg-card p-5 max-lg:hidden"
-                  aria-label="Document references"
-                >
-                  <h3 className="text-sm font-semibold">Drafting brief</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {selected.brief ??
-                      "No document-specific brief is recorded."}
-                  </p>
-                  {selected.requiredBy && (
-                    <p className="mt-4 text-sm">
-                      <span className="font-medium">Required by:</span>{" "}
-                      {selected.requiredBy}
-                    </p>
-                  )}
-                  <p className="mt-5 text-xs text-muted-foreground">
-                    Verify generated content against the official tender
-                    documents before submission.
-                  </p>
-                </aside>
+                <DraftDocumentReferences
+                  selected={selected}
+                  tenderDocuments={tenderDocuments}
+                  documentsEndpoint={documentsEndpoint}
+                  savePort={savePort}
+                  documentActionPort={documentActionPort}
+                />
               </div>
               {(pendingUrl || pendingDocumentKey) && (
                 <UnsavedChangesDialog

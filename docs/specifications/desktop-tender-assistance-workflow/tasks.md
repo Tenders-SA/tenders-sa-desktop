@@ -9,7 +9,7 @@
 - [x] Phase 1 — workflow foundation complete
 - [x] Phase 2 — Understand and Qualify complete
 - [x] Phase 3 — Plan and Draft complete
-- [ ] Phase 3A — dynamic tender-driven document fidelity approved and complete
+- [x] Phase 3A — dynamic tender-driven document fidelity approved and complete
 - [ ] Phase 4 — Review, migration and verification complete
 - [ ] Integration evaluation passed
 - [ ] All requirements success criteria verified
@@ -171,7 +171,7 @@
 
 ## Phase 3A — Dynamic tender-driven document fidelity
 
-- [ ] **TASK-3A.1: Characterize the parent blueprint contract read-only**
+- [x] **TASK-3A.1: Characterize the parent blueprint contract read-only**
   - *Refs:* REQ-6A, REQ-6B, INT-2, INT-5
   - *Files:* specification evidence and desktop endpoint/fixture tests only.
   - *Pre-check:* Re-read the parent `response-blueprint`, blueprint builder,
@@ -184,7 +184,7 @@
     endpoint parity and capability-scope tests remain green.
   - *Commit:* `test(assistance-workflow/3a.1): pin dynamic blueprint documents`
 
-- [ ] **TASK-3A.2: Make Draft selection strictly key-driven**
+- [x] **TASK-3A.2: Make Draft selection strictly key-driven**
   - *Refs:* REQ-6A, REQ-7, REQ-8, REL-1
   - *Files:* `DraftStage.tsx`, `ResponseDocumentNavigator.tsx`, shared blueprint
     controller only if reconciliation requires it, and focused tests.
@@ -199,7 +199,7 @@
     removal is explicit; no local document allow-list exists.
   - *Commit:* `fix(assistance-workflow/3a.2): honor dynamic draft inventory`
 
-- [ ] **TASK-3A.3: Separate working drafts from official returnables**
+- [x] **TASK-3A.3: Separate working drafts from official returnables**
   - *Refs:* REQ-6B, UX-2, INT-3, INT-4
   - *Files:* Draft reference-pane presentation and focused screen tests; reuse
     existing tender document/download presentation where practical.
@@ -212,7 +212,7 @@
     workbook; download/open remains explicit and uses the existing port.
   - *Commit:* `feat(assistance-workflow/3a.3): distinguish official returnables`
 
-- [ ] **TASK-3A.4: Dynamic-document integration evaluation**
+- [x] **TASK-3A.4: Dynamic-document integration evaluation**
   - *Refs:* REQ-6A, REQ-6B, REQ-8, INT-1–INT-8
   - *Files:* `INTEGRATION_EVAL.md`, `SPEC_CONTRACT.md`, task checkboxes only.
   - *Pre-check:* Run focused endpoint, Draft, Plan, navigation and tender-

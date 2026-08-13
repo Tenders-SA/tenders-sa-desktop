@@ -1511,6 +1511,47 @@ describe("applications endpoint — response blueprint", () => {
     expect(payload.blueprint?.responseDocuments?.[0].kind).toBe("novel_kind");
   });
 
+  it("preserves the complete server-owned dynamic document inventory", async () => {
+    const responseDocuments = [
+      {
+        key: "cover_letter",
+        title: "Cover Letter",
+        kind: "cover_letter",
+        mandatory: true,
+      },
+      {
+        key: "pricing/schedule #1",
+        title: "Pricing Schedule",
+        kind: "pricing",
+        requiredBy: "Annexure B",
+        mandatory: true,
+      },
+      {
+        key: "ai_specific_returnable",
+        title: "Transformation Commitments",
+        kind: "future_ai_kind",
+        brief: "Address the tender-specific transformation commitments.",
+        mandatory: true,
+      },
+    ];
+    const { endpoint } = harness(ApplicationsEndpoint, () =>
+      jsonResponse({
+        blueprint: { ...liveBlueprint, responseDocuments },
+        enriched: true,
+        responseDocs: { ai_specific_returnable: "Existing AI-added draft" },
+      }),
+    );
+
+    const payload = await endpoint.getResponseBlueprint("a1");
+    expect(payload.blueprint?.responseDocuments).toEqual(responseDocuments);
+    expect(payload.blueprint?.responseDocuments?.map((doc) => doc.key)).toEqual(
+      ["cover_letter", "pricing/schedule #1", "ai_specific_returnable"],
+    );
+    expect(payload.responseDocs?.ai_specific_returnable).toBe(
+      "Existing AI-added draft",
+    );
+  });
+
   it("retries a transient GET failure once, because it is a read", async () => {
     const fetchImpl = vi
       .fn()

@@ -19,8 +19,9 @@ export function ResponseDocumentNavigator({
         Response documents
       </p>
       <ul className="mt-2 space-y-1">
-        {documents.map((document, index) => {
-          const key = document.key ?? `doc-${index}`;
+        {documents.map((document) => {
+          const key = document.key;
+          if (!key) return null;
           const state = status[key]?.state;
           const label =
             state === "generating"

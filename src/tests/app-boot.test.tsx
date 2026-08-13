@@ -32,7 +32,10 @@ describe("application start-up", () => {
     const body = document.body.textContent ?? "";
     expect(body.trim().length).toBeGreaterThan(0);
     expect(body).not.toContain("could not start");
-    // A heading proves real UI mounted rather than an empty container.
-    expect(screen.getByRole("heading")).toBeVisible();
+    // The sign-in heading proves real UI mounted rather than an empty
+    // container; the business-introduction pane intentionally has another.
+    expect(
+      screen.getByRole("heading", { name: "Sign in to Tenders-SA" }),
+    ).toBeVisible();
   }, 10_000);
 });

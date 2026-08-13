@@ -27,6 +27,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Draft now follows each tender's complete response blueprint, including
+  AI-added and tender-specific documents, while keeping the selected document
+  stable as the plan refreshes.
+- Pricing schedules and other structured working drafts now point users back to
+  the official tender files they must complete and verify before submission.
 - Reworked tender detail headers into an opportunity snapshot and moved the
   available AI summary and key requirements above the full compliance analysis
   for faster first-pass bid assessment.
@@ -42,6 +47,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Missing or retired response-document keys now show a clear recovery screen
+  instead of silently opening Cover Letter or leaving the Draft workflow.
 - Every Draft response-document link now opens its intended full-screen editor,
   including document names containing spaces, slashes or other URL characters.
 - Switching between Draft response documents now stays inside the full-screen

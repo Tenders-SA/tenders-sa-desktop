@@ -208,6 +208,10 @@ function WorkspaceBody({
           applicationId={applicationId}
           documentKey={documentKey}
           endpoint={endpoint}
+          tenderDocuments={tender.documents}
+          documentsEndpoint={documents}
+          savePort={savePort}
+          documentActionPort={documentActionPort}
         />
       ) : workflowStage === "review" ? (
         <ReviewStage

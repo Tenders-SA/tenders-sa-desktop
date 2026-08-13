@@ -101,7 +101,7 @@ export function ResponseBlueprintPanel({
     >
       {(payload) => (
         <BlueprintView
-          blueprint={payload.blueprint!}
+          blueprint={workspace.overlay.blueprint ?? payload.blueprint!}
           enriched={payload.enriched === true}
           responseDocs={payload.responseDocs ?? {}}
           responseDocStatus={payload.responseDocStatus ?? {}}

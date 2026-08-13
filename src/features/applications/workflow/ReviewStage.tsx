@@ -139,7 +139,10 @@ export function ReviewStage({
         )}
         {blueprint.state.status === "ready" && (
           <Coverage
-            documents={blueprint.state.value.blueprint?.responseDocuments ?? []}
+            documents={
+              (blueprint.overlay.blueprint ?? blueprint.state.value.blueprint)
+                ?.responseDocuments ?? []
+            }
             responseDocs={{
               ...(blueprint.state.value.responseDocs ?? {}),
               ...(blueprint.overlay.docs ?? {}),
