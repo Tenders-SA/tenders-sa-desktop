@@ -21,7 +21,7 @@ export function ResponseDocumentEditor({
   status?: ResponseDocStatusSummary;
   staleGenerating?: boolean;
   onSave: (content: string) => Promise<void>;
-  onGenerate: () => Promise<void>;
+  onGenerate: (prompt?: string) => Promise<void>;
   onRecheck?: () => Promise<boolean>;
   onDirtyChange: (dirty: boolean) => void;
   onDraftChange: (content: string) => void;
@@ -31,6 +31,7 @@ export function ResponseDocumentEditor({
   const [error, setError] = useState<string>();
   const [generateError, setGenerateError] = useState<string>();
   const [recheckError, setRecheckError] = useState<string>();
+  const [instructions, setInstructions] = useState("");
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const dirty = draft !== content;
 
@@ -67,7 +68,8 @@ export function ResponseDocumentEditor({
   async function generate() {
     setGenerateError(undefined);
     try {
-      await onGenerate();
+      await onGenerate(instructions.trim() || undefined);
+      setInstructions("");
     } catch (cause) {
       setGenerateError(describeGenerateError(cause));
     }
@@ -130,6 +132,15 @@ export function ResponseDocumentEditor({
           >
             Revert
           </button>
+          <input
+            type="text"
+            value={instructions}
+            onChange={(event) => setInstructions(event.target.value)}
+            placeholder="Optional instructions"
+            aria-label="Optional instructions for the AI"
+            disabled={isGenerating || state !== "idle"}
+            className="w-44 rounded border border-border bg-background px-2 py-1.5 text-sm"
+          />
           <button
             type="button"
             onClick={() => void generate()}

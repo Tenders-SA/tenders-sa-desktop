@@ -1,10 +1,10 @@
 # Desktop Workspace — Response Document Authoring Enhancements — SPEC_CONTRACT (Slice 9)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-13
 - **Scope**: Slice 9 — authoring enhancements (RA-1..RA-3). Closes gap-analysis
   findings G7, G9, G12.
-- **Approved by**: _(pending)_
+- **Approved by**: user (2026-08-13)
 
 ## Contract checklist (mirrors tasks.md)
 

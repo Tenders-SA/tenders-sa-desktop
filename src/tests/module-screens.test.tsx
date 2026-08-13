@@ -1360,7 +1360,7 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
     );
     await act(async () => {});
     expect(generate).toHaveBeenCalledTimes(1);
-    expect(generate).toHaveBeenCalledWith("a1", "cover_letter");
+    expect(generate).toHaveBeenCalledWith("a1", "cover_letter", undefined);
     // Chip + disabled action button both read "Generating…".
     expect(screen.getAllByText("Generating…").length).toBeGreaterThan(0);
     // The follow-up refresh fetches directly: the panel never flashes loading.
@@ -1575,7 +1575,7 @@ describe("ApplicationWorkspace — response blueprint panel", () => {
       screen.getByRole("button", { name: "Regenerate Cover Letter" }),
     );
     await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
-    expect(generate).toHaveBeenCalledWith("a1", "cover_letter");
+    expect(generate).toHaveBeenCalledWith("a1", "cover_letter", undefined);
   });
 
   it("retries a failed generation", async () => {

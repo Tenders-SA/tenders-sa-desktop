@@ -8,6 +8,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A response-document list on the Draft stage: opening the draft workbench
+  without picking a document shows every planned document with its status, and
+  selecting one opens its editor. Deep links into a specific document still
+  open directly.
+- A "Generate all remaining" action on the Draft stage list, one explicit press
+  per plan, that starts generation for every document that has no saved content
+  yet and reports plan/precondition failures per document.
+- An optional instructions field in the response editor, sent with the next
+  Generate or Regenerate press and cleared once the request is accepted.
 - A full-screen response-document editor for tender applications, with a
   document navigator, drafting references, Markdown formatting controls and
   explicit save, revert and generation actions, plus Save, Discard or Stay

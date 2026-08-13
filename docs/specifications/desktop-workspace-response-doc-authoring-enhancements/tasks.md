@@ -60,3 +60,14 @@ reference requirements RA-1..RA-3. **Dependency**: Slice 8 (shared helper) merge
 - **Work**: user confirms the draft list landing, Generate-all, and optional
   instructions in a live workspace.
 - **Verification**: user sign-off recorded in `INTEGRATION_EVAL.md`.
+
+## Status (2026-08-13)
+
+- T1: DONE — `ResponseDocumentList` renders the draft index in server order; no-key
+  Draft shows the list; select opens the editor; deep link unchanged.
+- T2: DONE — `generateMany` issues one request per eligible key; "Generate all N
+  remaining" surfaces per-key 402/409 via `describeGenerateError`.
+- T3: DONE — optional instructions passed as `prompt`; cleared after the press.
+- T4: DONE — full suite 808/808, `tsc --noEmit`, `eslint`, `prettier --check` clean.
+- T5: OPEN — human verification pending (requires `pnpm tauri dev`).
+

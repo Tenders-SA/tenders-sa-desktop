@@ -11,6 +11,7 @@ import type { DocumentActionPort } from "../../../services/storage/document-acti
 import type { SaveDownloadPort } from "../../../services/storage/save-download";
 import { DraftDocumentReferences } from "./DraftDocumentReferences";
 import { ResponseDocumentEditor } from "./ResponseDocumentEditor";
+import { ResponseDocumentList } from "./ResponseDocumentList";
 import { ResponseDocumentNavigator } from "./ResponseDocumentNavigator";
 import { useResponseBlueprintWorkspace } from "./use-response-blueprint-workspace";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
@@ -134,7 +135,7 @@ export function DraftStage({
           );
           const selected = selectedDocumentKey
             ? usableDocuments.find((item) => item.key === selectedDocumentKey)
-            : usableDocuments[0];
+            : undefined;
           const key = selected?.key ?? "";
           const responseDocs = {
             ...(payload.responseDocs ?? {}),
@@ -149,6 +150,41 @@ export function DraftStage({
               <p className="p-6 text-sm text-muted-foreground">
                 No response documents are available yet.
               </p>
+            );
+          }
+          if (!selected && !selectedDocumentKey) {
+            return (
+              <>
+                <header className="flex items-center justify-between gap-4 border-b border-border bg-card px-4 py-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      Response editor
+                    </p>
+                    <h2
+                      id="response-editor-title"
+                      className="text-lg font-semibold"
+                    >
+                      Response documents
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="rounded border border-border px-3 py-2 text-sm"
+                  >
+                    Close editor
+                  </button>
+                </header>
+                <div className="min-h-0 flex-1 overflow-y-auto p-6">
+                  <ResponseDocumentList
+                    documents={usableDocuments}
+                    responseDocs={responseDocs}
+                    status={statuses}
+                    onSelect={selectDocument}
+                    onGenerateAll={workspace.generateMany}
+                  />
+                </div>
+              </>
             );
           }
           if (!selected) {
@@ -245,7 +281,7 @@ export function DraftStage({
                   status={statuses[key]}
                   staleGenerating={workspace.staleGenerating[key] ?? false}
                   onSave={(content) => workspace.save(key, content)}
-                  onGenerate={() => workspace.generate(key)}
+                  onGenerate={(prompt) => workspace.generate(key, prompt)}
                   onRecheck={() => workspace.recheck()}
                   onDirtyChange={setDirty}
                   onDraftChange={setDraft}

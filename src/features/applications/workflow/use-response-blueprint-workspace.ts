@@ -6,6 +6,7 @@ import type {
   ResponseBlueprint,
   ResponseDocSaveResult,
 } from "../../../services/api/endpoints/applications";
+import { describeGenerateError } from "./response-doc-status";
 
 const POLL_INTERVAL_MS = 4000;
 const POLL_MAX_TICKS = 15;
@@ -101,20 +102,51 @@ export function useResponseBlueprintWorkspace(
     return () => clearInterval(interval);
   }, [endpoint, applicationId, pendingKeys]);
 
-  async function generate(key: string): Promise<void> {
-    await endpoint.generateResponseDocument(applicationId, key);
+  /** Marks a set of keys as generating and starts the bounded refresh. */
+  function markGenerating(keys: string[]) {
     setOverlay((previous) => ({
       ...previous,
-      status: { ...previous.status, [key]: { state: "generating" } },
+      status: {
+        ...previous.status,
+        ...Object.fromEntries(
+          keys.map((key) => [key, { state: "generating" }]),
+        ),
+      },
     }));
     setStaleGenerating((previousFlags) => {
       const next = { ...previousFlags };
-      delete next[key];
+      for (const key of keys) delete next[key];
       return next;
     });
-    setPendingKeys((previous) =>
-      previous.includes(key) ? previous : [...previous, key],
-    );
+    setPendingKeys((previous) => [...new Set([...previous, ...keys])]);
+  }
+
+  async function generate(key: string, prompt?: string): Promise<void> {
+    await endpoint.generateResponseDocument(applicationId, key, prompt);
+    markGenerating([key]);
+  }
+
+  /**
+   * Batch-generates every given key in order, one request each, and returns a
+   * per-key result map (`undefined` = accepted, string = error copy). Failures
+   * are captured per key via the shared `describeGenerateError` (RA-1).
+   */
+  async function generateMany(
+    keys: string[],
+  ): Promise<Record<string, string | undefined>> {
+    const results: Record<string, string | undefined> = {};
+    const accepted: string[] = [];
+    for (const key of keys) {
+      try {
+        await endpoint.generateResponseDocument(applicationId, key);
+        results[key] = undefined;
+        accepted.push(key);
+      } catch (error) {
+        results[key] = describeGenerateError(error);
+      }
+    }
+    if (accepted.length > 0) markGenerating(accepted);
+    return results;
   }
 
   async function save(key: string, content: string): Promise<void> {
@@ -155,6 +187,7 @@ export function useResponseBlueprintWorkspace(
     staleGenerating,
     reload: state.reload,
     generate,
+    generateMany,
     save,
     recheck,
   };

@@ -116,6 +116,7 @@ describe("DraftStage", () => {
     expect(endpoint.generateResponseDocument).toHaveBeenCalledWith(
       "a1",
       "transformation_commitments",
+      undefined,
     );
 
     await user.click(
@@ -522,6 +523,104 @@ describe("DraftStage", () => {
 
     await user.click(screen.getByRole("button", { name: "Check again" }));
     expect(recheck).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the draft list when no document key is selected, then opens one", async () => {
+    const user = userEvent.setup();
+    const endpoint = {
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint: {
+          tenderId: "t1",
+          responseDocuments: [
+            { key: "cover_letter", title: "Cover Letter" },
+            { key: "technical", title: "Technical Proposal" },
+          ],
+        },
+        responseDocs: { cover_letter: "Saved cover" },
+      })),
+      saveResponseDocument: vi.fn(),
+      generateResponseDocument: vi.fn(),
+    } as unknown as ApplicationsEndpoint;
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft"]}>
+        <DraftStage applicationId="a1" endpoint={endpoint} />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Response documents" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /technical proposal/i }),
+    ).toBeVisible();
+
+    await user.click(
+      screen.getByRole("button", { name: /technical proposal/i }),
+    );
+    expect(
+      await screen.findByRole("textbox", { name: "Edit Technical Proposal" }),
+    ).toBeVisible();
+  });
+
+  it("generates every remaining document with one request each", async () => {
+    const user = userEvent.setup();
+    const generate = vi.fn(async () => ({ key: "x", status: "generating" }));
+    const endpoint = {
+      getResponseBlueprint: vi.fn(async () => ({
+        blueprint: {
+          tenderId: "t1",
+          responseDocuments: [
+            { key: "cover_letter", title: "Cover Letter" },
+            { key: "technical", title: "Technical Proposal" },
+          ],
+        },
+        responseDocs: { cover_letter: "Saved cover" },
+      })),
+      saveResponseDocument: vi.fn(),
+      generateResponseDocument: generate,
+    } as unknown as ApplicationsEndpoint;
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft"]}>
+        <DraftStage applicationId="a1" endpoint={endpoint} />
+      </MemoryRouter>,
+    );
+
+    await user.click(
+      await screen.findByRole("button", { name: /generate all 1 remaining/i }),
+    );
+    await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+    expect(generate).toHaveBeenCalledWith("a1", "technical");
+  });
+
+  it("passes optional instructions as the generate prompt and clears them", async () => {
+    const user = userEvent.setup();
+    const generate = vi.fn(async () => {});
+    render(
+      <ResponseDocumentEditor
+        title="Technical Proposal"
+        content=""
+        onSave={vi.fn()}
+        onGenerate={generate}
+        onDirtyChange={vi.fn()}
+        onDraftChange={vi.fn()}
+      />,
+    );
+
+    await user.type(
+      screen.getByRole("textbox", {
+        name: "Optional instructions for the AI",
+      }),
+      "Keep it short",
+    );
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+    await waitFor(() => expect(generate).toHaveBeenCalledWith("Keep it short"));
+    expect(
+      screen.getByRole("textbox", {
+        name: "Optional instructions for the AI",
+      }),
+    ).toHaveValue("");
   });
 });
 
