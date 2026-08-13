@@ -6,15 +6,26 @@ import type {
   ApplicationDetail,
   ApplicationsEndpoint,
 } from "../../../services/api/endpoints/applications";
+import { ApiError } from "../../../services/api/errors";
 import type { DownloadResult } from "../../../services/api/transport";
 import type { DocumentActionPort } from "../../../services/storage/document-actions";
 import type { SaveDownloadPort } from "../../../services/storage/save-download";
+import {
+  createTauriResponseDocStore,
+  type ResponseDocLocalStore,
+  type ResponseDocVersionEntry,
+} from "../../../services/storage/response-doc-store";
 import { DraftDocumentReferences } from "./DraftDocumentReferences";
 import { ResponseDocumentEditor } from "./ResponseDocumentEditor";
 import { ResponseDocumentList } from "./ResponseDocumentList";
 import { ResponseDocumentNavigator } from "./ResponseDocumentNavigator";
 import { useResponseBlueprintWorkspace } from "./use-response-blueprint-workspace";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
+
+const DRAFT_PERSIST_DEBOUNCE_MS = 800;
+
+/** Production store: local SQLite + native encryption, injectable for tests. */
+const defaultLocalStore = createTauriResponseDocStore();
 
 export function DraftStage({
   applicationId,
@@ -24,6 +35,7 @@ export function DraftStage({
   documentsEndpoint,
   savePort,
   documentActionPort,
+  localStore = defaultLocalStore,
 }: {
   applicationId: string;
   documentKey?: string;
@@ -37,6 +49,8 @@ export function DraftStage({
   };
   savePort?: SaveDownloadPort;
   documentActionPort?: DocumentActionPort;
+  /** Slice 10 — local-first drafting store; fakes in tests. */
+  localStore?: ResponseDocLocalStore;
 }) {
   const navigate = useNavigate();
   const workspace = useResponseBlueprintWorkspace(endpoint, applicationId);
@@ -46,6 +60,15 @@ export function DraftStage({
   const [pendingUrl, setPendingUrl] = useState<string>();
   const [selectedDocumentKey, setSelectedDocumentKey] = useState(documentKey);
   const [pendingDocumentKey, setPendingDocumentKey] = useState<string>();
+  const [localDrafts, setLocalDrafts] = useState<
+    Record<string, string | undefined>
+  >({});
+  const [pendingSyncKeys, setPendingSyncKeys] = useState<Set<string>>(
+    new Set(),
+  );
+  const [versions, setVersions] = useState<
+    Record<string, ResponseDocVersionEntry[]>
+  >({});
 
   useEffect(() => {
     setSelectedDocumentKey(documentKey);
@@ -91,6 +114,76 @@ export function DraftStage({
     window.addEventListener("beforeunload", beforeUnload);
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [dirty]);
+
+  const workspaceRef = useRef(workspace);
+  workspaceRef.current = workspace;
+
+  /**
+   * LD-2 — flush queued saves through the parent. Kept in a ref-backed
+   * callback so effects never re-run on the workspace's per-render identity.
+   */
+  const replayPendingSaves = useCallback(async () => {
+    try {
+      await localStore.replayPendingSaves(
+        async (_appId, targetKey, content) => {
+          await workspaceRef.current.save(targetKey, content);
+        },
+      );
+      setPendingSyncKeys(
+        new Set(await localStore.listPendingSaveKeys(applicationId)),
+      );
+    } catch {
+      // Best effort — the queue stays pending for a later retry.
+    }
+  }, [localStore, applicationId]);
+
+  useEffect(() => {
+    void replayPendingSaves();
+  }, [replayPendingSaves]);
+
+  /**
+   * LD-1/LD-3 — recover the local draft, version history, and outstanding
+   * queued saves whenever the selected document changes.
+   */
+  useEffect(() => {
+    if (!selectedDocumentKey) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [draftValue, versionRows, pendingKeys] = await Promise.all([
+          localStore.loadDraft(applicationId, selectedDocumentKey),
+          localStore.listVersions(applicationId, selectedDocumentKey),
+          localStore.listPendingSaveKeys(applicationId),
+        ]);
+        if (cancelled) return;
+        setLocalDrafts((previous) => ({
+          ...previous,
+          [selectedDocumentKey]: draftValue,
+        }));
+        setVersions((previous) => ({
+          ...previous,
+          [selectedDocumentKey]: versionRows,
+        }));
+        setPendingSyncKeys(new Set(pendingKeys));
+      } catch {
+        // Local store unavailable — local-first features degrade silently.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [localStore, applicationId, selectedDocumentKey]);
+
+  /** LD-1 — persist the current draft locally, debounced, while it is dirty. */
+  useEffect(() => {
+    if (!selectedDocumentKey || !dirty) return;
+    const timer = setTimeout(() => {
+      void localStore
+        .persistDraft(applicationId, selectedDocumentKey, draft)
+        .catch(() => {});
+    }, DRAFT_PERSIST_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [localStore, applicationId, selectedDocumentKey, draft, dirty]);
 
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
@@ -145,6 +238,76 @@ export function DraftStage({
             ...(payload.responseDocStatus ?? {}),
             ...(workspace.overlay.status ?? {}),
           };
+          /**
+           * LD-1..LD-3 — save through the parent, then update local
+           * bookkeeping. On offline/timeout the content is queued locally
+           * instead of erroring, and the editor reports "pending sync".
+           */
+          async function saveWithLocalStore(
+            targetKey: string,
+            content: string,
+          ): Promise<void> {
+            const previousContent = responseDocs[targetKey] ?? "";
+            try {
+              await workspace.save(targetKey, content);
+            } catch (cause) {
+              if (
+                cause instanceof ApiError &&
+                (cause.kind === "offline" || cause.kind === "timeout")
+              ) {
+                try {
+                  await localStore.enqueueSave(
+                    applicationId,
+                    targetKey,
+                    content,
+                  );
+                  setPendingSyncKeys((previous) =>
+                    new Set(previous).add(targetKey),
+                  );
+                  return;
+                } catch {
+                  // Local store unavailable — surface the original error.
+                }
+              }
+              throw cause;
+            }
+            try {
+              await localStore.clearDraft(applicationId, targetKey);
+              setLocalDrafts((previous) => ({
+                ...previous,
+                [targetKey]: undefined,
+              }));
+              setPendingSyncKeys((previous) => {
+                const next = new Set(previous);
+                next.delete(targetKey);
+                return next;
+              });
+              if (previousContent !== "" && previousContent !== content) {
+                await localStore.snapshotVersion(
+                  applicationId,
+                  targetKey,
+                  previousContent,
+                  "save",
+                );
+                const nextVersions = await localStore.listVersions(
+                  applicationId,
+                  targetKey,
+                );
+                setVersions((previous) => ({
+                  ...previous,
+                  [targetKey]: nextVersions,
+                }));
+              }
+            } catch {
+              // Local bookkeeping failure must not fail an already-saved doc.
+            }
+            void replayPendingSaves();
+          }
+          const localDraftValue = localDrafts[key];
+          const hasLocalDraft =
+            localDraftValue !== undefined &&
+            localDraftValue !== "" &&
+            localDraftValue !== responseDocs[key];
           if (usableDocuments.length === 0) {
             return (
               <p className="p-6 text-sm text-muted-foreground">
@@ -280,7 +443,22 @@ export function DraftStage({
                   content={responseDocs[key] ?? ""}
                   status={statuses[key]}
                   staleGenerating={workspace.staleGenerating[key] ?? false}
-                  onSave={(content) => workspace.save(key, content)}
+                  restoredDraft={hasLocalDraft ? localDraftValue : undefined}
+                  hasLocalDraft={hasLocalDraft}
+                  pendingSync={pendingSyncKeys.has(key)}
+                  onSyncNow={() => replayPendingSaves()}
+                  versions={versions[key]}
+                  onRestoreVersion={(content) => setDraft(content)}
+                  onDiscardLocalDraft={() => {
+                    void localStore
+                      .clearDraft(applicationId, key)
+                      .catch(() => {});
+                    setLocalDrafts((previous) => ({
+                      ...previous,
+                      [key]: undefined,
+                    }));
+                  }}
+                  onSave={(content) => saveWithLocalStore(key, content)}
                   onGenerate={(prompt) => workspace.generate(key, prompt)}
                   onRecheck={() => workspace.recheck()}
                   onDirtyChange={setDirty}
@@ -310,7 +488,7 @@ export function DraftStage({
                     else if (url) navigate(url);
                   }}
                   onSave={async () => {
-                    await workspace.save(key, draft);
+                    await saveWithLocalStore(key, draft);
                     const url = pendingUrl;
                     const nextKey = pendingDocumentKey;
                     setDirty(false);

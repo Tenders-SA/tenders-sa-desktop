@@ -62,3 +62,22 @@ while `SPEC_CONTRACT.md` is `PENDING APPROVAL`.
 - **Work**: user confirms draft survives restart, offline save queues and syncs,
   and a regeneration can be rolled back via history.
 - **Verification**: user sign-off recorded in `INTEGRATION_EVAL.md`.
+
+## Status (2026-08-13)
+
+- T1: DONE - `0003_response_doc_drafts.sql`; `ResponseDocDraftRow` /
+  `ResponseDocVersionRow` types; `response-doc-drafts` (upsert/get/delete) and
+  `response-doc-versions` (insert/list/prune) repositories; `upsertSyncOperation`
+  (idempotency-key upsert) added to the existing sync-operations owner.
+- T2: DONE - `response-doc-store.ts` (`createResponseDocStore` +
+  `createTauriResponseDocStore`); DraftStage wires the store; save clears the
+  local draft and snapshots the previous content (source `save`); offline/timeout
+  saves enqueue via `upsertSyncOperation` and surface "pending sync" instead of
+  an error; Generate is never enqueued.
+- T3: DONE - `replayPendingSaves` replays oldest-first through the workspace
+  save, marking transient failures pending and hard failures failed; editor shows
+  "Unsaved local draft restored", "Saved locally — pending sync" + Sync now, and
+  "Local history" with Restore (disabled while dirty).
+- T4: DONE - full suite 831/831, `tsc --noEmit`, `eslint`, `prettier --check`
+  clean; `CHANGELOG.md` updated.
+- T5: OPEN - human verification pending (requires `pnpm tauri dev`).

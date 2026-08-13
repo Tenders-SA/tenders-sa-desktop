@@ -1,10 +1,10 @@
 # Desktop Workspace — Response Document Local-First Drafting — SPEC_CONTRACT (Slice 10)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-13
 - **Scope**: Slice 10 — local-first drafting (LD-1..LD-4). Closes gap-analysis
   findings G4 and G8.
-- **Approved by**: _(pending)_
+- **Approved by**: user (2026-08-13)
 
 > **Amendment notice (LD-4):** This slice supersedes the canonical
 > `desktop-tender-assistance-workflow` SEC-1 ("Draft text stays in component

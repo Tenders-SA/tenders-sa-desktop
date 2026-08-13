@@ -73,3 +73,25 @@ export interface SyncConflictRow {
   created_at: string;
   resolved_at: string | null;
 }
+
+/** Slice 10 — an unsaved response-document draft, local-only (LD-1). */
+export interface ResponseDocDraftRow {
+  application_id: string;
+  document_key: string;
+  content: string;
+  encrypted: 0 | 1;
+  updated_at: string;
+}
+
+export type ResponseDocVersionSource = "save" | "generate" | "restore";
+
+/** Slice 10 — a local snapshot of a saved response-document version (LD-3). */
+export interface ResponseDocVersionRow {
+  id: string;
+  application_id: string;
+  document_key: string;
+  content: string;
+  encrypted: 0 | 1;
+  source: ResponseDocVersionSource;
+  created_at: string;
+}

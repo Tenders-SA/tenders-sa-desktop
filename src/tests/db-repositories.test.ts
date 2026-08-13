@@ -14,7 +14,11 @@ import {
   listPendingSyncOperations,
   updateSyncOperationStatus,
 } from "../db/repositories/sync-operations";
-import type { CacheEntryRow, LocalPreferenceRow } from "../db/schema/types";
+import type {
+  CacheEntryRow,
+  LocalPreferenceRow,
+  ResponseDocDraftRow,
+} from "../db/schema/types";
 
 describe("cache-entries repository", () => {
   it("upserts with parameterized values, never string-interpolated", async () => {
@@ -134,6 +138,38 @@ describe("sync-operations repository", () => {
     ]);
   });
 
+  it("upserts by idempotency key so a re-enqueue replaces the payload", async () => {
+    const db = new FakeSqlExecutor();
+    const { upsertSyncOperation } =
+      await import("../db/repositories/sync-operations");
+    await upsertSyncOperation(
+      db,
+      {
+        id: "op-1",
+        idempotencyKey: "idem-1",
+        entityType: "application",
+        entityId: "a1",
+        operationType: "update",
+        payload: "{}",
+      },
+      "2026-01-01T00:00:00.000Z",
+    );
+    const { sql, params } = db.calls[0];
+    expect(sql).toContain("ON CONFLICT(idempotency_key) DO UPDATE");
+    expect(sql).toContain("status = 'pending'");
+    expect(sql).toContain("attempt_count = 0");
+    expect(params).toEqual([
+      "op-1",
+      "idem-1",
+      "application",
+      "a1",
+      "update",
+      "{}",
+      null,
+      "2026-01-01T00:00:00.000Z",
+    ]);
+  });
+
   it("lists only pending operations, oldest first", async () => {
     const db = new FakeSqlExecutor();
     await listPendingSyncOperations(db);
@@ -157,5 +193,111 @@ describe("sync-operations repository", () => {
       "2026-01-01T00:00:00.000Z",
       "op-1",
     ]);
+  });
+});
+
+describe("response-doc-drafts repository", () => {
+  it("upserts on the composite key, replacing the payload", async () => {
+    const db = new FakeSqlExecutor();
+    const { upsertResponseDocDraft: upsert } =
+      await import("../db/repositories/response-doc-drafts");
+    await upsert(
+      db,
+      {
+        applicationId: "a1",
+        documentKey: "technical",
+        content: "enc:content",
+        encrypted: true,
+      },
+      "2026-01-01T00:00:00.000Z",
+    );
+    const { sql, params } = db.calls[0];
+    expect(sql).toContain("INSERT INTO response_doc_drafts");
+    expect(sql).toContain(
+      "ON CONFLICT(application_id, document_key) DO UPDATE",
+    );
+    expect(params).toEqual([
+      "a1",
+      "technical",
+      "enc:content",
+      1,
+      "2026-01-01T00:00:00.000Z",
+    ]);
+  });
+
+  it("reads a draft by composite key", async () => {
+    const db = new FakeSqlExecutor();
+    const { getResponseDocDraft: get } =
+      await import("../db/repositories/response-doc-drafts");
+    const row: ResponseDocDraftRow = {
+      application_id: "a1",
+      document_key: "technical",
+      content: "enc:content",
+      encrypted: 1,
+      updated_at: "2026-01-01T00:00:00.000Z",
+    };
+    db.selectResults = [[row]];
+    expect(await get(db, "a1", "technical")).toEqual(row);
+    expect(db.calls[0].params).toEqual(["a1", "technical"]);
+  });
+
+  it("deletes a draft by composite key", async () => {
+    const db = new FakeSqlExecutor();
+    const { deleteResponseDocDraft: del } =
+      await import("../db/repositories/response-doc-drafts");
+    await del(db, "a1", "technical");
+    expect(db.calls[0].sql).toContain("DELETE FROM response_doc_drafts");
+    expect(db.calls[0].params).toEqual(["a1", "technical"]);
+  });
+});
+
+describe("response-doc-versions repository", () => {
+  it("inserts a version with an encrypted payload and source", async () => {
+    const db = new FakeSqlExecutor();
+    const { insertResponseDocVersion } =
+      await import("../db/repositories/response-doc-versions");
+    await insertResponseDocVersion(
+      db,
+      {
+        id: "v1",
+        applicationId: "a1",
+        documentKey: "technical",
+        content: "enc:content",
+        encrypted: true,
+        source: "save",
+      },
+      "2026-01-01T00:00:00.000Z",
+    );
+    expect(db.calls[0].params).toEqual([
+      "v1",
+      "a1",
+      "technical",
+      "enc:content",
+      1,
+      "save",
+      "2026-01-01T00:00:00.000Z",
+    ]);
+  });
+
+  it("lists newest-first with a limit bound via parameters", async () => {
+    const db = new FakeSqlExecutor();
+    const { listResponseDocVersions } =
+      await import("../db/repositories/response-doc-versions");
+    await listResponseDocVersions(db, "a1", "technical", 5);
+    const { sql, params } = db.calls[0];
+    expect(sql).toContain("ORDER BY created_at DESC");
+    expect(sql).toContain("LIMIT $3");
+    expect(params).toEqual(["a1", "technical", 5]);
+  });
+
+  it("prunes older versions beyond the keep count", async () => {
+    const db = new FakeSqlExecutor();
+    const { pruneResponseDocVersions } =
+      await import("../db/repositories/response-doc-versions");
+    await pruneResponseDocVersions(db, "a1", "technical", 20);
+    const { sql, params } = db.calls[0];
+    expect(sql).toContain("DELETE FROM response_doc_versions");
+    expect(sql).toContain("NOT IN");
+    expect(params).toEqual(["a1", "technical", 20]);
   });
 });

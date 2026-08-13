@@ -39,6 +39,45 @@ export async function enqueueSyncOperation(
   );
 }
 
+/**
+ * Upsert variant used by the response-document local store (Slice 10,
+ * LD-2): re-enqueueing a save for the same (application, key) replaces
+ * the pending payload with the latest content and revives the operation
+ * to pending, so an offline edit is never shadowed by an older one.
+ */
+export async function upsertSyncOperation(
+  executor: SqlExecutor,
+  op: NewSyncOperation,
+  now: string = new Date().toISOString(),
+): Promise<void> {
+  await executor.execute(
+    `INSERT INTO sync_operations
+       (id, idempotency_key, entity_type, entity_id, operation_type, payload, depends_on, status, attempt_count, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 0, $8, $8)
+     ON CONFLICT(idempotency_key) DO UPDATE SET
+       id = excluded.id,
+       entity_type = excluded.entity_type,
+       entity_id = excluded.entity_id,
+       operation_type = excluded.operation_type,
+       payload = excluded.payload,
+       depends_on = excluded.depends_on,
+       status = 'pending',
+       attempt_count = 0,
+       last_error = NULL,
+       updated_at = excluded.updated_at`,
+    [
+      op.id,
+      op.idempotencyKey,
+      op.entityType,
+      op.entityId,
+      op.operationType,
+      op.payload,
+      op.dependsOn ?? null,
+      now,
+    ],
+  );
+}
+
 export async function listPendingSyncOperations(
   executor: SqlExecutor,
 ): Promise<SyncOperationRow[]> {

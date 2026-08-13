@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { describeApiError } from "../../../services/api/describe-error";
+import type { ResponseDocVersionEntry } from "../../../services/storage/response-doc-store";
 import {
   describeGenerateError,
   type ResponseDocStatusSummary,
@@ -10,6 +11,13 @@ export function ResponseDocumentEditor({
   content,
   status,
   staleGenerating = false,
+  restoredDraft,
+  hasLocalDraft = false,
+  pendingSync = false,
+  onSyncNow,
+  versions,
+  onRestoreVersion,
+  onDiscardLocalDraft,
   onSave,
   onGenerate,
   onRecheck,
@@ -20,6 +28,17 @@ export function ResponseDocumentEditor({
   content: string;
   status?: ResponseDocStatusSummary;
   staleGenerating?: boolean;
+  /** LD-1 — an unsaved local draft to recover into the editor. */
+  restoredDraft?: string;
+  /** LD-1 — the editor is showing a locally recovered draft. */
+  hasLocalDraft?: boolean;
+  /** LD-2 — the latest save is queued locally, awaiting sync. */
+  pendingSync?: boolean;
+  onSyncNow?: () => Promise<void>;
+  /** LD-3 — local version history for this document. */
+  versions?: ResponseDocVersionEntry[];
+  onRestoreVersion?: (content: string) => void;
+  onDiscardLocalDraft?: () => void;
   onSave: (content: string) => Promise<void>;
   onGenerate: (prompt?: string) => Promise<void>;
   onRecheck?: () => Promise<boolean>;
@@ -32,6 +51,7 @@ export function ResponseDocumentEditor({
   const [generateError, setGenerateError] = useState<string>();
   const [recheckError, setRecheckError] = useState<string>();
   const [instructions, setInstructions] = useState("");
+  const [localDraftApplied, setLocalDraftApplied] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const dirty = draft !== content;
 
@@ -49,6 +69,20 @@ export function ResponseDocumentEditor({
     setRecheckError(undefined);
     requestAnimationFrame(() => editorRef.current?.focus());
   }, [content, title]);
+
+  /**
+   * LD-1 — apply a locally recovered draft exactly once per mount. The
+   * guard prevents the stale draft from being re-applied after a later
+   * successful save resets `content` while the parent still holds it,
+   * and never overwrites edits the user typed before the load finished.
+   */
+  useEffect(() => {
+    if (restoredDraft === undefined || localDraftApplied || dirty) {
+      return;
+    }
+    setLocalDraftApplied(true);
+    setDraft(restoredDraft);
+  }, [restoredDraft, dirty, localDraftApplied]);
 
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
   useEffect(() => onDraftChange(draft), [draft, onDraftChange]);
@@ -126,7 +160,10 @@ export function ResponseDocumentEditor({
           </span>
           <button
             type="button"
-            onClick={() => setDraft(content)}
+            onClick={() => {
+              setDraft(content);
+              onDiscardLocalDraft?.();
+            }}
             disabled={!dirty || state !== "idle"}
             className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-50"
           >
@@ -225,6 +262,65 @@ export function ResponseDocumentEditor({
           them before submitting.
         </p>
       )}
+      {hasLocalDraft && localDraftApplied && (
+        <p
+          role="status"
+          className="border-b border-border px-5 py-2 text-sm text-muted-foreground"
+        >
+          Unsaved local draft restored — it has not been saved to your response
+          plan yet.
+        </p>
+      )}
+      {pendingSync && (
+        <p
+          role="status"
+          className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-2 text-sm text-warning"
+        >
+          <span>Saved locally — pending sync to your response plan.</span>
+          {onSyncNow && (
+            <button
+              type="button"
+              onClick={() => void onSyncNow()}
+              className="rounded border border-border px-2 py-0.5 text-xs disabled:opacity-50"
+            >
+              Sync now
+            </button>
+          )}
+        </p>
+      )}
+      {versions && versions.length > 0 && onRestoreVersion && (
+        <div className="border-b border-border px-5 py-2">
+          <details>
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+              Local history ({versions.length})
+            </summary>
+            <ul className="mt-2 space-y-1">
+              {versions.map((version) => (
+                <li
+                  key={version.id}
+                  className="flex items-center justify-between gap-3 text-xs"
+                >
+                  <span className="min-w-0 truncate text-muted-foreground">
+                    {new Date(version.createdAt).toLocaleString()} ·{" "}
+                    {sourceLabel(version.source)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(version.content);
+                      onRestoreVersion(version.content);
+                    }}
+                    disabled={dirty || state !== "idle"}
+                    className="rounded border border-border px-2 py-0.5 disabled:opacity-50"
+                  >
+                    Restore
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
         <textarea
           ref={editorRef}
@@ -264,4 +360,15 @@ function FormatButton({
       {label}
     </button>
   );
+}
+
+function sourceLabel(source: ResponseDocVersionEntry["source"]): string {
+  switch (source) {
+    case "save":
+      return "Saved version";
+    case "generate":
+      return "Replaced by generation";
+    case "restore":
+      return "Restored version";
+  }
 }

@@ -8,6 +8,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Response-document drafts are now saved locally as you type and restored when
+  you reopen a document, so unsaved work survives an app restart.
+- When a save cannot reach the server (offline or a timeout), the response
+  editor queues it locally, shows "Saved locally — pending sync", and offers a
+  Sync now action that replays queued saves in order when connectivity
+  returns.
+- A local version history for response documents: every successful save
+  snapshots the previous content, and the editor can restore any listed
+  version (disabled while the editor has unsaved edits).
 - A response-document list on the Draft stage: opening the draft workbench
   without picking a document shows every planned document with its status, and
   selecting one opens its editor. Deep links into a specific document still

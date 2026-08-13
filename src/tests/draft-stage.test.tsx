@@ -7,6 +7,110 @@ import { ResponseDocumentEditor } from "../features/applications/workflow/Respon
 import { UnsavedChangesDialog } from "../features/applications/workflow/UnsavedChangesDialog";
 import { ApiError } from "../services/api/errors";
 import type { ApplicationsEndpoint } from "../services/api/endpoints/applications";
+import type {
+  ResponseDocLocalStore,
+  ResponseDocVersionEntry,
+} from "../services/storage/response-doc-store";
+
+function fakeLocalStore(
+  initial: {
+    drafts?: Record<string, string>;
+    versions?: Record<string, ResponseDocVersionEntry[]>;
+    pendingKeys?: string[];
+  } = {},
+): ResponseDocLocalStore & {
+  persistDraft: ReturnType<typeof vi.fn>;
+  enqueueSave: ReturnType<typeof vi.fn>;
+  clearDraft: ReturnType<typeof vi.fn>;
+  replayPendingSaves: ReturnType<typeof vi.fn>;
+} {
+  const drafts = { ...(initial.drafts ?? {}) };
+  const versions = { ...(initial.versions ?? {}) };
+  const pendingKeys = [...(initial.pendingKeys ?? [])];
+  // applicationId is positional in every store method; the fake is
+  // single-application, so it is ignored after the call signature.
+  return {
+    persistDraft: vi.fn(
+      async (applicationId: string, key: string, content: string) => {
+        void applicationId;
+        drafts[key] = content;
+      },
+    ),
+    loadDraft: vi.fn(async (applicationId: string, key: string) => {
+      void applicationId;
+      return drafts[key];
+    }),
+    clearDraft: vi.fn(async (applicationId: string, key: string) => {
+      void applicationId;
+      delete drafts[key];
+    }),
+    snapshotVersion: vi.fn(
+      async (
+        applicationId: string,
+        key: string,
+        content: string,
+        source: ResponseDocVersionEntry["source"],
+      ) => {
+        void applicationId;
+        versions[key] = [
+          {
+            id: `v${(versions[key]?.length ?? 0) + 1}`,
+            content,
+            source,
+            createdAt: new Date().toISOString(),
+          },
+          ...(versions[key] ?? []),
+        ];
+      },
+    ),
+    listVersions: vi.fn(async (applicationId: string, key: string) => {
+      void applicationId;
+      return versions[key] ?? [];
+    }),
+    enqueueSave: vi.fn(
+      async (applicationId: string, key: string, content: string) => {
+        void applicationId;
+        if (!pendingKeys.includes(key)) pendingKeys.push(key);
+        drafts[key] = content;
+      },
+    ),
+    listPendingSaveKeys: vi.fn(async (applicationId: string) => {
+      void applicationId;
+      return [...pendingKeys];
+    }),
+    replayPendingSaves: vi.fn(
+      async (
+        save: (appId: string, key: string, content: string) => Promise<void>,
+      ) => {
+        let replayed = 0;
+        for (const key of [...pendingKeys]) {
+          const content = drafts[key] ?? "";
+          await save("a1", key, content);
+          pendingKeys.splice(pendingKeys.indexOf(key), 1);
+          delete drafts[key];
+          replayed += 1;
+        }
+        return replayed;
+      },
+    ),
+  };
+}
+
+function singleDocumentEndpoint(overrides: Partial<ApplicationsEndpoint> = {}) {
+  return {
+    getResponseBlueprint: vi.fn(async () => ({
+      blueprint: {
+        tenderId: "t1",
+        responseDocuments: [{ key: "technical", title: "Technical Proposal" }],
+      },
+      responseDocs: { technical: "Existing response" },
+      responseDocStatus: { technical: { state: "ready" } },
+    })),
+    saveResponseDocument: vi.fn(async () => ({ ok: true, key: "technical" })),
+    generateResponseDocument: vi.fn(),
+    ...overrides,
+  } as unknown as ApplicationsEndpoint;
+}
 
 describe("DraftStage", () => {
   it("opens a full-screen dialog and edits the generated response through existing contracts", async () => {
@@ -621,6 +725,183 @@ describe("DraftStage", () => {
         name: "Optional instructions for the AI",
       }),
     ).toHaveValue("");
+  });
+
+  it("recovers an unsaved local draft into the editor on open", async () => {
+    const store = fakeLocalStore({ drafts: { technical: "Local draft v1" } });
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={singleDocumentEndpoint()}
+          localStore={store}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("textbox", { name: "Edit Technical Proposal" }),
+      ).toHaveValue("Local draft v1"),
+    );
+    expect(screen.getByText(/unsaved local draft restored/i)).toBeVisible();
+    expect(store.loadDraft).toHaveBeenCalledWith("a1", "technical");
+  });
+
+  it("persists edits locally after the debounce, encrypted through the store", async () => {
+    const store = fakeLocalStore();
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={singleDocumentEndpoint()}
+          localStore={store}
+        />
+      </MemoryRouter>,
+    );
+
+    const editor = await screen.findByRole("textbox", {
+      name: "Edit Technical Proposal",
+    });
+    fireEvent.change(editor, { target: { value: "Edited locally" } });
+    await waitFor(
+      () =>
+        expect(store.persistDraft).toHaveBeenCalledWith(
+          "a1",
+          "technical",
+          "Edited locally",
+        ),
+      { timeout: 2000 },
+    );
+  });
+
+  it("queues a save locally when offline and shows pending sync", async () => {
+    const user = userEvent.setup();
+    const save = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ApiError({ kind: "offline", message: "No network connection" }),
+      );
+    const store = fakeLocalStore();
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={singleDocumentEndpoint({ saveResponseDocument: save })}
+          localStore={store}
+        />
+      </MemoryRouter>,
+    );
+
+    const editor = await screen.findByRole("textbox", {
+      name: "Edit Technical Proposal",
+    });
+    fireEvent.change(editor, { target: { value: "Offline content" } });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(store.enqueueSave).toHaveBeenCalledWith(
+        "a1",
+        "technical",
+        "Offline content",
+      ),
+    );
+    expect(
+      screen.getByText(/saved locally — pending sync to your response plan/i),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Sync now" })).toBeVisible();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("Sync now replays the queued save and clears the pending notice", async () => {
+    const user = userEvent.setup();
+    const save = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ApiError({ kind: "offline", message: "No network connection" }),
+      )
+      .mockResolvedValue({ ok: true, key: "technical" });
+    const store = fakeLocalStore();
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={singleDocumentEndpoint({ saveResponseDocument: save })}
+          localStore={store}
+        />
+      </MemoryRouter>,
+    );
+
+    const editor = await screen.findByRole("textbox", {
+      name: "Edit Technical Proposal",
+    });
+    fireEvent.change(editor, { target: { value: "Offline content" } });
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Sync now" })).toBeVisible(),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Sync now" }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(save).toHaveBeenLastCalledWith("a1", "technical", "Offline content");
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          /saved locally — pending sync to your response plan/i,
+        ),
+      ).toBeNull(),
+    );
+  });
+
+  it("restores a saved version from local history when clean, and blocks it when dirty", async () => {
+    const user = userEvent.setup();
+    const store = fakeLocalStore({
+      versions: {
+        technical: [
+          {
+            id: "v1",
+            content: "Older saved version",
+            source: "save",
+            createdAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/applications/a1/draft/technical"]}>
+        <DraftStage
+          applicationId="a1"
+          documentKey="technical"
+          endpoint={singleDocumentEndpoint()}
+          localStore={store}
+        />
+      </MemoryRouter>,
+    );
+
+    const editor = await screen.findByRole("textbox", {
+      name: "Edit Technical Proposal",
+    });
+    await waitFor(() =>
+      expect(screen.getByText(/local history \(1\)/i)).toBeVisible(),
+    );
+    await user.click(screen.getByText(/local history \(1\)/i));
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+
+    expect(editor).toHaveValue("Older saved version");
+    expect(screen.getByText("Unsaved changes")).toBeVisible();
+
+    fireEvent.change(editor, { target: { value: "More edits" } });
+    expect(screen.getByRole("button", { name: "Restore" })).toBeDisabled();
   });
 });
 
