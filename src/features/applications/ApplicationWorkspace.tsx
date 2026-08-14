@@ -214,6 +214,7 @@ function WorkspaceBody({
       {workflowStage === "understand" && tenders ? (
         <UnderstandStage
           tenderId={tender.id}
+          savedTender={tender}
           tenders={tenders}
           documents={documents}
           savePort={savePort}

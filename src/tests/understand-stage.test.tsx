@@ -46,4 +46,24 @@ describe("UnderstandStage", () => {
       expect(get).toHaveBeenCalledWith("t1", expect.any(AbortSignal)),
     );
   });
+
+  it("renders the saved application tender when its background refresh fails", async () => {
+    const get = vi.fn(async () => Promise.reject(new Error("offline")));
+
+    render(
+      <UnderstandStage
+        tenderId="t1"
+        savedTender={{ ...tender, province: null, estimatedValue: null }}
+        tenders={{ get } as Pick<TendersEndpoint, "get">}
+      />,
+    );
+
+    expect(await screen.findByText("AI Summary")).toBeVisible();
+    expect(screen.getByText("Specification.pdf")).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByText(/update failed — showing saved tender analysis/i),
+      ).toBeVisible(),
+    );
+  });
 });

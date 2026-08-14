@@ -3,8 +3,10 @@ import { WorkspaceDataStatus } from "../../../components/common/WorkspaceDataSta
 import { useWorkspaceAsync } from "../../../hooks/use-workspace-async";
 import {
   tenderDetailSchema,
+  type TenderDetail,
   type TendersEndpoint,
 } from "../../../services/api/endpoints/tenders";
+import type { ApplicationDetail } from "../../../services/api/endpoints/applications";
 import { workspaceEntityKey } from "../../../services/storage/cache-key";
 import type { DocumentActionPort } from "../../../services/storage/document-actions";
 import type { SaveDownloadPort } from "../../../services/storage/save-download";
@@ -17,6 +19,7 @@ import { TenderIntelligenceOverview } from "../../tenders/detail/TenderIntellige
 
 export interface UnderstandStageProps {
   tenderId: string;
+  savedTender?: ApplicationDetail["tender"];
   tenders: Pick<TendersEndpoint, "get">;
   documents?: TenderDocumentsSectionProps["documents"];
   savePort?: SaveDownloadPort;
@@ -26,6 +29,7 @@ export interface UnderstandStageProps {
 /** Reads and presents the tender intelligence that already exists upstream. */
 export function UnderstandStage({
   tenderId,
+  savedTender,
   tenders,
   documents,
   savePort,
@@ -38,17 +42,24 @@ export function UnderstandStage({
     load: (signal) => tenders.get(tenderId, signal),
     deps: [tenders, tenderId],
   });
+  const savedTenderDetail = toTenderDetail(savedTender);
+  const visibleState =
+    state.status === "ready" || !savedTenderDetail
+      ? state
+      : ({ status: "ready", value: savedTenderDetail } as const);
 
   return (
     <>
-      <WorkspaceDataStatus
-        stale={state.stale}
-        refreshing={state.refreshing}
-        refreshFailed={state.refreshFailed}
-        subject="saved tender analysis"
-      />
+      {savedTenderDetail && (
+        <WorkspaceDataStatus
+          stale={state.stale || state.status !== "ready"}
+          refreshing={state.refreshing}
+          refreshFailed={state.refreshFailed || state.status === "error"}
+          subject="saved tender analysis"
+        />
+      )}
       <AsyncSection
-        state={state}
+        state={visibleState}
         subject="this tender's analysis"
         onRetry={state.reload}
       >
@@ -67,4 +78,17 @@ export function UnderstandStage({
       </AsyncSection>
     </>
   );
+}
+
+function toTenderDetail(
+  tender: ApplicationDetail["tender"] | undefined,
+): TenderDetail | undefined {
+  if (!tender) return undefined;
+  const parsed = tenderDetailSchema.safeParse({
+    ...tender,
+    referenceNumber: tender.referenceNumber ?? "",
+    sourceOrganization: tender.sourceOrganization ?? "",
+    closingDate: tender.closingDate ?? "",
+  });
+  return parsed.success ? parsed.data : undefined;
 }
