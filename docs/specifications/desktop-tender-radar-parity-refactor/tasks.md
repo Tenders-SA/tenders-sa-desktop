@@ -90,7 +90,7 @@
   - **Verify:** Tier fixtures and entitlement failure render distinct, accessible outcomes at narrow and wide widths.
   - **Commit:** `feat(tender-radar-parity/3.1): add radar header and tier states`
 
-- [ ] **TASK-3.2: Add match navigation, filters, sorting, and local reveal**
+- [x] **TASK-3.2: Add match navigation, filters, sorting, and local reveal**
   - **Refs:** REQ-3, REQ-6, REQ-12, A11Y-1, UX-1
   - **Files:** Create `src/features/radar/RadarControls.tsx`; modify `src/features/radar/TenderRadar.tsx`, `src/tests/module-screens.test.tsx`
   - **Pre-check:** Confirm every control is supported by the projected fields; do not add Eligible Only.

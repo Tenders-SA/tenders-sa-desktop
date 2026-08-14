@@ -62,7 +62,7 @@ overlays are desktop projections.
 - [x] **TASK-2.1: Implement the pure Radar workspace model**
 - [x] **TASK-2.2: Refactor TenderRadar into the composite local-first controller**
 - [x] **TASK-3.1: Add the Radar header, tier states, and headline metrics**
-- [ ] **TASK-3.2: Add match navigation, filters, sorting, and local reveal**
+- [x] **TASK-3.2: Add match navigation, filters, sorting, and local reveal**
 - [ ] **TASK-3.3: Replace generic rows with desktop-native Radar cards**
 - [ ] **TASK-3.4: Add authoritative saved-state actions**
 - [ ] **TASK-3.5: Add profile guidance and top improvement sidebar**

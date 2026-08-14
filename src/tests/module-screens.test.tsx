@@ -187,6 +187,58 @@ describe("Tender Radar screen", () => {
     expect(screen.getByRole("link", { name: /view plan details/i })).toHaveAttribute("href", "/settings");
   });
 
+  it("filters through accessible score-band tabs and resets honestly", async () => {
+    const potential = {
+      ...recommendation,
+      id: "r2",
+      tenderId: "t2",
+      tender: { ...recommendation.tender, id: "t2", title: "Potential roadworks" },
+      score: 55,
+      matchCategory: "good_match" as const,
+    };
+    wrap(fullRadar({
+      recommendations: endpoint({
+        state: "ready",
+        recommendations: [recommendation, potential],
+        hasMore: false,
+        offset: 0,
+        limit: 50,
+      }),
+    }));
+
+    const user = userEvent.setup();
+    await screen.findByText("82% match");
+    await user.click(screen.getByRole("tab", { name: /potential \(1\)/i }));
+    expect(screen.getByText("Potential roadworks")).toBeVisible();
+    expect(screen.queryByText("82% match")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /reset filters/i }));
+    expect(screen.getByText("82% match")).toBeVisible();
+  });
+
+  it("reveals full-route matches in local groups of 15", async () => {
+    const recommendations = Array.from({ length: 16 }, (_, index) => ({
+      ...recommendation,
+      id: `r-${index}`,
+      tenderId: `t-${index}`,
+      tender: { ...recommendation.tender, id: `t-${index}`, title: `Radar item ${index + 1}` },
+      score: 82 - index / 10,
+    }));
+    wrap(fullRadar({
+      recommendations: endpoint({
+        state: "ready",
+        recommendations,
+        hasMore: false,
+        offset: 0,
+        limit: 50,
+      }),
+    }));
+
+    expect(await screen.findByText("Radar item 15")).toBeVisible();
+    expect(screen.queryByText("Radar item 16")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /load 15 more/i }));
+    expect(screen.getByText("Radar item 16")).toBeVisible();
+  });
+
   it("locks the existing standalone listing controls before replacement", async () => {
     // Spec: desktop-tender-radar-parity-refactor §TASK-0.1. These assertions
     // intentionally describe the old screen and are removed only by TASK-3.7.

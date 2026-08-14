@@ -19,11 +19,18 @@ import type { SubscriptionEndpoint } from "../../services/api/endpoints/subscrip
 import {
   capRadarMatches,
   countRadarBands,
+  filterRadarMatches,
   normalizeRadarMatches,
+  RADAR_REVEAL_SIZE,
+  revealRadarMatches,
+  sortRadarMatches,
   type RadarAccess,
+  type RadarFilters,
+  type RadarSort,
   type RadarWorkspaceMatch,
 } from "./radar-workspace-model";
 import { RadarHeader } from "./RadarHeader";
+import { RadarControls } from "./RadarControls";
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
   style: "currency",
@@ -134,6 +141,13 @@ function FullRadarController({
   company,
   subscription,
 }: FullTenderRadarProps) {
+  const [filters, setFilters] = useState<RadarFilters>({
+    band: "all",
+    closingSoon: false,
+    newThisWeek: false,
+  });
+  const [sort, setSort] = useState<RadarSort>("best_match");
+  const [revealCount, setRevealCount] = useState(RADAR_REVEAL_SIZE);
   const state = useWorkspaceAsync({
     key: workspaceQueryKey("radar-workspace-v2", { minScore: 30, limit: 50 }),
     schema: radarWorkspaceSnapshotSchema,
@@ -227,6 +241,23 @@ function FullRadarController({
                   counts={countRadarBands(snapshot.matches)}
                   lastUpdated={snapshot.lastUpdated}
                 />
+                <RadarControls
+                  counts={countRadarBands(snapshot.matches)}
+                  filters={filters}
+                  sort={sort}
+                  onFiltersChange={(next) => {
+                    setFilters(next);
+                    setRevealCount(RADAR_REVEAL_SIZE);
+                  }}
+                  onSortChange={(next) => {
+                    setSort(next);
+                    setRevealCount(RADAR_REVEAL_SIZE);
+                  }}
+                  onReset={() => {
+                    setFilters({ band: "all", closingSoon: false, newThisWeek: false });
+                    setRevealCount(RADAR_REVEAL_SIZE);
+                  }}
+                />
                 {snapshot.savedState === "unavailable" && (
                   <p role="status" className="mb-3 mt-4 text-sm text-muted-foreground">
                     Saved status is temporarily unavailable.
@@ -242,8 +273,28 @@ function FullRadarController({
                     No current Radar matches are available.
                   </p>
                 )}
+                {snapshot.matches.length > 0 && filterRadarMatches(snapshot.matches, filters).length === 0 && (
+                  <div className="mt-6 rounded border border-border p-5">
+                    <p className="text-sm text-muted-foreground">
+                      No matches meet these filters.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilters({ band: "all", closingSoon: false, newThisWeek: false });
+                        setRevealCount(RADAR_REVEAL_SIZE);
+                      }}
+                      className="mt-2 text-sm font-medium text-primary hover:underline"
+                    >
+                      Reset filters
+                    </button>
+                  </div>
+                )}
                 <ul className="flex flex-col gap-3">
-                  {snapshot.matches.map((match) => (
+                  {revealRadarMatches(
+                    sortRadarMatches(filterRadarMatches(snapshot.matches, filters), sort),
+                    revealCount,
+                  ).map((match) => (
                     <li key={match.matchingScoreId} className="rounded border border-border bg-card p-4">
                       <Link to={`/tenders/${encodeURIComponent(match.tenderId)}`} className="font-medium hover:underline">
                         {match.title}
@@ -252,6 +303,15 @@ function FullRadarController({
                     </li>
                   ))}
                 </ul>
+                {filterRadarMatches(snapshot.matches, filters).length > revealCount && (
+                  <button
+                    type="button"
+                    onClick={() => setRevealCount((count) => count + RADAR_REVEAL_SIZE)}
+                    className="mt-5 rounded border border-border px-4 py-2 text-sm font-medium text-foreground"
+                  >
+                    Load 15 more
+                  </button>
+                )}
               </div>
             );
           }}
