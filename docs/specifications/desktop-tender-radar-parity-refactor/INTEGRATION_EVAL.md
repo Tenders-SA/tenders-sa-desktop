@@ -1,13 +1,13 @@
 # Integration evaluation — Desktop Tender Radar parity refactor
 
-**Status:** NOT STARTED — specification pending approval
+**Status:** IN PROGRESS — implementation approved
 
 Run the relevant section at the end of every implementation phase. Do not mark the
 implementation complete until the final result is PASS.
 
 ## Pre-implementation check
 
-- [ ] User explicitly approved `SPEC_CONTRACT.md`.
+- [x] User explicitly approved `SPEC_CONTRACT.md`.
 - [ ] Desktop `main` and parent reference have been re-synchronized/read.
 - [ ] Recent Radar history and every current `TenderRadar` consumer were reviewed.
 - [ ] Parent API shapes still match the requirements contract matrix.
@@ -105,5 +105,5 @@ implementation complete until the final result is PASS.
 - **Status:** NOT STARTED
 - **Passed:** 0
 - **Failed:** 0
-- **Remaining issues:** Implementation not started; awaiting user approval.
-- **Approved by:** Pending
+- **Remaining issues:** Implementation in progress.
+- **Approved by:** User, 2026-08-14

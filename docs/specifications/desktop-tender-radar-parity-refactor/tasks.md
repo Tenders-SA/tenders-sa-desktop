@@ -9,7 +9,7 @@
 
 ## Current status
 
-- [ ] Specification approved
+- [x] Specification approved
 - [ ] Phase 0 complete
 - [ ] Phase 1 complete
 - [ ] Phase 2 complete

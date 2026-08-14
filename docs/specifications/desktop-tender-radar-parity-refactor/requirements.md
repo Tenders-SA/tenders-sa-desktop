@@ -1,6 +1,6 @@
 # Desktop Tender Radar parity refactor — requirements
 
-**Status:** PENDING APPROVAL
+**Status:** APPROVED
 
 **Created:** 2026-08-14
 
