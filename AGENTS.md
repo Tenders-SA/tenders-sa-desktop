@@ -41,6 +41,30 @@ This contract is mandatory whenever the assigned scope is the desktop applicatio
 - Never run main-app builds or Prisma migrations from this repository.
 - Never hard-code production endpoints, tokens, secrets, or signing keys.
 
+## Desktop-first regression diagnosis
+
+When the user reports that desktop behaviour stopped working, treat it as a
+regression in `desktop/tenders-sa-desktop/**`, especially in the most recent
+desktop changes, unless the user explicitly broadens the task.
+
+1. **Trust confirmed scope:** If the user says the parent application,
+   Cloudflare, AWS, database servers, APIs, or other infrastructure are working,
+   treat that as established context. Do not re-investigate, challenge, or
+   speculate about those systems.
+2. **Inspect our changes first:** Start with the affected desktop journey, its
+   recent desktop diff, local state transitions, and desktop runtime logs. Test
+   the exact failure path before considering unrelated causes.
+3. **No infrastructure detours:** Do not probe or diagnose Cloudflare, WAF
+   rules, AWS, production services, parent deployments, or server health during
+   desktop work. Those are separate tasks handled elsewhere.
+4. **Keep fixes local:** Correct the existing desktop implementation in place.
+   Do not modify the parent application or propose parent/infrastructure work as
+   a workaround for a desktop regression.
+5. **Expand only on explicit reassignment:** Leave desktop scope only when the
+   user explicitly assigns a separate parent-platform or infrastructure task.
+   A generic desktop connectivity message is not evidence or authorization to
+   expand scope.
+
 ## Desktop security
 
 - Use OS-native secure credential storage for authentication secrets.
