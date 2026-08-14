@@ -140,7 +140,7 @@
 
 ## Phase 4 — verification and delivery gates
 
-- [ ] **TASK-4.1: Run focused Radar integration and regression tests**
+- [x] **TASK-4.1: Run focused Radar integration and regression tests**
   - **Refs:** All REQ, INT, REL, SEC, PERF, A11Y, UX requirements
   - **Files:** Test files listed above; production fixes only where a failing requirement demands them
   - **Pre-check:** Read `INTEGRATION_EVAL.md` and map every check to a test or manual step.

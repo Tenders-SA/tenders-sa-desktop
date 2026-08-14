@@ -54,9 +54,9 @@ implementation complete until the final result is PASS.
 
 - [x] Existing menu reaches exactly one `/radar` route and one canonical screen owner.
 - [x] Header, tier state, counts, freshness, and profile score are text-accessible.
-- [ ] Match tabs, supported filters, sorts, and 15-row reveal work by keyboard.
-- [ ] Cards show only contract-backed fields and link to native tender detail.
-- [ ] Unknown factor/field values are omitted or labelled unknown, never rendered as zero.
+- [x] Match tabs, supported filters, sorts, and 15-row reveal work by keyboard.
+- [x] Cards show only contract-backed fields and link to native tender detail.
+- [x] Unknown factor/field values are omitted or labelled unknown, never rendered as zero.
 - [x] Saved state is known before mutation controls enable.
 - [x] Save/unsave adopts the server-returned boolean and reports failures without drift.
 - [x] Profile sidebar links to `/company` and isolates profile read failures.
@@ -73,9 +73,9 @@ implementation complete until the final result is PASS.
 ## Final regression evaluation
 
 - [ ] All REQ, INT, PERF, SEC, REL, A11Y, UX, and DATA requirements have code/test evidence.
-- [ ] Focused Radar endpoint, model, screen, cache, and navigation tests pass.
-- [ ] TenderList embedded Radar tests pass.
-- [ ] Tender detail, Opportunities, Settings, Command Centre links, and account-isolated
+- [x] Focused Radar endpoint, model, screen, cache, and navigation tests pass.
+- [x] TenderList embedded Radar tests pass.
+- [x] Tender detail, Opportunities, Settings, Command Centre links, and account-isolated
   cache tests pass.
 - [ ] `pnpm run typecheck` passes.
 - [ ] `pnpm run lint` passes.
