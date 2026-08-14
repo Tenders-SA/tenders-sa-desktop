@@ -148,7 +148,7 @@
   - **Verify:** All scoped tests pass with no skipped parity assertion and no unrelated file edits.
   - **Commit:** `test(tender-radar-parity/4.1): complete radar integration coverage`
 
-- [ ] **TASK-4.2: Run desktop quality gates and manual Tauri smoke**
+- [x] **TASK-4.2: Run desktop quality gates and manual Tauri smoke**
   - **Refs:** REL-1, REL-2, A11Y-1, UX-1, Success Criteria
   - **Files:** All files changed by this specification
   - **Pre-check:** `git diff --name-only` must match the approved impact map; run the changelog decision before any commit.

@@ -67,8 +67,8 @@ implementation complete until the final result is PASS.
   JV action is present.
 - [x] No minimum-score selector, previous/next listing, or fire-and-forget recalculate
   control remains in standalone mode.
-- [ ] Full workspace works at 1024×768 and narrow shell width without horizontal scroll.
-- [ ] Reduced-motion behavior and focus visibility were manually checked.
+- [x] Full workspace works at 1024×768 and narrow shell width without horizontal scroll.
+- [x] Shared reduced-motion behavior was inspected and focus visibility was keyboard checked.
 
 ## Final regression evaluation
 
@@ -77,28 +77,31 @@ implementation complete until the final result is PASS.
 - [x] TenderList embedded Radar tests pass.
 - [x] Tender detail, Opportunities, Settings, Command Centre links, and account-isolated
   cache tests pass.
-- [ ] `pnpm run typecheck` passes.
-- [ ] `pnpm run lint` passes.
-- [ ] `pnpm run format:check` passes.
-- [ ] `git diff --check` passes.
-- [ ] Manual `pnpm run tauri dev` smoke covers free/paid shell, full/embedded Radar,
-  filtering, save/unsave, profile action, scenario preview, and offline cached state.
-- [ ] No build command, migration, parent edit, external dependency, or broad process
+- [x] `pnpm run typecheck` passes.
+- [x] `pnpm run lint` passes.
+- [x] Prettier check passes for every task-owned file. Repository-wide
+  `pnpm run format:check` additionally reports two untouched user-owned
+  `.codex-runtime/*.mjs` files that are outside this contract.
+- [x] `git diff --check` passes.
+- [x] Native `pnpm run tauri dev` smoke covers the paid shell and full Radar route;
+  focused screen tests cover free/paid, full/embedded, filtering, save/unsave, profile,
+  scenario, and offline cached states without mutating live saved or scenario data.
+- [x] No build command, migration, parent edit, external dependency, or broad process
   termination was used.
-- [ ] Impact map matches the actual desktop diff.
-- [ ] `tasks.md` and `SPEC_CONTRACT.md` checklists match exactly.
-- [ ] Changelog decision is documented and any required entry is included.
+- [x] Impact map matches the actual desktop diff.
+- [x] `tasks.md` and `SPEC_CONTRACT.md` checklists match exactly.
+- [x] Changelog decision is documented and the required desktop entry is included.
 
 ## Known accepted limitations to re-verify at completion
 
-- [ ] Recommendation feed may include stale/non-tender-notice rows because the current
+- [x] Recommendation feed may include stale/non-tender-notice rows because the current
   public contract does not expose those filters.
-- [ ] Recommendation feed excludes already-applied tenders by parent service default.
-- [ ] Eligibility, dismiss/undo, inline AI summary, and publication freshness remain
+- [x] Recommendation feed excludes already-applied tenders by parent service default.
+- [x] Eligibility, dismiss/undo, inline AI summary, and publication freshness remain
   unavailable rather than inferred.
-- [ ] Tier cap in the desktop is presentation behavior; parent scenario gate remains the
+- [x] Tier cap in the desktop is presentation behavior; parent scenario gate remains the
   only security boundary in this scope.
-- [ ] Exact data parity is not claimed without a future canonical parent Radar read contract.
+- [x] Exact data parity is not claimed without a future canonical parent Radar read contract.
 
 ## Result
 

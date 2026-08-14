@@ -29,8 +29,15 @@ export function RadarControls({
   const hasFilters =
     filters.band !== "all" || filters.closingSoon || filters.newThisWeek;
   return (
-    <section aria-label="Radar controls" className="mt-5 rounded-xl border border-border bg-card p-4">
-      <div role="tablist" aria-label="Match categories" className="flex flex-wrap gap-2">
+    <section
+      aria-label="Radar controls"
+      className="mt-5 rounded-xl border border-border bg-card p-4"
+    >
+      <div
+        role="tablist"
+        aria-label="Match categories"
+        className="flex flex-wrap gap-2"
+      >
         {TABS.map(([band, label]) => (
           <button
             key={band}
@@ -80,7 +87,11 @@ export function RadarControls({
           </select>
         </label>
         {hasFilters && (
-          <button type="button" onClick={onReset} className="text-sm font-medium text-primary hover:underline">
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-sm font-medium text-primary hover:underline"
+          >
             Reset filters
           </button>
         )}

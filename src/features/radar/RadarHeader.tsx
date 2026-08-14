@@ -42,12 +42,15 @@ export function RadarHeader({
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">
             {PLAN_LABELS[access]}
           </p>
-          <h1 id="radar-heading" className="mt-1 text-2xl font-bold text-foreground">
+          <h1
+            id="radar-heading"
+            className="mt-1 text-2xl font-bold text-foreground"
+          >
             Your Tender Radar
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Prioritise opportunities using server-calculated fit, closing urgency,
-            and your company profile signals.
+            Prioritise opportunities using server-calculated fit, closing
+            urgency, and your company profile signals.
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             {calculationLabel(lastUpdated)}
@@ -61,9 +64,14 @@ export function RadarHeader({
       </div>
       <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {metrics.map(([label, value]) => (
-          <div key={label} className="rounded-lg border border-border bg-background p-3">
+          <div
+            key={label}
+            className="rounded-lg border border-border bg-background p-3"
+          >
             <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="mt-1 text-xl font-semibold text-foreground">{value}</dd>
+            <dd className="mt-1 text-xl font-semibold text-foreground">
+              {value}
+            </dd>
           </div>
         ))}
       </dl>

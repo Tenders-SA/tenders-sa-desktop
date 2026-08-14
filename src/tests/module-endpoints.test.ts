@@ -209,20 +209,22 @@ const radarParityContractFixtures = {
 
 describe("Tender Radar parity parent contract fixtures", () => {
   it("pins the existing endpoint envelopes before adapter changes", () => {
-    expect(radarParityContractFixtures.recommendation30Feed.pagination).toEqual({
-      limit: 50,
-      offset: 0,
-      hasMore: false,
-    });
+    expect(radarParityContractFixtures.recommendation30Feed.pagination).toEqual(
+      {
+        limit: 50,
+        offset: 0,
+        hasMore: false,
+      },
+    );
     expect(radarParityContractFixtures.noProfile.state).toBe(
       "no_company_profile",
     );
-    expect(radarParityContractFixtures.extendedProfile.profile?.cidbGrading).toBe(
-      "6CE",
-    );
-    expect(radarParityContractFixtures.savedPages[1].pagination.totalPages).toBe(
-      2,
-    );
+    expect(
+      radarParityContractFixtures.extendedProfile.profile?.cidbGrading,
+    ).toBe("6CE");
+    expect(
+      radarParityContractFixtures.savedPages[1].pagination.totalPages,
+    ).toBe(2);
     expect(radarParityContractFixtures.scenario.data.rows[0].id).toBe(
       "matching-score-1",
     );
@@ -770,7 +772,9 @@ describe("saved tenders endpoint (Opportunities)", () => {
         : jsonResponse({ error: "boom" }, 500);
     });
 
-    await expect(endpoint.listAllIds()).rejects.toMatchObject({ kind: "server" });
+    await expect(endpoint.listAllIds()).rejects.toMatchObject({
+      kind: "server",
+    });
     // The failed second-page GET follows the shared safe-read retry policy;
     // it still rejects instead of returning the known-incomplete first page.
     expect(calls).toBe(4);

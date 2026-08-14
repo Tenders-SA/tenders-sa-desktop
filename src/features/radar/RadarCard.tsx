@@ -77,7 +77,11 @@ export function RadarCard({
                 type="button"
                 disabled={saveDisabled || saving}
                 onClick={() => onToggleSave(match)}
-                aria-label={match.isSaved ? `Remove ${match.title} from saved tenders` : `Save ${match.title}`}
+                aria-label={
+                  match.isSaved
+                    ? `Remove ${match.title} from saved tenders`
+                    : `Save ${match.title}`
+                }
                 className="mt-3 rounded border border-border px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
               >
                 {saving ? "Saving…" : match.isSaved ? "Saved" : "Save tender"}
@@ -90,7 +94,9 @@ export function RadarCard({
           {match.closingDate ? (
             <ClosingLabel closingDate={match.closingDate} />
           ) : (
-            <span className="text-muted-foreground">No closing date recorded</span>
+            <span className="text-muted-foreground">
+              No closing date recorded
+            </span>
           )}
           {match.estimatedValue === null ? (
             <span className="text-muted-foreground">Value not recorded</span>
@@ -143,19 +149,25 @@ export function RadarCard({
           <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
             {ai.competitivePosition && (
               <div>
-                <dt className="text-xs text-muted-foreground">Competitive position</dt>
+                <dt className="text-xs text-muted-foreground">
+                  Competitive position
+                </dt>
                 <dd className="text-foreground">{ai.competitivePosition}</dd>
               </div>
             )}
             {typeof ai.successProbability === "number" && (
               <div>
-                <dt className="text-xs text-muted-foreground">Success probability</dt>
+                <dt className="text-xs text-muted-foreground">
+                  Success probability
+                </dt>
                 <dd className="text-foreground">{ai.successProbability}%</dd>
               </div>
             )}
             {ai.estimatedTimeToQualify && (
               <div>
-                <dt className="text-xs text-muted-foreground">Time to qualify</dt>
+                <dt className="text-xs text-muted-foreground">
+                  Time to qualify
+                </dt>
                 <dd className="text-foreground">{ai.estimatedTimeToQualify}</dd>
               </div>
             )}

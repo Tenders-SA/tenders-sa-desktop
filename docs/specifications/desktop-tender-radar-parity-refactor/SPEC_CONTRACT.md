@@ -69,7 +69,7 @@ overlays are desktop projections.
 - [x] **TASK-3.6: Add paid scenario scanning and temporary score overlay**
 - [x] **TASK-3.7: Wire the full route, preserve embedded use, and remove obsolete standalone controls**
 - [x] **TASK-4.1: Run focused Radar integration and regression tests**
-- [ ] **TASK-4.2: Run desktop quality gates and manual Tauri smoke**
+- [x] **TASK-4.2: Run desktop quality gates and manual Tauri smoke**
 - [ ] **TASK-4.3: Complete specification traceability and handoff**
 
 ## Commit format

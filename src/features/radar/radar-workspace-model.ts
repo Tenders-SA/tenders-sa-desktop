@@ -5,21 +5,11 @@ import type {
   ScoreFactors,
 } from "../../services/api/endpoints/recommendations";
 
-export type RadarAccess =
-  | "free"
-  | "starter"
-  | "professional"
-  | "enterprise";
+export type RadarAccess = "free" | "starter" | "professional" | "enterprise";
 export type RadarBand =
-  | "highly_qualified"
-  | "potential"
-  | "near_miss"
-  | "not_fit";
+  "highly_qualified" | "potential" | "near_miss" | "not_fit";
 export type RadarSort =
-  | "best_match"
-  | "closing_soon"
-  | "newest"
-  | "highest_value";
+  "best_match" | "closing_soon" | "newest" | "highest_value";
 
 export interface RadarWorkspaceMatch {
   matchingScoreId: string;
@@ -199,7 +189,10 @@ export function projectRadarProfile(
 export function findTopRadarGap(
   matches: readonly RadarWorkspaceMatch[],
 ): string | null {
-  const entries = new Map<string, { label: string; count: number; first: number }>();
+  const entries = new Map<
+    string,
+    { label: string; count: number; first: number }
+  >();
   let position = 0;
   for (const match of matches) {
     for (const raw of match.gaps) {
@@ -238,7 +231,10 @@ export function filterRadarMatches(
   const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
   const closingLimit = nowMs + 14 * 24 * 60 * 60 * 1000;
   return matches.filter((match) => {
-    if (filters.band !== "all" && classifyRadarScore(effectiveRadarScore(match)) !== filters.band) {
+    if (
+      filters.band !== "all" &&
+      classifyRadarScore(effectiveRadarScore(match)) !== filters.band
+    ) {
       return false;
     }
     const closing = timestamp(match.closingDate);

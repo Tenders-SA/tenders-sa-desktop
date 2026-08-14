@@ -35,10 +35,15 @@ export function RadarSidebar({
             </p>
             <ul className="mt-3 space-y-2">
               {profile.signals.map((signal) => (
-                <li key={signal.key} className="flex justify-between gap-3 text-sm">
+                <li
+                  key={signal.key}
+                  className="flex justify-between gap-3 text-sm"
+                >
                   <span className="text-muted-foreground">{signal.label}</span>
                   <span className="font-medium text-foreground">
-                    {signal.complete ? "Complete" : `Missing · ${signal.weight}%`}
+                    {signal.complete
+                      ? "Complete"
+                      : `Missing · ${signal.weight}%`}
                   </span>
                 </li>
               ))}
@@ -49,7 +54,10 @@ export function RadarSidebar({
             Complete your company profile to strengthen matching signals.
           </p>
         )}
-        <Link to="/company" className="mt-4 inline-block text-sm font-medium text-primary hover:underline">
+        <Link
+          to="/company"
+          className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+        >
           Review company profile
         </Link>
       </section>
@@ -68,12 +76,18 @@ export function RadarSidebar({
 
       {(access === "professional" || access === "enterprise") && (
         <section className="rounded-xl border border-primary/25 bg-primary/5 p-4">
-          <h2 className="text-sm font-semibold text-foreground">Scenario preview</h2>
+          <h2 className="text-sm font-semibold text-foreground">
+            Scenario preview
+          </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Test profile changes against the existing server calculation.
           </p>
           {onOpenScenario && (
-            <button type="button" onClick={onOpenScenario} className="mt-3 rounded border border-primary/30 px-3 py-1.5 text-sm font-medium text-primary">
+            <button
+              type="button"
+              onClick={onOpenScenario}
+              className="mt-3 rounded border border-primary/30 px-3 py-1.5 text-sm font-medium text-primary"
+            >
               Open scenario preview
             </button>
           )}

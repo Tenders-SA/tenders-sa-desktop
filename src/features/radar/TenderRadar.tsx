@@ -60,9 +60,7 @@ type EmbeddedTenderRadarProps = {
 };
 
 /** Removed in TASK-3.7 after the two existing consumers are rewired. */
-export type TenderRadarProps =
-  | FullTenderRadarProps
-  | EmbeddedTenderRadarProps;
+export type TenderRadarProps = FullTenderRadarProps | EmbeddedTenderRadarProps;
 
 interface RadarWorkspaceSnapshot {
   access: RadarAccess;
@@ -123,7 +121,9 @@ function normalizeAccess(tier: string | undefined): RadarAccess {
   return "free";
 }
 
-function latestCalculation(matches: readonly RadarWorkspaceMatch[]): string | null {
+function latestCalculation(
+  matches: readonly RadarWorkspaceMatch[],
+): string | null {
   let latest: { value: string; time: number } | null = null;
   for (const match of matches) {
     const time = Date.parse(match.calculatedAt);
@@ -147,27 +147,35 @@ function FullRadarController({
   });
   const [sort, setSort] = useState<RadarSort>("best_match");
   const [revealCount, setRevealCount] = useState(RADAR_REVEAL_SIZE);
-  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({});
+  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>(
+    {},
+  );
   const [savingIds, setSavingIds] = useState<string[]>([]);
   const [saveNotice, setSaveNotice] = useState<{
     kind: "success" | "error";
     message: string;
   } | null>(null);
   const [scenarioOpen, setScenarioOpen] = useState(false);
-  const [scenarioResult, setScenarioResult] = useState<RadarScenarioResult | null>(null);
-  const [sortBeforeScenario, setSortBeforeScenario] = useState<RadarSort | null>(null);
+  const [scenarioResult, setScenarioResult] =
+    useState<RadarScenarioResult | null>(null);
+  const [sortBeforeScenario, setSortBeforeScenario] =
+    useState<RadarSort | null>(null);
   const state = useWorkspaceAsync({
     key: workspaceQueryKey("radar-workspace-v2", { minScore: 30, limit: 50 }),
     schema: radarWorkspaceSnapshotSchema,
     entity: "radar-list",
     load: async (signal): Promise<RadarWorkspaceSnapshot> => {
-      const [recommendationResult, entitlementResult, profileResult, savedResult] =
-        await Promise.allSettled([
-          recommendations.list({ minScore: 30, limit: 50 }, signal),
-          subscription.getStatus(signal),
-          company.getExtendedProfile(signal),
-          savedTenders.listAllIds(signal),
-        ]);
+      const [
+        recommendationResult,
+        entitlementResult,
+        profileResult,
+        savedResult,
+      ] = await Promise.allSettled([
+        recommendations.list({ minScore: 30, limit: 50 }, signal),
+        subscription.getStatus(signal),
+        company.getExtendedProfile(signal),
+        savedTenders.listAllIds(signal),
+      ]);
 
       if (recommendationResult.status === "rejected") {
         throw recommendationResult.reason;
@@ -189,7 +197,8 @@ function FullRadarController({
       const matches = capRadarMatches(normalized, access);
       const noProfile =
         recommendationResult.value.state === "no_company_profile" ||
-        (profileResult.status === "fulfilled" && profileResult.value === undefined);
+        (profileResult.status === "fulfilled" &&
+          profileResult.value === undefined);
 
       return {
         access,
@@ -204,7 +213,8 @@ function FullRadarController({
             : noProfile
               ? "missing"
               : "ready",
-        savedState: savedResult.status === "fulfilled" ? "ready" : "unavailable",
+        savedState:
+          savedResult.status === "fulfilled" ? "ready" : "unavailable",
         lastUpdated: latestCalculation(matches),
       };
     },
@@ -227,7 +237,10 @@ function FullRadarController({
             if (snapshot.access === "free") {
               return (
                 <div className="rounded-xl border border-border bg-card p-6">
-                  <h1 id="radar-heading" className="text-xl font-semibold text-foreground">
+                  <h1
+                    id="radar-heading"
+                    className="text-xl font-semibold text-foreground"
+                  >
                     Tender Radar is available on Starter and above
                   </h1>
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -235,10 +248,16 @@ function FullRadarController({
                     Subscription changes are completed on tenders-sa.org.
                   </p>
                   <div className="mt-4 flex gap-4 text-sm font-medium">
-                    <Link to="/tenders" className="text-primary hover:underline">
+                    <Link
+                      to="/tenders"
+                      className="text-primary hover:underline"
+                    >
                       Browse tenders
                     </Link>
-                    <Link to="/settings" className="text-primary hover:underline">
+                    <Link
+                      to="/settings"
+                      className="text-primary hover:underline"
+                    >
                       View plan details
                     </Link>
                   </div>
@@ -253,7 +272,10 @@ function FullRadarController({
               ...match,
               isSaved: savedOverrides[match.tenderId] ?? match.isSaved,
             }));
-            const filteredMatches = filterRadarMatches(displayedMatches, filters);
+            const filteredMatches = filterRadarMatches(
+              displayedMatches,
+              filters,
+            );
             return (
               <div>
                 <RadarHeader
@@ -275,103 +297,119 @@ function FullRadarController({
                     setRevealCount(RADAR_REVEAL_SIZE);
                   }}
                   onReset={() => {
-                    setFilters({ band: "all", closingSoon: false, newThisWeek: false });
+                    setFilters({
+                      band: "all",
+                      closingSoon: false,
+                      newThisWeek: false,
+                    });
                     setRevealCount(RADAR_REVEAL_SIZE);
                   }}
                 />
                 <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
                   <div>
-                {snapshot.savedState === "unavailable" && (
-                  <p role="status" className="mb-3 mt-4 text-sm text-muted-foreground">
-                    Saved status is temporarily unavailable.
-                  </p>
-                )}
-                {saveNotice && (
-                  <p
-                    role={saveNotice.kind === "error" ? "alert" : "status"}
-                    aria-live="polite"
-                    className={`mb-3 text-sm ${saveNotice.kind === "error" ? "text-destructive" : "text-foreground"}`}
-                  >
-                    {saveNotice.message}
-                  </p>
-                )}
-                {snapshot.matches.length === 0 && (
-                  <p className="mt-6 text-sm text-muted-foreground">
-                    No current Radar matches are available.
-                  </p>
-                )}
-                {displayedMatches.length > 0 && filteredMatches.length === 0 && (
-                  <div className="mt-6 rounded border border-border p-5">
-                    <p className="text-sm text-muted-foreground">
-                      No matches meet these filters.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFilters({ band: "all", closingSoon: false, newThisWeek: false });
-                        setRevealCount(RADAR_REVEAL_SIZE);
-                      }}
-                      className="mt-2 text-sm font-medium text-primary hover:underline"
-                    >
-                      Reset filters
-                    </button>
-                  </div>
-                )}
-                <ul className="flex flex-col gap-3">
-                  {revealRadarMatches(
-                    sortRadarMatches(filteredMatches, sort),
-                    revealCount,
-                  ).map((match) => (
-                    <RadarCard
-                      key={match.matchingScoreId}
-                      match={match}
-                      saveDisabled={snapshot.savedState !== "ready"}
-                      saving={savingIds.includes(match.tenderId)}
-                      onToggleSave={async (selected) => {
-                        if (
-                          snapshot.savedState !== "ready" ||
-                          savingIds.includes(selected.tenderId)
-                        ) {
-                          return;
+                    {snapshot.savedState === "unavailable" && (
+                      <p
+                        role="status"
+                        className="mb-3 mt-4 text-sm text-muted-foreground"
+                      >
+                        Saved status is temporarily unavailable.
+                      </p>
+                    )}
+                    {saveNotice && (
+                      <p
+                        role={saveNotice.kind === "error" ? "alert" : "status"}
+                        aria-live="polite"
+                        className={`mb-3 text-sm ${saveNotice.kind === "error" ? "text-destructive" : "text-foreground"}`}
+                      >
+                        {saveNotice.message}
+                      </p>
+                    )}
+                    {snapshot.matches.length === 0 && (
+                      <p className="mt-6 text-sm text-muted-foreground">
+                        No current Radar matches are available.
+                      </p>
+                    )}
+                    {displayedMatches.length > 0 &&
+                      filteredMatches.length === 0 && (
+                        <div className="mt-6 rounded border border-border p-5">
+                          <p className="text-sm text-muted-foreground">
+                            No matches meet these filters.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFilters({
+                                band: "all",
+                                closingSoon: false,
+                                newThisWeek: false,
+                              });
+                              setRevealCount(RADAR_REVEAL_SIZE);
+                            }}
+                            className="mt-2 text-sm font-medium text-primary hover:underline"
+                          >
+                            Reset filters
+                          </button>
+                        </div>
+                      )}
+                    <ul className="flex flex-col gap-3">
+                      {revealRadarMatches(
+                        sortRadarMatches(filteredMatches, sort),
+                        revealCount,
+                      ).map((match) => (
+                        <RadarCard
+                          key={match.matchingScoreId}
+                          match={match}
+                          saveDisabled={snapshot.savedState !== "ready"}
+                          saving={savingIds.includes(match.tenderId)}
+                          onToggleSave={async (selected) => {
+                            if (
+                              snapshot.savedState !== "ready" ||
+                              savingIds.includes(selected.tenderId)
+                            ) {
+                              return;
+                            }
+                            setSavingIds((ids) => [...ids, selected.tenderId]);
+                            setSaveNotice(null);
+                            try {
+                              const saved = await savedTenders.toggleSave(
+                                selected.tenderId,
+                              );
+                              setSavedOverrides((current) => ({
+                                ...current,
+                                [selected.tenderId]: saved,
+                              }));
+                              setSaveNotice({
+                                kind: "success",
+                                message: saved
+                                  ? `${selected.title} saved.`
+                                  : `${selected.title} removed from saved tenders.`,
+                              });
+                              state.reload();
+                            } catch {
+                              setSaveNotice({
+                                kind: "error",
+                                message: `Could not update saved state for ${selected.title}.`,
+                              });
+                            } finally {
+                              setSavingIds((ids) =>
+                                ids.filter((id) => id !== selected.tenderId),
+                              );
+                            }
+                          }}
+                        />
+                      ))}
+                    </ul>
+                    {filteredMatches.length > revealCount && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRevealCount((count) => count + RADAR_REVEAL_SIZE)
                         }
-                        setSavingIds((ids) => [...ids, selected.tenderId]);
-                        setSaveNotice(null);
-                        try {
-                          const saved = await savedTenders.toggleSave(selected.tenderId);
-                          setSavedOverrides((current) => ({
-                            ...current,
-                            [selected.tenderId]: saved,
-                          }));
-                          setSaveNotice({
-                            kind: "success",
-                            message: saved
-                              ? `${selected.title} saved.`
-                              : `${selected.title} removed from saved tenders.`,
-                          });
-                          state.reload();
-                        } catch {
-                          setSaveNotice({
-                            kind: "error",
-                            message: `Could not update saved state for ${selected.title}.`,
-                          });
-                        } finally {
-                          setSavingIds((ids) =>
-                            ids.filter((id) => id !== selected.tenderId),
-                          );
-                        }
-                      }}
-                    />
-                  ))}
-                </ul>
-                {filteredMatches.length > revealCount && (
-                  <button
-                    type="button"
-                    onClick={() => setRevealCount((count) => count + RADAR_REVEAL_SIZE)}
-                    className="mt-5 rounded border border-border px-4 py-2 text-sm font-medium text-foreground"
-                  >
-                    Load 15 more
-                  </button>
-                )}
+                        className="mt-5 rounded border border-border px-4 py-2 text-sm font-medium text-foreground"
+                      >
+                        Load 15 more
+                      </button>
+                    )}
                   </div>
                   <RadarSidebar
                     profile={snapshot.profile}
@@ -409,11 +447,7 @@ function FullRadarController({
   );
 }
 
-function CompactRadar({
-  endpoint,
-}: {
-  endpoint: RecommendationsEndpoint;
-}) {
+function CompactRadar({ endpoint }: { endpoint: RecommendationsEndpoint }) {
   const query = { minScore: 60, offset: 0, limit: 5 };
   const state = useWorkspaceAsync({
     key: workspaceQueryKey("radar", query),
@@ -424,12 +458,13 @@ function CompactRadar({
   });
 
   return (
-    <section
-      aria-labelledby="company-matches-heading"
-    >
+    <section aria-labelledby="company-matches-heading">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h2 id="company-matches-heading" className="text-base font-semibold text-foreground">
+          <h2
+            id="company-matches-heading"
+            className="text-base font-semibold text-foreground"
+          >
             Prioritised opportunities
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -473,7 +508,6 @@ function CompactRadar({
                     />
                   ))}
                 </ul>
-
               </>
             );
           }}

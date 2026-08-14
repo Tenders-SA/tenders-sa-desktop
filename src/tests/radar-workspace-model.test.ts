@@ -70,7 +70,9 @@ describe("Radar workspace model", () => {
     ["professional", 50],
     ["enterprise", 50],
   ] as const)("caps %s at %s", (access, expected) => {
-    const matches = Array.from({ length: 60 }, (_, index) => match(String(index), 80));
+    const matches = Array.from({ length: 60 }, (_, index) =>
+      match(String(index), 80),
+    );
     expect(capRadarMatches(matches, access)).toHaveLength(expected);
   });
 
@@ -123,7 +125,9 @@ describe("Radar workspace model", () => {
     const first = { ...match("a", 70), gaps: [" CIDB grade ", "B-BBEE"] };
     const second = { ...match("b", 60), gaps: ["cidb GRADE", "b-bbee"] };
     expect(findTopRadarGap([first, second])).toBe("CIDB grade");
-    expect(findTopRadarGap([{ ...match("c", 50), gaps: ["", "  "] }])).toBeNull();
+    expect(
+      findTopRadarGap([{ ...match("c", 50), gaps: ["", "  "] }]),
+    ).toBeNull();
   });
 
   it("combines honest date filters and does not treat invalid dates as current", () => {
@@ -154,8 +158,12 @@ describe("Radar workspace model", () => {
       estimatedValue: 100,
     };
     const source = [unknown, known];
-    expect(sortRadarMatches(source, "closing_soon")[0].matchingScoreId).toBe("known");
-    expect(sortRadarMatches(source, "highest_value")[0].matchingScoreId).toBe("known");
+    expect(sortRadarMatches(source, "closing_soon")[0].matchingScoreId).toBe(
+      "known",
+    );
+    expect(sortRadarMatches(source, "highest_value")[0].matchingScoreId).toBe(
+      "known",
+    );
     expect(source[0]).toBe(unknown);
   });
 
@@ -168,13 +176,30 @@ describe("Radar workspace model", () => {
       scenario: { highlyQualified: 1, potential: 0, nearMiss: 0, total: 1 },
       delta: { averageDelta: 22, improvedCount: 1, topMovers: [] },
       rows: [
-        { id: "a", title: "Tender a", currentScore: 50, scenarioScore: 72, delta: 22 },
+        {
+          id: "a",
+          title: "Tender a",
+          currentScore: 50,
+          scenarioScore: 72,
+          delta: 22,
+        },
       ],
     };
     const overlay = applyRadarScenario(base, scenario);
-    expect(sortRadarMatches(overlay, "best_match")[0].matchingScoreId).toBe("a");
-    expect(overlay[0]).toMatchObject({ score: 50, scenarioScore: 72, scenarioDelta: 22 });
+    expect(sortRadarMatches(overlay, "best_match")[0].matchingScoreId).toBe(
+      "a",
+    );
+    expect(overlay[0]).toMatchObject({
+      score: 50,
+      scenarioScore: 72,
+      scenarioDelta: 22,
+    });
     expect(base[0].scenarioScore).toBeUndefined();
-    expect(revealRadarMatches(Array.from({ length: 20 }, (_, index) => match(String(index), 50)), 15)).toHaveLength(15);
+    expect(
+      revealRadarMatches(
+        Array.from({ length: 20 }, (_, index) => match(String(index), 50)),
+        15,
+      ),
+    ).toHaveLength(15);
   });
 });

@@ -81,37 +81,51 @@ describe("Tender Radar screen", () => {
     } as unknown as RecommendationsEndpoint;
   }
 
-  function fullRadar(overrides: {
-    recommendations?: RecommendationsEndpoint;
-    savedTenders?: SavedTendersEndpoint;
-    company?: CompanyEndpoint;
-    subscription?: SubscriptionEndpoint;
-  } = {}) {
+  function fullRadar(
+    overrides: {
+      recommendations?: RecommendationsEndpoint;
+      savedTenders?: SavedTendersEndpoint;
+      company?: CompanyEndpoint;
+      subscription?: SubscriptionEndpoint;
+    } = {},
+  ) {
     return (
       <TenderRadar
-        recommendations={overrides.recommendations ?? endpoint({
-          state: "ready",
-          recommendations: [recommendation],
-          hasMore: false,
-          offset: 0,
-          limit: 50,
-        })}
-        savedTenders={overrides.savedTenders ?? ({
-          listAllIds: vi.fn(async () => ["t1"]),
-          toggleSave: vi.fn(),
-        } as unknown as SavedTendersEndpoint)}
-        company={overrides.company ?? ({
-          getExtendedProfile: vi.fn(async () => ({
-            company: { id: "c1", name: "Acme", industryCodes: [] },
-            profile: null,
-          })),
-        } as unknown as CompanyEndpoint)}
-        subscription={overrides.subscription ?? ({
-          getStatus: vi.fn(async () => ({
-            kind: "subscribed",
-            subscription: { tier: "professional" },
-          })),
-        } as unknown as SubscriptionEndpoint)}
+        recommendations={
+          overrides.recommendations ??
+          endpoint({
+            state: "ready",
+            recommendations: [recommendation],
+            hasMore: false,
+            offset: 0,
+            limit: 50,
+          })
+        }
+        savedTenders={
+          overrides.savedTenders ??
+          ({
+            listAllIds: vi.fn(async () => ["t1"]),
+            toggleSave: vi.fn(),
+          } as unknown as SavedTendersEndpoint)
+        }
+        company={
+          overrides.company ??
+          ({
+            getExtendedProfile: vi.fn(async () => ({
+              company: { id: "c1", name: "Acme", industryCodes: [] },
+              profile: null,
+            })),
+          } as unknown as CompanyEndpoint)
+        }
+        subscription={
+          overrides.subscription ??
+          ({
+            getStatus: vi.fn(async () => ({
+              kind: "subscribed",
+              subscription: { tier: "professional" },
+            })),
+          } as unknown as SubscriptionEndpoint)
+        }
       />
     );
   }
@@ -134,28 +148,44 @@ describe("Tender Radar screen", () => {
   });
 
   it("keeps matches visible when profile and saved reads fail", async () => {
-    wrap(fullRadar({
-      savedTenders: {
-        listAllIds: vi.fn(async () => { throw new Error("saved down"); }),
-      } as unknown as SavedTendersEndpoint,
-      company: {
-        getExtendedProfile: vi.fn(async () => { throw new Error("profile down"); }),
-      } as unknown as CompanyEndpoint,
-    }));
+    wrap(
+      fullRadar({
+        savedTenders: {
+          listAllIds: vi.fn(async () => {
+            throw new Error("saved down");
+          }),
+        } as unknown as SavedTendersEndpoint,
+        company: {
+          getExtendedProfile: vi.fn(async () => {
+            throw new Error("profile down");
+          }),
+        } as unknown as CompanyEndpoint,
+      }),
+    );
 
     expect(await screen.findByText("82% match")).toBeVisible();
-    expect(screen.getByText(/saved status is temporarily unavailable/i)).toBeVisible();
-    expect(screen.getByText(/profile guidance is temporarily unavailable/i)).toBeVisible();
+    expect(
+      screen.getByText(/saved status is temporarily unavailable/i),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/profile guidance is temporarily unavailable/i),
+    ).toBeVisible();
   });
 
   it("does not turn an entitlement outage into a free-tier state", async () => {
-    wrap(fullRadar({
-      subscription: {
-        getStatus: vi.fn(async () => {
-          throw new ApiError({ kind: "server", message: "billing down", status: 500 });
-        }),
-      } as unknown as SubscriptionEndpoint,
-    }));
+    wrap(
+      fullRadar({
+        subscription: {
+          getStatus: vi.fn(async () => {
+            throw new ApiError({
+              kind: "server",
+              message: "billing down",
+              status: 500,
+            });
+          }),
+        } as unknown as SubscriptionEndpoint,
+      }),
+    );
 
     expect(await screen.findByRole("alert")).toBeVisible();
     expect(screen.queryByText(/upgrade/i)).toBeNull();
@@ -168,7 +198,9 @@ describe("Tender Radar screen", () => {
     ).toBeVisible();
     expect(screen.getByText(/professional · up to 50 matches/i)).toBeVisible();
     expect(screen.getByText(/radar last calculated/i)).toBeVisible();
-    expect(screen.getByText("All matches").nextElementSibling).toHaveTextContent("1");
+    expect(
+      screen.getByText("All matches").nextElementSibling,
+    ).toHaveTextContent("1");
     const qualifiedMetric = screen
       .getAllByText("Highly qualified")
       .find((element) => element.tagName === "DT");
@@ -176,19 +208,25 @@ describe("Tender Radar screen", () => {
   });
 
   it("renders a real free-tier state with existing desktop destinations", async () => {
-    wrap(fullRadar({
-      subscription: {
-        getStatus: vi.fn(async () => ({ kind: "none" })),
-      } as unknown as SubscriptionEndpoint,
-    }));
+    wrap(
+      fullRadar({
+        subscription: {
+          getStatus: vi.fn(async () => ({ kind: "none" })),
+        } as unknown as SubscriptionEndpoint,
+      }),
+    );
 
     expect(
       await screen.findByRole("heading", {
         name: /tender radar is available on starter and above/i,
       }),
     ).toBeVisible();
-    expect(screen.getByRole("link", { name: /browse tenders/i })).toHaveAttribute("href", "/tenders");
-    expect(screen.getByRole("link", { name: /view plan details/i })).toHaveAttribute("href", "/settings");
+    expect(
+      screen.getByRole("link", { name: /browse tenders/i }),
+    ).toHaveAttribute("href", "/tenders");
+    expect(
+      screen.getByRole("link", { name: /view plan details/i }),
+    ).toHaveAttribute("href", "/settings");
   });
 
   it("filters through accessible score-band tabs and resets honestly", async () => {
@@ -196,19 +234,25 @@ describe("Tender Radar screen", () => {
       ...recommendation,
       id: "r2",
       tenderId: "t2",
-      tender: { ...recommendation.tender, id: "t2", title: "Potential roadworks" },
+      tender: {
+        ...recommendation.tender,
+        id: "t2",
+        title: "Potential roadworks",
+      },
       score: 55,
       matchCategory: "good_match" as const,
     };
-    wrap(fullRadar({
-      recommendations: endpoint({
-        state: "ready",
-        recommendations: [recommendation, potential],
-        hasMore: false,
-        offset: 0,
-        limit: 50,
+    wrap(
+      fullRadar({
+        recommendations: endpoint({
+          state: "ready",
+          recommendations: [recommendation, potential],
+          hasMore: false,
+          offset: 0,
+          limit: 50,
+        }),
       }),
-    }));
+    );
 
     const user = userEvent.setup();
     await screen.findByText("82% match");
@@ -224,22 +268,30 @@ describe("Tender Radar screen", () => {
       ...recommendation,
       id: `r-${index}`,
       tenderId: `t-${index}`,
-      tender: { ...recommendation.tender, id: `t-${index}`, title: `Radar item ${index + 1}` },
+      tender: {
+        ...recommendation.tender,
+        id: `t-${index}`,
+        title: `Radar item ${index + 1}`,
+      },
       score: 82 - index / 10,
     }));
-    wrap(fullRadar({
-      recommendations: endpoint({
-        state: "ready",
-        recommendations,
-        hasMore: false,
-        offset: 0,
-        limit: 50,
+    wrap(
+      fullRadar({
+        recommendations: endpoint({
+          state: "ready",
+          recommendations,
+          hasMore: false,
+          offset: 0,
+          limit: 50,
+        }),
       }),
-    }));
+    );
 
     expect(await screen.findByText("Radar item 15")).toBeVisible();
     expect(screen.queryByText("Radar item 16")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: /load 15 more/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /load 15 more/i }),
+    );
     expect(screen.getByText("Radar item 16")).toBeVisible();
   });
 
@@ -257,30 +309,36 @@ describe("Tender Radar screen", () => {
       reasoning: null,
       improvementAreas: null,
     };
-    wrap(fullRadar({
-      recommendations: endpoint({
-        state: "ready",
-        recommendations: [partial],
-        hasMore: false,
-        offset: 0,
-        limit: 50,
+    wrap(
+      fullRadar({
+        recommendations: endpoint({
+          state: "ready",
+          recommendations: [partial],
+          hasMore: false,
+          offset: 0,
+          limit: 50,
+        }),
       }),
-    }));
+    );
 
     expect(await screen.findByText(/closing date unknown/i)).toBeVisible();
     expect(screen.getByText(/value not recorded/i)).toBeVisible();
     expect(screen.getByText(/buyer not recorded/i)).toBeVisible();
-    expect(screen.queryByText(/eligible only|not relevant|joint venture/i)).toBeNull();
+    expect(
+      screen.queryByText(/eligible only|not relevant|joint venture/i),
+    ).toBeNull();
   });
 
   it("adopts the server-returned saved state after one toggle", async () => {
     const toggleSave = vi.fn(async () => false);
-    wrap(fullRadar({
-      savedTenders: {
-        listAllIds: vi.fn(async () => ["t1"]),
-        toggleSave,
-      } as unknown as SavedTendersEndpoint,
-    }));
+    wrap(
+      fullRadar({
+        savedTenders: {
+          listAllIds: vi.fn(async () => ["t1"]),
+          toggleSave,
+        } as unknown as SavedTendersEndpoint,
+      }),
+    );
 
     const user = userEvent.setup();
     const button = await screen.findByRole("button", {
@@ -291,16 +349,22 @@ describe("Tender Radar screen", () => {
     expect(
       await screen.findByText(/bridge repairs removed from saved tenders/i),
     ).toBeVisible();
-    expect(screen.getByRole("button", { name: /save bridge repairs/i })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /save bridge repairs/i }),
+    ).toBeVisible();
   });
 
   it("disables save controls while initial saved state is unavailable", async () => {
-    wrap(fullRadar({
-      savedTenders: {
-        listAllIds: vi.fn(async () => { throw new Error("saved down"); }),
-        toggleSave: vi.fn(),
-      } as unknown as SavedTendersEndpoint,
-    }));
+    wrap(
+      fullRadar({
+        savedTenders: {
+          listAllIds: vi.fn(async () => {
+            throw new Error("saved down");
+          }),
+          toggleSave: vi.fn(),
+        } as unknown as SavedTendersEndpoint,
+      }),
+    );
 
     expect(
       await screen.findByRole("button", { name: /save bridge repairs/i }),
@@ -308,12 +372,16 @@ describe("Tender Radar screen", () => {
   });
 
   it("keeps the known saved state when a toggle fails", async () => {
-    wrap(fullRadar({
-      savedTenders: {
-        listAllIds: vi.fn(async () => []),
-        toggleSave: vi.fn(async () => { throw new Error("save down"); }),
-      } as unknown as SavedTendersEndpoint,
-    }));
+    wrap(
+      fullRadar({
+        savedTenders: {
+          listAllIds: vi.fn(async () => []),
+          toggleSave: vi.fn(async () => {
+            throw new Error("save down");
+          }),
+        } as unknown as SavedTendersEndpoint,
+      }),
+    );
 
     await userEvent.click(
       await screen.findByRole("button", { name: /save bridge repairs/i }),
@@ -321,38 +389,43 @@ describe("Tender Radar screen", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /could not update saved state/i,
     );
-    expect(screen.getByRole("button", { name: /save bridge repairs/i })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /save bridge repairs/i }),
+    ).toBeVisible();
   });
 
   it("shows six-signal profile guidance and the deterministic top gap", async () => {
-    wrap(fullRadar({
-      company: {
-        getExtendedProfile: vi.fn(async () => ({
-          company: {
-            id: "c1",
-            name: "Acme",
-            registrationNumber: "2020/1",
-            bbbeeLevel: 2,
-            industryCodes: ["4100"],
-            annualTurnover: 5_000_000,
-          },
-          profile: { cidbGrading: "6CE", companyType: "PRIVATE_COMPANY" },
-        })),
-      } as unknown as CompanyEndpoint,
-    }));
+    wrap(
+      fullRadar({
+        company: {
+          getExtendedProfile: vi.fn(async () => ({
+            company: {
+              id: "c1",
+              name: "Acme",
+              registrationNumber: "2020/1",
+              bbbeeLevel: 2,
+              industryCodes: ["4100"],
+              annualTurnover: 5_000_000,
+            },
+            profile: { cidbGrading: "6CE", companyType: "PRIVATE_COMPANY" },
+          })),
+        } as unknown as CompanyEndpoint,
+      }),
+    );
 
     expect(
-      await screen.findByRole("complementary", { name: /radar profile guidance/i }),
+      await screen.findByRole("complementary", {
+        name: /radar profile guidance/i,
+      }),
     ).toBeVisible();
     expect(screen.getByText("100%")).toBeVisible();
     expect(screen.getByText(/profile 100% complete/i)).toBeVisible();
     expect(screen.getByText("Registration number")).toBeVisible();
     expect(screen.getByText("Company type")).toBeVisible();
     expect(screen.getAllByText("CIDB grade 6 required")).toHaveLength(2);
-    expect(screen.getByRole("link", { name: /review company profile/i })).toHaveAttribute(
-      "href",
-      "/company",
-    );
+    expect(
+      screen.getByRole("link", { name: /review company profile/i }),
+    ).toHaveAttribute("href", "/company");
   });
 
   it("applies a paid server scenario temporarily and restores the previous sort", async () => {
@@ -370,7 +443,13 @@ describe("Tender Radar screen", () => {
       scenario: { highlyQualified: 1, potential: 0, nearMiss: 0, total: 1 },
       delta: { averageDelta: 8, improvedCount: 1, topMovers: [] },
       rows: [
-        { id: "r1", title: "Bridge repairs", currentScore: 82, scenarioScore: 90, delta: 8 },
+        {
+          id: "r1",
+          title: "Bridge repairs",
+          currentScore: 82,
+          scenarioScore: 90,
+          delta: 8,
+        },
       ],
     }));
     wrap(fullRadar({ recommendations }));
@@ -378,30 +457,40 @@ describe("Tender Radar screen", () => {
 
     const sort = await screen.findByLabelText(/sort matches/i);
     await user.selectOptions(sort, "highest_value");
-    await user.click(screen.getByRole("button", { name: /open scenario preview/i }));
-    await user.click(screen.getByRole("button", { name: /run scenario scan/i }));
+    await user.click(
+      screen.getByRole("button", { name: /open scenario preview/i }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /run scenario scan/i }),
+    );
 
     expect(await screen.findByText("90% match")).toBeVisible();
     expect(screen.getByText(/projected \+8 points/i)).toBeVisible();
     expect(sort).toHaveValue("best_match");
     await user.click(
-      screen.getByRole("button", { name: /exit scenario and restore base scores/i }),
+      screen.getByRole("button", {
+        name: /exit scenario and restore base scores/i,
+      }),
     );
     expect(screen.getByText("82% match")).toBeVisible();
     expect(sort).toHaveValue("highest_value");
   });
 
   it("does not present scenario scanning to Starter accounts", async () => {
-    wrap(fullRadar({
-      subscription: {
-        getStatus: vi.fn(async () => ({
-          kind: "subscribed",
-          subscription: { tier: "starter" },
-        })),
-      } as unknown as SubscriptionEndpoint,
-    }));
+    wrap(
+      fullRadar({
+        subscription: {
+          getStatus: vi.fn(async () => ({
+            kind: "subscribed",
+            subscription: { tier: "starter" },
+          })),
+        } as unknown as SubscriptionEndpoint,
+      }),
+    );
     await screen.findByRole("heading", { name: /your tender radar/i });
-    expect(screen.queryByRole("button", { name: /open scenario preview/i })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /open scenario preview/i }),
+    ).toBeNull();
   });
 
   it("reports a denied scenario without altering the base score", async () => {
@@ -420,8 +509,12 @@ describe("Tender Radar screen", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /open scenario preview/i }),
     );
-    await userEvent.click(screen.getByRole("button", { name: /run scenario scan/i }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/base radar scores are unchanged/i);
+    await userEvent.click(
+      screen.getByRole("button", { name: /run scenario scan/i }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /base radar scores are unchanged/i,
+    );
     expect(screen.getByText("82% match")).toBeVisible();
   });
 
