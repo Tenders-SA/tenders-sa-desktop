@@ -560,6 +560,89 @@ describe("recommendations endpoint (Tender Radar)", () => {
       });
     }
   });
+
+  it("posts a validated scenario and unwraps every projected score row", async () => {
+    const { endpoint, fetchImpl } = harness(RecommendationsEndpoint, () =>
+      jsonResponse(radarParityContractFixtures.scenario),
+    );
+
+    const result = await endpoint.scanScenario({
+      scenarioType: "cidb",
+      cidbGrading: "6CE",
+    });
+
+    expect(result.rows[0]).toMatchObject({
+      id: "matching-score-1",
+      currentScore: 50,
+      scenarioScore: 72,
+      delta: 22,
+    });
+    const [url, init] = lastCall(fetchImpl);
+    expect(url).toContain("/api/radar/scenario-scan");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({
+      scenarioType: "cidb",
+      cidbGrading: "6CE",
+    });
+  });
+
+  it("rejects malformed scenario envelopes", async () => {
+    const { endpoint } = harness(RecommendationsEndpoint, () =>
+      jsonResponse({ success: true, data: { rows: [] } }),
+    );
+    await expect(
+      endpoint.scanScenario({ scenarioType: "standard" }),
+    ).rejects.toMatchObject({ kind: "malformed" });
+  });
+
+  it.each([
+    [403, "forbidden"],
+    [500, "server"],
+  ])("keeps scenario HTTP %s as a %s error", async (status, kind) => {
+    const { endpoint } = harness(RecommendationsEndpoint, () =>
+      jsonResponse({ error: "Scan unavailable" }, status),
+    );
+    await expect(
+      endpoint.scanScenario({ scenarioType: "standard" }),
+    ).rejects.toMatchObject({ kind });
+  });
+
+  it("passes scenario cancellation through and never retries the mutation", async () => {
+    let calls = 0;
+    let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
+    const fetchImpl = vi.fn(
+      async (_url: string, init?: RequestInit): Promise<Response> => {
+        calls += 1;
+        markStarted();
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        });
+      },
+    );
+    const endpoint = new RecommendationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+    const controller = new AbortController();
+    const pending = endpoint.scanScenario(
+      { scenarioType: "standard" },
+      controller.signal,
+    );
+    await started;
+    controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ kind: "cancelled" });
+    expect(calls).toBe(1);
+  });
 });
 
 describe("saved tenders endpoint (Opportunities)", () => {

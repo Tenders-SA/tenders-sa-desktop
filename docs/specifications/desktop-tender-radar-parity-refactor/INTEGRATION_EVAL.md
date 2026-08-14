@@ -11,25 +11,25 @@ implementation complete until the final result is PASS.
 - [x] Desktop `main` and parent reference have been re-synchronized/read.
 - [x] Recent Radar history and every current `TenderRadar` consumer were reviewed.
 - [x] Parent API shapes still match the requirements contract matrix.
-- [ ] No canonical parent Radar read endpoint has appeared since spec creation.
-- [ ] No Tier 1/Tier 2 parent file or desktop auth transport requires modification.
+- [x] No canonical parent Radar read endpoint has appeared since spec creation.
+- [x] No Tier 1/Tier 2 parent file or desktop auth transport requires modification.
 - [x] User-owned `AGENTS.md` and `.codex-runtime/` state remains outside task scope.
 
 ## Phase 0 evaluation — reality and boundary
 
 - [x] Fixtures reproduce current recommendation, entitlement, saved, profile, and
   scenario response shapes.
-- [ ] The existing desktop route/component/adapter are confirmed as canonical owners.
-- [ ] Unsupported fields/actions are still unavailable through a complete contract.
-- [ ] No parent product file was modified.
-- [ ] Enhance-existing remains the correct decision.
+- [x] The existing desktop route/component/adapter are confirmed as canonical owners.
+- [x] Unsupported fields/actions are still unavailable through a complete contract.
+- [x] No parent product file was modified.
+- [x] Enhance-existing remains the correct decision.
 
 ## Phase 1 evaluation — endpoint projections
 
-- [ ] Recommendations at `minScore=30`, `limit=50` validate without changing the
+- [x] Recommendations at `minScore=30`, `limit=50` validate without changing the
   server-authoritative numeric score.
-- [ ] Scenario scan uses the existing authenticated transport and never retries.
-- [ ] Scenario 403, 500, malformed body, and abort remain distinct handled failures.
+- [x] Scenario scan uses the existing authenticated transport and never retries.
+- [x] Scenario 403, 500, malformed body, and abort remain distinct handled failures.
 - [ ] Extended profile projects the six required main-Radar signals.
 - [ ] Missing extended profile is distinct from endpoint failure.
 - [ ] Saved IDs are complete across pagination with no per-card request.

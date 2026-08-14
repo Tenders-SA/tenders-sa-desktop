@@ -85,6 +85,59 @@ const recommendedTenderSchema = z.object({
 
 export type RecommendedTender = z.infer<typeof recommendedTenderSchema>;
 
+const radarScenarioTypeSchema = z.enum([
+  "standard",
+  "jv",
+  "cidb",
+  "bbbee",
+  "province",
+  "combined",
+]);
+
+export const radarScenarioInputSchema = z.object({
+  scenarioType: radarScenarioTypeSchema,
+  cidbGrading: z.string().trim().min(1).optional(),
+  bbbeeLevel: z.number().int().min(1).max(8).optional(),
+  addProvinces: z.array(z.string().trim().min(1)).optional(),
+  addIndustryCodes: z.array(z.string().trim().min(1)).optional(),
+});
+
+const radarCategoryBreakdownSchema = z.object({
+  highlyQualified: z.number().int().nonnegative(),
+  potential: z.number().int().nonnegative(),
+  nearMiss: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+});
+
+const radarScenarioRowSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  currentScore: z.number(),
+  scenarioScore: z.number(),
+  delta: z.number(),
+});
+
+const radarScenarioResultSchema = z.object({
+  scenarioType: radarScenarioTypeSchema,
+  scannedCount: z.number().int().nonnegative(),
+  current: radarCategoryBreakdownSchema,
+  scenario: radarCategoryBreakdownSchema,
+  delta: z.object({
+    averageDelta: z.number(),
+    improvedCount: z.number().int().nonnegative(),
+    topMovers: z.array(radarScenarioRowSchema),
+  }),
+  rows: z.array(radarScenarioRowSchema),
+});
+
+const radarScenarioResponseSchema = z.object({
+  success: z.literal(true),
+  data: radarScenarioResultSchema,
+});
+
+export type RadarScenarioInput = z.infer<typeof radarScenarioInputSchema>;
+export type RadarScenarioResult = z.infer<typeof radarScenarioResultSchema>;
+
 /**
  * `state` distinguishes "you have no profile" from "your profile matched
  * nothing", which are different problems with different fixes.
@@ -251,6 +304,26 @@ export class RecommendationsEndpoint extends AuthenticatedEndpoint {
       headers: await this.authHeaders(),
       signal,
     });
+  }
+
+  /**
+   * Runs the parent-owned, Pro/Enterprise-gated what-if calculation.
+   * Spec: desktop-tender-radar-parity-refactor §TASK-1.1.
+   */
+  async scanScenario(
+    input: RadarScenarioInput,
+    signal?: AbortSignal,
+  ): Promise<RadarScenarioResult> {
+    const body = radarScenarioInputSchema.parse(input);
+    const response = await this.transport.request({
+      method: "POST",
+      path: "/api/radar/scenario-scan",
+      body,
+      schema: radarScenarioResponseSchema,
+      headers: await this.authHeaders(),
+      signal,
+    });
+    return response.data;
   }
 }
 

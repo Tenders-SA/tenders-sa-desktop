@@ -10,7 +10,7 @@
 ## Current status
 
 - [x] Specification approved
-- [ ] Phase 0 complete
+- [x] Phase 0 complete
 - [ ] Phase 1 complete
 - [ ] Phase 2 complete
 - [ ] Phase 3 complete
@@ -28,7 +28,7 @@
   - **Verify:** Focused tests demonstrate the old standalone screen behavior and the exact existing endpoint shapes; record any contract drift before proceeding.
   - **Commit:** `test(tender-radar-parity/0.1): lock existing radar contracts`
 
-- [ ] **TASK-0.2: Confirm the desktop-only boundary and unsupported parity matrix**
+- [x] **TASK-0.2: Confirm the desktop-only boundary and unsupported parity matrix**
   - **Refs:** REQ-7, REQ-12, REQ-14, INT-6, DATA-1
   - **Files:** Review-only gate; update these specification files only if repo reality changed
   - **Pre-check:** Search again for a canonical parent Radar API, idempotent dismiss/undo, eligibility status, AI summary, and server-backed digest preference.
@@ -38,7 +38,7 @@
 
 ## Phase 1 — existing endpoint projections
 
-- [ ] **TASK-1.1: Extend the existing RecommendationsEndpoint for Radar parity inputs**
+- [x] **TASK-1.1: Extend the existing RecommendationsEndpoint for Radar parity inputs**
   - **Refs:** REQ-2, REQ-3, REQ-11, INT-1, INT-4, REL-1, REL-2
   - **Files:** Modify `src/services/api/endpoints/recommendations.ts`, `src/tests/module-endpoints.test.ts`
   - **Pre-check:** Confirm `RecommendationsEndpoint` is still the sole Radar adapter and `AuthenticatedEndpoint` still applies no-retry semantics to mutations.
