@@ -21,11 +21,6 @@ import {
   saveDownload,
   type SaveDownloadPort,
 } from "../../services/storage/save-download";
-import {
-  createTauriDocumentActionPort,
-  openDownloadedDocument,
-  type DocumentActionPort,
-} from "../../services/storage/document-actions";
 
 export interface DocumentDownloadButtonProps {
   endpoint: {
@@ -40,11 +35,12 @@ export interface DocumentDownloadButtonProps {
   /**
    * Where the downloaded file lands. Defaults to the real Tauri save-dialog
    * port; injectable so screens can drive the whole flow without a Tauri
-   * runtime (mirrors ResponseBlueprintPanel, R-Ex-3).
+   * runtime (mirrors ResponseBlueprintPanel, R-Ex-3). Open is navigation into
+   * the authenticated desktop viewer; it never downloads a temporary OS copy.
    */
   savePort?: SaveDownloadPort;
-  documentActionPort?: DocumentActionPort;
   showOpen?: boolean;
+  onOpen?: () => void;
   compact?: boolean;
   documentNameTooltip?: string;
 }
@@ -52,7 +48,6 @@ export interface DocumentDownloadButtonProps {
 type DownloadState =
   | { status: "idle" }
   | { status: "downloading" }
-  | { status: "opening" }
   | { status: "error"; message: string };
 
 export function DocumentDownloadButton({
@@ -60,8 +55,8 @@ export function DocumentDownloadButton({
   documentId,
   documentName,
   savePort = createTauriSavePort(),
-  documentActionPort = createTauriDocumentActionPort(),
-  showOpen = true,
+  showOpen = false,
+  onOpen,
   compact = false,
   documentNameTooltip,
 }: DocumentDownloadButtonProps) {
@@ -86,25 +81,7 @@ export function DocumentDownloadButton({
     }
   }
 
-  async function openDocument() {
-    setState({ status: "opening" });
-    try {
-      const result = await endpoint.downloadTenderDocument(documentId);
-      await openDownloadedDocument(documentActionPort, documentId, result);
-      setState({ status: "idle" });
-    } catch (error) {
-      if (error instanceof ApiError && error.kind === "cancelled") {
-        setState({ status: "idle" });
-        return;
-      }
-      setState({
-        status: "error",
-        message: describeApiError(error, "this document").message,
-      });
-    }
-  }
-
-  const busy = state.status === "downloading" || state.status === "opening";
+  const busy = state.status === "downloading";
 
   if (compact) {
     return (
@@ -133,23 +110,16 @@ export function DocumentDownloadButton({
               <Download aria-hidden="true" className="size-3.5" />
             )}
           </button>
-          {showOpen && (
+          {showOpen && onOpen && (
             <button
               type="button"
               disabled={busy}
-              onClick={openDocument}
+              onClick={onOpen}
               aria-label={`Open ${documentName ?? "tender document"}`}
               title={`Open ${documentName ?? "tender document"}`}
               className="flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
             >
-              {state.status === "opening" ? (
-                <LoaderCircle
-                  aria-hidden="true"
-                  className="size-3.5 animate-spin"
-                />
-              ) : (
-                <ExternalLink aria-hidden="true" className="size-3.5" />
-              )}
+              <ExternalLink aria-hidden="true" className="size-3.5" />
             </button>
           )}
         </div>
@@ -172,14 +142,14 @@ export function DocumentDownloadButton({
       >
         {state.status === "downloading" ? "Downloading…" : "Download"}
       </button>
-      {showOpen && (
+      {showOpen && onOpen && (
         <button
           type="button"
           disabled={busy}
-          onClick={openDocument}
+          onClick={onOpen}
           className="rounded border border-border px-2.5 py-1 text-xs text-foreground disabled:opacity-50"
         >
-          {state.status === "opening" ? "Opening…" : "Open"}
+          Open
         </button>
       )}
       {documentName && (

@@ -31,6 +31,7 @@ import {
 } from "../../features/applications/workflow/workflow-state";
 import { decodeDraftDocumentKey } from "../../features/applications/workflow/document-route";
 import { ResponseDocumentWorkbench } from "../../features/applications/workflow/ResponseDocumentWorkbench";
+import { TenderDocumentViewerRoute } from "../../features/tenders/TenderDocumentViewerRoute";
 
 export interface AppRoutesProps {
   auth: AuthPort;
@@ -63,6 +64,11 @@ function TenderDetailRoute({ clients }: { clients: ApiClients }) {
       tenderId={tenderId}
       onBack={() => navigate("/tenders")}
       documents={clients.documents}
+      onOpenDocument={(id) =>
+        navigate(
+          `/tenders/${encodeURIComponent(tenderId)}/documents/${encodeURIComponent(id)}`,
+        )
+      }
       actions={
         <TenderActions
           tenderId={tenderId}
@@ -179,6 +185,10 @@ export function AppRoutes({
           <Route
             path="tenders"
             element={<TenderListRoute clients={clients} />}
+          />
+          <Route
+            path="tenders/:tenderId/documents/:documentId"
+            element={<TenderDocumentViewerRoute clients={clients} />}
           />
           <Route
             path="tenders/:tenderId"

@@ -13,6 +13,39 @@
 
 ## Architecture
 
+### Internal viewer amendment
+
+- **Approach**: enhance the existing authenticated document action and tender
+  detail owners. No second resolver, analysis transformation or storage copy.
+- **Route owner**: `TenderDocumentViewerRoute` reads tender detail and mounts one
+  `TenderDocumentViewer` at `/tenders/:tenderId/documents/:documentId`.
+- **Open migration**: `DocumentDownloadButton` accepts an internal navigation
+  callback. All tender consumers supply the tender id and route callback;
+  company-vault rows remain Download-only. The temp OS opener is retired from
+  tender Open UI but its storage helper may remain for non-tender compatibility.
+- **Preview**: the selected document is downloaded through the existing endpoint.
+  PDF bytes are rendered locally with packaged PDF.js; resources are destroyed
+  on replacement. Other formats show a safe fallback card and the established
+  Save dialog action.
+- **Analysis**: select the matching object from `tender.documents[]` and render
+  only its `summary`, `keyPoints`, `analyses[]` fields and processing metadata.
+  No cross-document aggregation or desktop inference.
+
+```text
+route params -> TendersEndpoint.get(tenderId) -> selected document metadata
+                                            -> selected analysis pane
+document id -> DocumentsEndpoint.downloadTenderDocument(id) -> PDF.js preview
+                                                       \----> existing saveDownload
+```
+
+### Amendment files
+
+- Create `TenderDocumentViewer.tsx` and focused viewer tests.
+- Modify router, `TenderDetail`, `TenderDocumentsSection`, Application Workspace,
+  Draft references and `DocumentDownloadButton` to route Open internally.
+- Add packaged `pdfjs-dist`; no CDN worker, runtime script or new origin.
+- Update navigation/reachability, download-action and workflow tests.
+
 ### Canonical flow
 
 ```text
@@ -95,6 +128,10 @@ the native enforcement layer.
 
 ## Compatibility and rollback
 
+- Existing `/tenders/:tenderId` and consolidated analysis remain unchanged.
+- Direct viewer URLs validate both tender and document ids; missing documents
+  show recovery back to the tender rather than silently selecting another.
+
 - Existing Download remains the default action and retains its behavior.
 - All new props are optional for isolated component tests.
 - Rollback removes the added controls/plugin permissions without changing API or
@@ -110,4 +147,3 @@ the native enforcement layer.
   broad filesystem access.
 - Gates: full Vitest, `npm run typecheck`, `npm run lint`, `npm run format:check`,
   and `npm run rust:check`. No build.
-

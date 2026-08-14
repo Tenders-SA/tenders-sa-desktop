@@ -19,7 +19,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { ApiError } from "../services/api/errors";
 import { TenderRadar } from "../features/radar/TenderRadar";
 import { Opportunities } from "../features/opportunities/Opportunities";
@@ -913,11 +913,8 @@ describe("ApplicationWorkspace — tender document downloads (Slice 7)", () => {
   ): DocumentActionPort {
     return {
       chooseDirectory: vi.fn(async () => null),
-      tempDirectory: vi.fn(async () => "C:\\Temp"),
       joinPath: vi.fn(async (...parts: string[]) => parts.join("\\")),
-      createDirectory: vi.fn(async () => {}),
       writeBytes: vi.fn(async () => {}),
-      openPath: vi.fn(async () => {}),
       ...overrides,
     };
   }
@@ -960,41 +957,31 @@ describe("ApplicationWorkspace — tender document downloads (Slice 7)", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("keeps Open single-flight and restores both actions after opening", async () => {
-    let resolveOpen: (() => void) | undefined;
-    const actionPort = documentActionPort({
-      openPath: vi.fn(
-        () =>
-          new Promise<void>((resolve) => {
-            resolveOpen = resolve;
-          }),
-      ),
-    });
+  it("routes Open to the authenticated internal document viewer", async () => {
     const documents = documentsClient();
-    wrap(
-      <ApplicationWorkspace
-        endpoint={endpoint()}
-        applicationId="a1"
-        documents={documents}
-        documentActionPort={actionPort}
-      />,
+    function LocationProbe() {
+      return (
+        <output aria-label="current route">{useLocation().pathname}</output>
+      );
+    }
+    render(
+      <MemoryRouter>
+        <ApplicationWorkspace
+          endpoint={endpoint()}
+          applicationId="a1"
+          documents={documents}
+        />
+        <LocationProbe />
+      </MemoryRouter>,
     );
     await screen.findByText(/tender documents \(2\)/i);
 
     const [open] = screen.getAllByRole("button", { name: "Open" });
     await userEvent.click(open);
-    expect(screen.getByRole("button", { name: "Opening…" })).toBeDisabled();
-    expect(
-      screen.getAllByRole("button", { name: "Download" })[0],
-    ).toBeDisabled();
-    await userEvent.click(screen.getByRole("button", { name: "Opening…" }));
-    expect(documents.downloadTenderDocument).toHaveBeenCalledTimes(1);
-
-    resolveOpen?.();
-    await waitFor(() => expect(open).toBeEnabled());
-    expect(
-      screen.getAllByRole("button", { name: "Download" })[0],
-    ).toBeEnabled();
+    expect(screen.getByLabelText("current route")).toHaveTextContent(
+      "/tenders/t1/documents/d1",
+    );
+    expect(documents.downloadTenderDocument).not.toHaveBeenCalled();
   });
 
   it("reports an honest partial result while attempting every document", async () => {

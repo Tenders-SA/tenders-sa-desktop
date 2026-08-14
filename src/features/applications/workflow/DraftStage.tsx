@@ -8,7 +8,6 @@ import type {
 } from "../../../services/api/endpoints/applications";
 import { ApiError } from "../../../services/api/errors";
 import type { DownloadResult } from "../../../services/api/transport";
-import type { DocumentActionPort } from "../../../services/storage/document-actions";
 import type { SaveDownloadPort } from "../../../services/storage/save-download";
 import {
   createTauriResponseDocStore,
@@ -33,9 +32,9 @@ export function DraftStage({
   documentKey,
   endpoint,
   tenderDocuments,
+  tenderId,
   documentsEndpoint,
   savePort,
-  documentActionPort,
   localStore = defaultLocalStore,
   onNavigate,
 }: {
@@ -43,6 +42,7 @@ export function DraftStage({
   documentKey?: string;
   endpoint: ApplicationsEndpoint;
   tenderDocuments?: ApplicationDetail["tender"]["documents"];
+  tenderId?: string;
   documentsEndpoint?: {
     downloadTenderDocument: (
       id: string,
@@ -50,7 +50,6 @@ export function DraftStage({
     ) => Promise<DownloadResult>;
   };
   savePort?: SaveDownloadPort;
-  documentActionPort?: DocumentActionPort;
   /** Slice 10 — local-first drafting store; fakes in tests. */
   localStore?: ResponseDocLocalStore;
   onNavigate?: (url: string) => void;
@@ -494,9 +493,16 @@ export function DraftStage({
                   <DraftDocumentReferences
                     selected={selected}
                     tenderDocuments={tenderDocuments}
+                    tenderId={tenderId}
                     documentsEndpoint={documentsEndpoint}
                     savePort={savePort}
-                    documentActionPort={documentActionPort}
+                    onOpenDocument={(id) => {
+                      if (tenderId) {
+                        requestNavigation(
+                          `/tenders/${encodeURIComponent(tenderId)}/documents/${encodeURIComponent(id)}`,
+                        );
+                      }
+                    }}
                   />
                 )}
               </div>

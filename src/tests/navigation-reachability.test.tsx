@@ -87,6 +87,12 @@ describe("navigation reachability", () => {
     expect(clients.tenders.get).toHaveBeenCalledWith("t1", expect.anything());
   });
 
+  it("mounts the selected tender document viewer route", () => {
+    renderAt("/tenders/t1/documents/d1");
+    expect(clients.tenders.get).toHaveBeenCalledWith("t1", expect.anything());
+    expect(screen.getByText("Loading tender document…")).toBeVisible();
+  });
+
   it("decodes an id containing a slash rather than splitting the path", () => {
     // Parent ids are cuids today, but the list route links with
     // `encodeURIComponent`, so the detail route has to decode symmetrically.

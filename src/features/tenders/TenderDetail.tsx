@@ -35,6 +35,7 @@ export interface TenderDetailProps {
   };
   savePort?: SaveDownloadPort;
   documentActionPort?: DocumentActionPort;
+  onOpenDocument?: (documentId: string) => void;
 }
 
 type State =
@@ -123,6 +124,7 @@ export function TenderDetail({
   documents,
   savePort,
   documentActionPort,
+  onOpenDocument,
 }: TenderDetailProps) {
   const [state, setState] = useState<State>({ status: "loading" });
 
@@ -288,6 +290,7 @@ export function TenderDetail({
             documents={documents}
             savePort={savePort}
             documentActionPort={documentActionPort}
+            onOpenDocument={onOpenDocument}
           />
 
           {actions}

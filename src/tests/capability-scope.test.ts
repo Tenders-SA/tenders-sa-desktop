@@ -148,16 +148,13 @@ describe("http plugin scope", () => {
     }
   });
 
-  it("grants only write + mkdir filesystem commands (Slices 6 and 8)", () => {
-    // Slice 6 export writes to the path selected by the save dialog. Slice 8
-    // additionally writes a temporary copy beneath $TEMP/tenders-sa before
-    // opening it, and creates that one directory. Any read or recursive fs
-    // command would widen this silently — each must state its reason.
+  it("does not grant static filesystem scope", () => {
+    // Save and directory dialogs extend scope only to a user-selected path.
     const identifiers = capability.permissions.map((p) =>
       typeof p === "string" ? p : p.identifier,
     );
     const fsIds = identifiers.filter((id) => id.startsWith("fs:"));
-    expect(fsIds).toEqual(["fs:allow-write-file", "fs:allow-mkdir"]);
+    expect(fsIds).toEqual([]);
   });
 
   it("grants only save and directory-open dialogs", () => {
@@ -171,33 +168,20 @@ describe("http plugin scope", () => {
     expect(dialogIds).toEqual(["dialog:allow-save", "dialog:allow-open"]);
   });
 
-  it("grants no shell and only the temp-scoped path opener", () => {
+  it("grants no shell or path/URL opener", () => {
     const identifiers = capability.permissions.map((p) =>
       typeof p === "string" ? p : p.identifier,
     );
     expect(identifiers.some((id) => id.startsWith("shell:"))).toBe(false);
-    expect(identifiers.filter((id) => id.startsWith("opener:"))).toEqual([
-      "opener:allow-open-path",
-    ]);
-    expect(identifiers).not.toContain("opener:allow-open-url");
-    expect(identifiers).not.toContain("opener:default");
+    expect(identifiers.some((id) => id.startsWith("opener:"))).toBe(false);
   });
 
-  it("scopes native temp writes and opening to $TEMP/tenders-sa only", () => {
+  it("contains no broad or temporary static path grants", () => {
     const scoped = capability.permissions.filter(
       (permission): permission is Exclude<CapabilityPermission, string> =>
         typeof permission === "object" && "allow" in permission,
     );
-    for (const identifier of [
-      "fs:allow-write-file",
-      "fs:allow-mkdir",
-      "opener:allow-open-path",
-    ]) {
-      const permission = scoped.find(
-        (entry) => entry.identifier === identifier,
-      );
-      expect(permission?.allow).toEqual([{ path: "$TEMP/tenders-sa/**" }]);
-    }
+    expect(JSON.stringify(scoped)).not.toContain("$TEMP");
     expect(JSON.stringify(scoped)).not.toContain("$HOME");
     expect(JSON.stringify(scoped)).not.toContain('"path":"**"');
   });

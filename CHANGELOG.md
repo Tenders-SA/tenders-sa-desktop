@@ -8,6 +8,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A side-by-side tender document viewer that keeps the original file, its
+  document-specific extracted analysis, and the tender's file list together.
+  PDF files include page and zoom controls, while unsupported formats provide
+  a clear download fallback.
+- Tender document Open actions now lead to the internal desktop viewer from
+  tender details, application workspaces, and response-drafting references;
+  Download continues to save the original file.
 - Response-document drafts are now saved locally as you type and restored when
   you reopen a document, so unsaved work survives an app restart.
 - When a save cannot reach the server (offline or a timeout), the response

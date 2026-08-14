@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Least-privilege capability for the main window: core app/window basics, explicit native security commands, SQL access to the single local application database, HTTP access scoped to the Tenders-SA application API path plus the two document-serving origins used by tender downloads (Slice 7), save and directory dialogs, and filesystem/path-opener access restricted to $TEMP/tenders-sa/** (Slice 8). No shell, URL-opening, or broad filesystem access is granted. The http allow-list is a security boundary, not configuration: it bounds the set of origins the runtime API base URL may point at and the origins that may serve document bytes, and src/tests/capability-scope.test.ts fails if it is widened. The API entry is exactly one -- the production application API -- because the application origin is hard-wired to https://www.tenders-sa.org and is never configurable. The two document entries are scoped to the exact serving paths the parent's download-url route resolves to (https://docs.tenders-sa.org/docs/* and https://etenders-api.tenders-sa.org/api/document*); they carry no API key. Save dialogs extend the fs scope at runtime to the user-picked export/document path; Open writes only a temporary copy beneath $TEMP/tenders-sa and opens only that scoped path.",
+  "description": "Least-privilege capability for the main window: core app/window basics, explicit native security commands, SQL access to the single local application database, HTTP access scoped to the Tenders-SA application API path plus the two document-serving origins used by tender downloads, and save/directory dialogs. No shell, URL-opening, path-opening, or broad filesystem access is granted. The http allow-list is a security boundary, not configuration: it bounds the set of origins the runtime API base URL may point at and the origins that may serve document bytes, and src/tests/capability-scope.test.ts fails if it is widened. Save dialogs extend filesystem scope at runtime only to paths selected by the user.",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -22,18 +22,6 @@
       ]
     },
     "dialog:allow-save",
-    "dialog:allow-open",
-    {
-      "identifier": "fs:allow-write-file",
-      "allow": [{ "path": "$TEMP/tenders-sa/**" }]
-    },
-    {
-      "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "$TEMP/tenders-sa/**" }]
-    },
-    {
-      "identifier": "opener:allow-open-path",
-      "allow": [{ "path": "$TEMP/tenders-sa/**" }]
-    }
+    "dialog:allow-open"
   ]
 }

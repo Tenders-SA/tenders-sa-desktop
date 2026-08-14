@@ -38,6 +38,7 @@ export function ResponseDocumentWorkbench({
             documentKey={decodeDraftDocumentKey(documentKey)}
             endpoint={clients.applications}
             tenderDocuments={application.tender.documents}
+            tenderId={application.tender.id}
             documentsEndpoint={clients.documents}
             onNavigate={(url) => navigate(url)}
           />

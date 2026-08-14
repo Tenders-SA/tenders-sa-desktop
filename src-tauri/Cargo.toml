@@ -49,7 +49,6 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 # Slice 8 opens only downloaded temp copies; capability scope is pinned to
 # `$TEMP/tenders-sa/**` and URL opening is never granted.
-tauri-plugin-opener = "2"
 
 [dev-dependencies]
 rusqlite = { version = "0.32", features = ["bundled"] }

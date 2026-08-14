@@ -380,11 +380,8 @@ describe("TenderDetail — document downloads (Slice 7)", () => {
   ): DocumentActionPort {
     return {
       chooseDirectory: vi.fn(async () => null),
-      tempDirectory: vi.fn(async () => "C:\\Temp"),
       joinPath: vi.fn(async (...parts: string[]) => parts.join("\\")),
-      createDirectory: vi.fn(async () => {}),
       writeBytes: vi.fn(async () => {}),
-      openPath: vi.fn(async () => {}),
       ...overrides,
     };
   }
@@ -480,31 +477,23 @@ describe("TenderDetail — document downloads (Slice 7)", () => {
     );
   });
 
-  it("opens a scoped temporary copy through the operating system", async () => {
-    const actionPort = documentActionPort();
+  it("delegates Open to the internal viewer route without downloading first", async () => {
     const documents = documentsClient();
+    const onOpenDocument = vi.fn();
     render(
       <TenderDetail
         endpoint={endpointReturning(withDocuments)}
         tenderId="t1"
         documents={documents}
-        documentActionPort={actionPort}
+        onOpenDocument={onOpenDocument}
       />,
     );
 
     const [open] = await screen.findAllByRole("button", { name: "Open" });
     await userEvent.click(open);
 
-    await waitFor(() =>
-      expect(actionPort.openPath).toHaveBeenCalledWith(
-        "C:\\Temp\\tenders-sa\\d1-Advert.pdf",
-      ),
-    );
-    expect(documents.downloadTenderDocument).toHaveBeenCalledTimes(1);
-    expect(actionPort.writeBytes).toHaveBeenCalledWith(
-      "C:\\Temp\\tenders-sa\\d1-Advert.pdf",
-      pdfBytes,
-    );
+    expect(onOpenDocument).toHaveBeenCalledWith("d1");
+    expect(documents.downloadTenderDocument).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 

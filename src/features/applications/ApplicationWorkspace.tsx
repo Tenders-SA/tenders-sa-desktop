@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AsyncSection, Panel } from "../../components/common/AsyncSection";
 import { useAsync, type AsyncState } from "../../hooks/use-async";
 import {
@@ -162,6 +162,7 @@ function WorkspaceBody({
   savePort?: SaveDownloadPort;
   documentActionPort?: DocumentActionPort;
 }) {
+  const navigate = useNavigate();
   const { tender, company } = application;
 
   return (
@@ -185,7 +186,6 @@ function WorkspaceBody({
           tenders={tenders}
           documents={documents}
           savePort={savePort}
-          documentActionPort={documentActionPort}
         />
       ) : workflowStage === "qualify" && eligibility ? (
         <QualifyStage
@@ -202,9 +202,9 @@ function WorkspaceBody({
           documentKey={documentKey}
           endpoint={endpoint}
           tenderDocuments={tender.documents}
+          tenderId={tender.id}
           documentsEndpoint={documents}
           savePort={savePort}
-          documentActionPort={documentActionPort}
         />
       ) : workflowStage === "review" ? (
         <ReviewStage
@@ -377,7 +377,12 @@ function WorkspaceBody({
                               .filter(Boolean)
                               .join(" · ")}
                             savePort={savePort}
-                            documentActionPort={documentActionPort}
+                            showOpen
+                            onOpen={() =>
+                              navigate(
+                                `/tenders/${encodeURIComponent(tender.id)}/documents/${encodeURIComponent(document.id)}`,
+                              )
+                            }
                           />
                         ) : (
                           <>

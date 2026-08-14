@@ -26,9 +26,6 @@ pub fn run() {
         // so no broad fs scope is granted in capabilities/default.json.
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        // Slice 8 document opening. The capability grants path opening only
-        // beneath `$TEMP/tenders-sa/**`; URL opening and shell stay denied.
-        .plugin(tauri_plugin_opener::init())
         .manage(Box::new(OsKeychain) as Box<dyn SecretStore>)
         .invoke_handler(tauri::generate_handler![
             commands::session::session_store,

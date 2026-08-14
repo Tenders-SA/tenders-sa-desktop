@@ -8,11 +8,8 @@ import {
 function port(directory: string | null = "C:\\Downloads"): DocumentActionPort {
   return {
     chooseDirectory: vi.fn(async () => directory),
-    tempDirectory: vi.fn(),
     joinPath: vi.fn(async (...parts: string[]) => parts.join("\\")),
-    createDirectory: vi.fn(),
     writeBytes: vi.fn(async () => {}),
-    openPath: vi.fn(),
   };
 }
 

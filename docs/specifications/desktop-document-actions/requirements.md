@@ -2,6 +2,14 @@
 
 ## Context
 
+### Internal viewer amendment — approved 2026-08-14
+
+The user has superseded the OS-launch decision for tender documents. Every
+tender-document **Open** action must now navigate to one canonical internal
+viewer, while **Download** continues saving the original bytes. The existing
+authenticated resolver/download contract and tender-detail analysis payload are
+sufficient; the parent repository remains read-only.
+
 - **Approved scope**: user approved document opening, Document Vault downloads,
   and batch tender-document downloads on 2026-08-09. Government-source fallback
   downloads were explicitly excluded.
@@ -31,6 +39,26 @@
 
 ## Functional Requirements
 
+- [ ] R-DA8: `/tenders/:tenderId/documents/:documentId` renders a dedicated,
+  addressable three-pane tender-document verification workspace.
+- [ ] R-DA9: The document rail renders every tender document in server order
+  with a readable filename, file icon, processing/analysis status and exact-id
+  selection. The rail and analysis pane are independently collapsible.
+- [ ] R-DA10: Selecting a document downloads its original bytes once through
+  `DocumentsEndpoint.downloadTenderDocument`; it never fetches metadata
+  `sourceUrl` or a raw/exposed storage URL.
+- [ ] R-DA11: PDFs render inside the desktop application with scrolling, page
+  count/navigation and zoom. Unsupported formats show honest metadata and an
+  explicit Download fallback instead of failing silently.
+- [ ] R-DA12: The analysis pane is scoped only to the selected document and
+  renders its summary, key points, submission guidelines, evaluation criteria,
+  dates, contacts, technical, financial and compliance requirements, confidence
+  and honest pending/empty/failed states.
+- [ ] R-DA13: Every tender-document Open action in Tender Detail, Application
+  Workspace and Draft references navigates to the internal viewer using known
+  tender/document context. The native temp-file opener is no longer a tender-
+  document Open implementation.
+
 - [x] R-DA1: A user can press **Open** on a tender document; the client resolves and
   downloads through `downloadTenderDocument`, writes beneath
   `$TEMP/tenders-sa/**`, and opens it in the OS-associated viewer.
@@ -51,6 +79,15 @@
 
 ## Non-Functional Requirements
 
+- [ ] SEC-DA3: Preview object URLs are created only from authenticated bytes,
+  revoked on selection/unmount, never logged and never persisted.
+- [ ] PERF-DA2: Only the selected document is loaded/rendered; document changes
+  abort stale requests and release the prior preview/PDF resources.
+- [ ] A11Y-DA1: Viewer, page/zoom controls, document selection, collapse controls,
+  errors and fallback downloads are named and keyboard operable.
+- [ ] REL-DA2: A preview or analysis failure degrades only its pane; the document
+  list and Download action remain usable.
+
 - [x] SEC-DA1: Opener access is path-scoped to `$TEMP/tenders-sa/**`; no URL opener,
   shell permission, wildcard path, or broad filesystem read/write scope is granted.
 - [x] SEC-DA2: Batch writes only to a directory explicitly selected by the user;
@@ -62,6 +99,11 @@
 - [x] REL-DA1: A failed item does not abort or delete already-saved batch items.
 
 ## Integration Requirements
+
+- [ ] INT-DA5: Extend the existing route/client/component owners; do not add an
+  HTTP client, parent endpoint, analysis path, native opener path or persistence.
+- [ ] INT-DA6: Preserve the consolidated Tender Analysis Workbench unchanged;
+  the new route presents selected-source verification only.
 
 - [x] INT-DA1: Reuse `DocumentsEndpoint.downloadTenderDocument`; do not add an API
   route, alternate resolver, storage key construction, or external origin.

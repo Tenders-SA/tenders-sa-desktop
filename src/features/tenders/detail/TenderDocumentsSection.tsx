@@ -15,6 +15,7 @@ export interface TenderDocumentsSectionProps {
   };
   savePort?: SaveDownloadPort;
   documentActionPort?: DocumentActionPort;
+  onOpenDocument?: (documentId: string) => void;
 }
 
 /**
@@ -28,6 +29,7 @@ export function TenderDocumentsSection({
   documents,
   savePort,
   documentActionPort,
+  onOpenDocument,
 }: TenderDocumentsSectionProps) {
   const stats = tender.documentStats;
   const count = stats?.total ?? tender.documentCount ?? 0;
@@ -65,7 +67,8 @@ export function TenderDocumentsSection({
                     documentId={document.id}
                     documentName={document.fileName ?? "Unnamed document"}
                     savePort={savePort}
-                    documentActionPort={documentActionPort}
+                    showOpen={Boolean(onOpenDocument)}
+                    onOpen={() => onOpenDocument?.(document.id)}
                   />
                 ) : (
                   <span className="text-sm text-muted-foreground">

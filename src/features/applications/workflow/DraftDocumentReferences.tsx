@@ -5,9 +5,9 @@ import type {
   ResponseBlueprintDoc,
 } from "../../../services/api/endpoints/applications";
 import type { DownloadResult } from "../../../services/api/transport";
-import type { DocumentActionPort } from "../../../services/storage/document-actions";
 import type { SaveDownloadPort } from "../../../services/storage/save-download";
 import { DocumentDownloadButton } from "../../tenders/DocumentDownloadButton";
+import { readableTenderDocumentName } from "../../tenders/document-label";
 
 type TenderDocument = NonNullable<
   ApplicationDetail["tender"]["documents"]
@@ -23,7 +23,8 @@ interface DraftDocumentReferencesProps {
     ) => Promise<DownloadResult>;
   };
   savePort?: SaveDownloadPort;
-  documentActionPort?: DocumentActionPort;
+  tenderId?: string;
+  onOpenDocument?: (documentId: string) => void;
 }
 
 interface ReferencesBodyProps {
@@ -36,7 +37,8 @@ interface ReferencesBodyProps {
     ) => Promise<DownloadResult>;
   };
   savePort?: SaveDownloadPort;
-  documentActionPort?: DocumentActionPort;
+  tenderId?: string;
+  onOpenDocument?: (documentId: string) => void;
 }
 
 /**
@@ -50,7 +52,8 @@ export function DraftDocumentReferences({
   tenderDocuments = [],
   documentsEndpoint,
   savePort,
-  documentActionPort,
+  tenderId,
+  onOpenDocument,
 }: DraftDocumentReferencesProps) {
   const [open, setOpen] = useState(false);
   const documents = tenderDocuments ?? [];
@@ -66,7 +69,8 @@ export function DraftDocumentReferences({
           tenderDocuments={documents}
           documentsEndpoint={documentsEndpoint}
           savePort={savePort}
-          documentActionPort={documentActionPort}
+          tenderId={tenderId}
+          onOpenDocument={onOpenDocument}
         />
       </aside>
 
@@ -107,7 +111,8 @@ export function DraftDocumentReferences({
                 tenderDocuments={documents}
                 documentsEndpoint={documentsEndpoint}
                 savePort={savePort}
-                documentActionPort={documentActionPort}
+                tenderId={tenderId}
+                onOpenDocument={onOpenDocument}
               />
             </div>
           </aside>
@@ -122,7 +127,8 @@ function ReferencesBody({
   tenderDocuments,
   documentsEndpoint,
   savePort,
-  documentActionPort,
+  tenderId,
+  onOpenDocument,
 }: ReferencesBodyProps) {
   const isStructuredDraft = selected.kind === "pricing";
 
@@ -178,7 +184,8 @@ function ReferencesBody({
                     document.fileName ?? document.documentCategory ?? undefined
                   }
                   savePort={savePort}
-                  documentActionPort={documentActionPort}
+                  showOpen={Boolean(tenderId && onOpenDocument)}
+                  onOpen={() => onOpenDocument?.(document.id)}
                   compact
                 />
               ) : (
@@ -203,31 +210,8 @@ function ReferencesBody({
   );
 }
 
-function normalizeTenderFilename(value: string): string {
-  const filename = value.split(/[\\/]/).pop() ?? value;
-  const withoutExtension = filename.replace(/\.[a-z0-9]{1,8}$/i, "");
-  const withoutOpaquePrefix = withoutExtension.replace(
-    /^(?:[a-f0-9]{8,}|\d{6,})[-_ ]+/i,
-    "",
-  );
-  const words = withoutOpaquePrefix
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!words) return "Tender document";
-  return words
-    .split(" ")
-    .map((word) => {
-      const upper = word.toUpperCase();
-      if (["RFQ", "RFP", "SBD", "PDF", "BOQ"].includes(upper)) return upper;
-      return `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`;
-    })
-    .join(" ");
-}
-
 function readableDocumentLabel(document: TenderDocument): string {
-  return normalizeTenderFilename(
+  return readableTenderDocumentName(
     document.fileName ?? document.documentCategory ?? "Tender document",
   );
 }
