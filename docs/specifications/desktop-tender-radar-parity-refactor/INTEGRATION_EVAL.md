@@ -46,9 +46,9 @@ implementation complete until the final result is PASS.
 - [x] Top-gap selection is normalized and deterministic.
 - [x] Filters/sorts do not mutate cached base matches.
 - [x] Scenario overlay does not mutate or persist base scores.
-- [ ] Required-source failures block honestly; auxiliary failures degrade locally.
-- [ ] Cached data renders account-scoped and reconciles through existing status UI.
-- [ ] Embedded and full modes share endpoint/model ownership without sharing the full layout.
+- [x] Required-source failures block honestly; auxiliary failures degrade locally.
+- [x] Cached data renders account-scoped and reconciles through existing status UI.
+- [x] Embedded and full modes share endpoint/model ownership without sharing the full layout.
 
 ## Phase 3 evaluation — user experience
 

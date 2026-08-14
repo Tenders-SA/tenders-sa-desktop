@@ -36,6 +36,7 @@ import type { RecommendationsEndpoint } from "../services/api/endpoints/recommen
 import type { SavedTendersEndpoint } from "../services/api/endpoints/saved-tenders";
 import type { ApplicationsEndpoint } from "../services/api/endpoints/applications";
 import type { CompanyEndpoint } from "../services/api/endpoints/company";
+import type { SubscriptionEndpoint } from "../services/api/endpoints/subscription";
 import type { DocumentsEndpoint } from "../services/api/endpoints/documents";
 import type { PlannerEndpoint } from "../services/api/endpoints/planner";
 import type { NotificationsEndpoint } from "../services/api/endpoints/notifications";
@@ -78,6 +79,86 @@ describe("Tender Radar screen", () => {
       refresh: vi.fn(async () => {}),
     } as unknown as RecommendationsEndpoint;
   }
+
+  function fullRadar(overrides: {
+    recommendations?: RecommendationsEndpoint;
+    savedTenders?: SavedTendersEndpoint;
+    company?: CompanyEndpoint;
+    subscription?: SubscriptionEndpoint;
+  } = {}) {
+    return (
+      <TenderRadar
+        recommendations={overrides.recommendations ?? endpoint({
+          state: "ready",
+          recommendations: [recommendation],
+          hasMore: false,
+          offset: 0,
+          limit: 50,
+        })}
+        savedTenders={overrides.savedTenders ?? ({
+          listAllIds: vi.fn(async () => ["t1"]),
+          toggleSave: vi.fn(),
+        } as unknown as SavedTendersEndpoint)}
+        company={overrides.company ?? ({
+          getExtendedProfile: vi.fn(async () => ({
+            company: { id: "c1", name: "Acme", industryCodes: [] },
+            profile: null,
+          })),
+        } as unknown as CompanyEndpoint)}
+        subscription={overrides.subscription ?? ({
+          getStatus: vi.fn(async () => ({
+            kind: "subscribed",
+            subscription: { tier: "professional" },
+          })),
+        } as unknown as SubscriptionEndpoint)}
+      />
+    );
+  }
+
+  it("composes the full 30-score workspace from existing endpoint owners", async () => {
+    const recommendations = endpoint({
+      state: "ready",
+      recommendations: [recommendation],
+      hasMore: false,
+      offset: 0,
+      limit: 50,
+    });
+    wrap(fullRadar({ recommendations }));
+
+    expect(await screen.findByText("82% match")).toBeVisible();
+    expect(recommendations.list).toHaveBeenCalledWith(
+      { minScore: 30, limit: 50 },
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("keeps matches visible when profile and saved reads fail", async () => {
+    wrap(fullRadar({
+      savedTenders: {
+        listAllIds: vi.fn(async () => { throw new Error("saved down"); }),
+      } as unknown as SavedTendersEndpoint,
+      company: {
+        getExtendedProfile: vi.fn(async () => { throw new Error("profile down"); }),
+      } as unknown as CompanyEndpoint,
+    }));
+
+    expect(await screen.findByText("82% match")).toBeVisible();
+    expect(screen.getByText(/saved status is temporarily unavailable/i)).toBeVisible();
+    expect(screen.getByText(/profile guidance is temporarily unavailable/i)).toBeVisible();
+  });
+
+  it("does not turn an entitlement outage into a free-tier state", async () => {
+    wrap(fullRadar({
+      subscription: {
+        getStatus: vi.fn(async () => {
+          throw new ApiError({ kind: "server", message: "billing down", status: 500 });
+        }),
+      } as unknown as SubscriptionEndpoint,
+    }));
+
+    expect(await screen.findByRole("alert")).toBeVisible();
+    expect(screen.queryByText(/upgrade/i)).toBeNull();
+  });
 
   it("locks the existing standalone listing controls before replacement", async () => {
     // Spec: desktop-tender-radar-parity-refactor §TASK-0.1. These assertions

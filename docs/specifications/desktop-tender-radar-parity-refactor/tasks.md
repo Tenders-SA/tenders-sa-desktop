@@ -12,7 +12,7 @@
 - [x] Specification approved
 - [x] Phase 0 complete
 - [x] Phase 1 complete
-- [ ] Phase 2 complete
+- [x] Phase 2 complete
 - [ ] Phase 3 complete
 - [ ] Phase 4 complete
 - [ ] Integration evaluation passed
@@ -72,7 +72,7 @@
   - **Verify:** Pure tests cover all threshold edges, null/invalid fields, deterministic ties, unknown values, 0/10/50 caps, filter combinations, and base-score immutability.
   - **Commit:** `feat(tender-radar-parity/2.1): add canonical radar workspace model`
 
-- [ ] **TASK-2.2: Refactor TenderRadar into the composite local-first controller**
+- [x] **TASK-2.2: Refactor TenderRadar into the composite local-first controller**
   - **Refs:** REQ-1, REQ-4, REQ-8, REQ-12, REQ-13, INT-2, INT-5, PERF-1, PERF-2
   - **Files:** Modify `src/features/radar/TenderRadar.tsx`, `src/tests/module-screens.test.tsx`
   - **Pre-check:** Read `useWorkspaceAsync`, `workspaceQueryKey`, `AsyncSection`, and `WorkspaceDataStatus`; preserve their account-isolation and stale-refresh semantics.

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { z } from "zod";
 import { AsyncSection } from "../../components/common/AsyncSection";
 import {
   describeMatchCategory,
@@ -12,6 +13,15 @@ import { MatchFactors } from "./MatchFactors";
 import { useWorkspaceAsync } from "../../hooks/use-workspace-async";
 import { workspaceQueryKey } from "../../services/storage/cache-key";
 import { WorkspaceDataStatus } from "../../components/common/WorkspaceDataStatus";
+import type { SavedTendersEndpoint } from "../../services/api/endpoints/saved-tenders";
+import type { CompanyEndpoint } from "../../services/api/endpoints/company";
+import type { SubscriptionEndpoint } from "../../services/api/endpoints/subscription";
+import {
+  capRadarMatches,
+  normalizeRadarMatches,
+  type RadarAccess,
+  type RadarWorkspaceMatch,
+} from "./radar-workspace-model";
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
   style: "currency",
@@ -19,11 +29,57 @@ const ZAR = new Intl.NumberFormat("en-ZA", {
   maximumFractionDigits: 0,
 });
 
-export interface TenderRadarProps {
+type FullTenderRadarProps = {
+  embedded?: false;
+  recommendations: RecommendationsEndpoint;
+  savedTenders: SavedTendersEndpoint;
+  company: CompanyEndpoint;
+  subscription: SubscriptionEndpoint;
+};
+
+type EmbeddedTenderRadarProps = {
+  embedded: true;
+  recommendations: RecommendationsEndpoint;
+};
+
+/** Removed in TASK-3.7 after the two existing consumers are rewired. */
+type TransitionalTenderRadarProps = {
   endpoint: RecommendationsEndpoint;
-  /** Removes the route-level heading when Radar is part of Opportunity Desk. */
   embedded?: boolean;
+};
+
+export type TenderRadarProps =
+  | FullTenderRadarProps
+  | EmbeddedTenderRadarProps
+  | TransitionalTenderRadarProps;
+
+interface RadarWorkspaceSnapshot {
+  access: RadarAccess;
+  matches: RadarWorkspaceMatch[];
+  profileState: "ready" | "missing" | "unavailable";
+  savedState: "ready" | "unavailable";
+  lastUpdated: string | null;
 }
+
+const radarWorkspaceSnapshotSchema = z.custom<RadarWorkspaceSnapshot>(
+  (value) => {
+    if (!value || typeof value !== "object") return false;
+    const candidate = value as Partial<RadarWorkspaceSnapshot>;
+    return (
+      ["free", "starter", "professional", "enterprise"].includes(
+        String(candidate.access),
+      ) &&
+      Array.isArray(candidate.matches) &&
+      ["ready", "missing", "unavailable"].includes(
+        String(candidate.profileState),
+      ) &&
+      ["ready", "unavailable"].includes(String(candidate.savedState)) &&
+      (candidate.lastUpdated === null ||
+        typeof candidate.lastUpdated === "string")
+    );
+  },
+  { message: "Invalid cached Radar workspace" },
+);
 
 /**
  * Tender Radar (brief §6.2) — tenders scored against the company profile.
@@ -40,7 +96,155 @@ export interface TenderRadarProps {
  * is the company profile, not a wider search. Collapsing the two would send a
  * new user hunting for tenders that were never going to appear.
  */
-export function TenderRadar({ endpoint, embedded = false }: TenderRadarProps) {
+export function TenderRadar(props: TenderRadarProps) {
+  if ("endpoint" in props) {
+    return (
+      <CompactRadar endpoint={props.endpoint} embedded={props.embedded ?? false} />
+    );
+  }
+  if (props.embedded) {
+    return <CompactRadar endpoint={props.recommendations} embedded />;
+  }
+  return <FullRadarController {...props} />;
+}
+
+function normalizeAccess(tier: string | undefined): RadarAccess {
+  if (tier === "starter") return "starter";
+  if (tier === "professional" || tier === "pro") return "professional";
+  if (tier === "enterprise") return "enterprise";
+  return "free";
+}
+
+function latestCalculation(matches: readonly RadarWorkspaceMatch[]): string | null {
+  let latest: { value: string; time: number } | null = null;
+  for (const match of matches) {
+    const time = Date.parse(match.calculatedAt);
+    if (Number.isFinite(time) && (!latest || time > latest.time)) {
+      latest = { value: match.calculatedAt, time };
+    }
+  }
+  return latest?.value ?? null;
+}
+
+function FullRadarController({
+  recommendations,
+  savedTenders,
+  company,
+  subscription,
+}: FullTenderRadarProps) {
+  const state = useWorkspaceAsync({
+    key: workspaceQueryKey("radar-workspace-v2", { minScore: 30, limit: 50 }),
+    schema: radarWorkspaceSnapshotSchema,
+    entity: "radar-list",
+    load: async (signal): Promise<RadarWorkspaceSnapshot> => {
+      const [recommendationResult, entitlementResult, profileResult, savedResult] =
+        await Promise.allSettled([
+          recommendations.list({ minScore: 30, limit: 50 }, signal),
+          subscription.getStatus(signal),
+          company.getExtendedProfile(signal),
+          savedTenders.listAllIds(signal),
+        ]);
+
+      if (recommendationResult.status === "rejected") {
+        throw recommendationResult.reason;
+      }
+      if (entitlementResult.status === "rejected") {
+        throw entitlementResult.reason;
+      }
+
+      const entitlement = entitlementResult.value;
+      const access = normalizeAccess(
+        entitlement.kind === "none" ? undefined : entitlement.subscription.tier,
+      );
+      const savedIds =
+        savedResult.status === "fulfilled" ? savedResult.value : [];
+      const normalized = normalizeRadarMatches(
+        recommendationResult.value.recommendations,
+        savedIds,
+      );
+      const matches = capRadarMatches(normalized, access);
+      const noProfile =
+        recommendationResult.value.state === "no_company_profile" ||
+        (profileResult.status === "fulfilled" && profileResult.value === undefined);
+
+      return {
+        access,
+        matches,
+        profileState:
+          profileResult.status === "rejected"
+            ? "unavailable"
+            : noProfile
+              ? "missing"
+              : "ready",
+        savedState: savedResult.status === "fulfilled" ? "ready" : "unavailable",
+        lastUpdated: latestCalculation(matches),
+      };
+    },
+    deps: [recommendations, savedTenders, company, subscription],
+  });
+
+  return (
+    <section aria-labelledby="radar-heading" className="max-w-6xl">
+      <h1 id="radar-heading" className="text-xl font-semibold text-foreground">
+        Tender Radar
+      </h1>
+      <div className="mt-2">
+        <WorkspaceDataStatus
+          stale={state.stale}
+          refreshing={state.refreshing}
+          refreshFailed={state.refreshFailed}
+          subject="saved Radar workspace"
+        />
+      </div>
+      <div className="mt-6">
+        <AsyncSection state={state} subject="your Radar" onRetry={state.reload}>
+          {(snapshot) => {
+            if (snapshot.profileState === "missing") return <NoProfileNotice />;
+            if (snapshot.matches.length === 0) {
+              return (
+                <p className="text-sm text-muted-foreground">
+                  No current Radar matches are available.
+                </p>
+              );
+            }
+            return (
+              <div>
+                {snapshot.savedState === "unavailable" && (
+                  <p role="status" className="mb-3 text-sm text-muted-foreground">
+                    Saved status is temporarily unavailable.
+                  </p>
+                )}
+                {snapshot.profileState === "unavailable" && (
+                  <p role="status" className="mb-3 text-sm text-muted-foreground">
+                    Profile guidance is temporarily unavailable.
+                  </p>
+                )}
+                <ul className="flex flex-col gap-3">
+                  {snapshot.matches.map((match) => (
+                    <li key={match.matchingScoreId} className="rounded border border-border bg-card p-4">
+                      <Link to={`/tenders/${encodeURIComponent(match.tenderId)}`} className="font-medium hover:underline">
+                        {match.title}
+                      </Link>
+                      <p className="mt-1 text-sm text-muted-foreground">{match.score}% match</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }}
+        </AsyncSection>
+      </div>
+    </section>
+  );
+}
+
+function CompactRadar({
+  endpoint,
+  embedded = false,
+}: {
+  endpoint: RecommendationsEndpoint;
+  embedded?: boolean;
+}) {
   const [minScore, setMinScore] = useState(60);
   const [offset, setOffset] = useState(0);
   const [refreshing, setRefreshing] = useState(false);

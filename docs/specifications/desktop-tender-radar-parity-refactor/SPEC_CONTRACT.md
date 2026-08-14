@@ -60,7 +60,7 @@ overlays are desktop projections.
 - [x] **TASK-1.2: Project the existing extended company profile contract**
 - [x] **TASK-1.3: Add complete saved-ID reconciliation without N+1 requests**
 - [x] **TASK-2.1: Implement the pure Radar workspace model**
-- [ ] **TASK-2.2: Refactor TenderRadar into the composite local-first controller**
+- [x] **TASK-2.2: Refactor TenderRadar into the composite local-first controller**
 - [ ] **TASK-3.1: Add the Radar header, tier states, and headline metrics**
 - [ ] **TASK-3.2: Add match navigation, filters, sorting, and local reveal**
 - [ ] **TASK-3.3: Replace generic rows with desktop-native Radar cards**
