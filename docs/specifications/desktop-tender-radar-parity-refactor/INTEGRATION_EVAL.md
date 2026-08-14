@@ -38,14 +38,14 @@ implementation complete until the final result is PASS.
 
 ## Phase 2 evaluation — model and orchestration
 
-- [ ] Score bands pass boundary tests at 29/30/49/50/69/70.
-- [ ] Free/Starter/Professional/Enterprise caps are 0/10/50/50.
-- [ ] Counts are computed after cap and before user filters.
+- [x] Score bands pass boundary tests at 29/30/49/50/69/70.
+- [x] Free/Starter/Professional/Enterprise caps are 0/10/50/50.
+- [x] Counts are computed after cap and before user filters.
 - [ ] Freshness text refers to Radar calculation/update, not publication.
-- [ ] Completeness uses exactly the documented six signals and `20/20/20/20/10/10`.
-- [ ] Top-gap selection is normalized and deterministic.
-- [ ] Filters/sorts do not mutate cached base matches.
-- [ ] Scenario overlay does not mutate or persist base scores.
+- [x] Completeness uses exactly the documented six signals and `20/20/20/20/10/10`.
+- [x] Top-gap selection is normalized and deterministic.
+- [x] Filters/sorts do not mutate cached base matches.
+- [x] Scenario overlay does not mutate or persist base scores.
 - [ ] Required-source failures block honestly; auxiliary failures degrade locally.
 - [ ] Cached data renders account-scoped and reconciles through existing status UI.
 - [ ] Embedded and full modes share endpoint/model ownership without sharing the full layout.

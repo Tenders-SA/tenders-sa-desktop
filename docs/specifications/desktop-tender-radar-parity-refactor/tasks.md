@@ -64,7 +64,7 @@
 
 ## Phase 2 — pure workspace model and orchestration
 
-- [ ] **TASK-2.1: Implement the pure Radar workspace model**
+- [x] **TASK-2.1: Implement the pure Radar workspace model**
   - **Refs:** REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-9, REQ-10, Design §View model
   - **Files:** Create `src/features/radar/radar-workspace-model.ts`, `src/tests/radar-workspace-model.test.ts`
   - **Pre-check:** Reconfirm main thresholds, completeness weights, freshness fallback, and tier caps from the referenced main files.
