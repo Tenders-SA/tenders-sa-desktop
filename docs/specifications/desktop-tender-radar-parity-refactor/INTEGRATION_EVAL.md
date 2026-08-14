@@ -52,7 +52,7 @@ implementation complete until the final result is PASS.
 
 ## Phase 3 evaluation — user experience
 
-- [ ] Existing menu reaches exactly one `/radar` route and one canonical screen owner.
+- [x] Existing menu reaches exactly one `/radar` route and one canonical screen owner.
 - [x] Header, tier state, counts, freshness, and profile score are text-accessible.
 - [ ] Match tabs, supported filters, sorts, and 15-row reveal work by keyboard.
 - [ ] Cards show only contract-backed fields and link to native tender detail.
@@ -63,9 +63,9 @@ implementation complete until the final result is PASS.
 - [x] Scenario scan appears only for Professional/Enterprise presentation and remains
   server-authorized.
 - [x] Scenario preview announces projected values, restores prior sort, and exits cleanly.
-- [ ] No Eligible Only, Not Relevant/undo, AI summary, fake email digest, or unavailable
+- [x] No Eligible Only, Not Relevant/undo, AI summary, fake email digest, or unavailable
   JV action is present.
-- [ ] No minimum-score selector, previous/next listing, or fire-and-forget recalculate
+- [x] No minimum-score selector, previous/next listing, or fire-and-forget recalculate
   control remains in standalone mode.
 - [ ] Full workspace works at 1024×768 and narrow shell width without horizontal scroll.
 - [ ] Reduced-motion behavior and focus visibility were manually checked.

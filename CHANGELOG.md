@@ -57,6 +57,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Tender Radar now opens the full decision workspace used by the main service,
+  with plan-aware match limits, score bands, filters, decision cards, saved
+  state, profile guidance, and Professional/Enterprise scenario previews. The
+  compact Radar view remains available inside tender discovery.
 - The primary sidebar now pairs every destination with a familiar icon and uses
   the official Tenders-SA mark in both the application shell and Windows app
   packaging.

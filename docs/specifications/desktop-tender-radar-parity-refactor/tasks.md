@@ -13,7 +13,7 @@
 - [x] Phase 0 complete
 - [x] Phase 1 complete
 - [x] Phase 2 complete
-- [ ] Phase 3 complete
+- [x] Phase 3 complete
 - [ ] Phase 4 complete
 - [ ] Integration evaluation passed
 - [ ] All success criteria verified
@@ -130,7 +130,7 @@
   - **Verify:** Starter absence, paid success, 403, empty scan, malformed response, overlay sorting, and exit-with-base-restored tests pass.
   - **Commit:** `feat(tender-radar-parity/3.6): add server-backed scenario preview`
 
-- [ ] **TASK-3.7: Wire the full route, preserve embedded use, and remove obsolete standalone controls**
+- [x] **TASK-3.7: Wire the full route, preserve embedded use, and remove obsolete standalone controls**
   - **Refs:** REQ-1, REQ-13, REQ-14, INT-3, INT-5
   - **Files:** Modify `src/app/router/routes.tsx`, `src/features/tenders/TenderList.tsx`, `src/features/radar/TenderRadar.tsx`, `src/tests/navigation-reachability.test.tsx`, `src/tests/module-screens.test.tsx`
   - **Pre-check:** Search every `TenderRadar` consumer and every `/radar` link before changing props.

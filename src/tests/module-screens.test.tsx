@@ -425,35 +425,13 @@ describe("Tender Radar screen", () => {
     expect(screen.getByText("82% match")).toBeVisible();
   });
 
-  it("locks the existing standalone listing controls before replacement", async () => {
-    // Spec: desktop-tender-radar-parity-refactor §TASK-0.1. These assertions
-    // intentionally describe the old screen and are removed only by TASK-3.7.
-    wrap(
-      <TenderRadar
-        endpoint={endpoint({
-          state: "ready",
-          recommendations: [recommendation],
-          hasMore: true,
-          offset: 0,
-          limit: 20,
-        })}
-      />,
-    );
-
-    expect(await screen.findByLabelText(/minimum match/i)).toHaveValue("60");
-    expect(
-      screen.getByRole("button", { name: /recalculate matches/i }),
-    ).toBeVisible();
-    expect(screen.getByRole("button", { name: /previous/i })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /next/i })).toBeEnabled();
-  });
-
   it("shows the score as a number and as a band", async () => {
     // The band is what a user acts on; a bare percentage invites false
     // precision about a server-side heuristic.
     wrap(
       <TenderRadar
-        endpoint={endpoint({
+        embedded
+        recommendations={endpoint({
           state: "ready",
           recommendations: [recommendation],
           hasMore: false,
@@ -471,7 +449,8 @@ describe("Tender Radar screen", () => {
     // is the profile rather than a wider search.
     wrap(
       <TenderRadar
-        endpoint={endpoint({
+        embedded
+        recommendations={endpoint({
           state: "no_company_profile",
           recommendations: [],
           hasMore: false,
@@ -493,7 +472,8 @@ describe("Tender Radar screen", () => {
   it("distinguishes an empty result from a missing profile", async () => {
     wrap(
       <TenderRadar
-        endpoint={endpoint({
+        embedded
+        recommendations={endpoint({
           state: "empty",
           recommendations: [],
           hasMore: false,
@@ -503,7 +483,7 @@ describe("Tender Radar screen", () => {
       />,
     );
     expect(
-      await screen.findByText(/no open tenders currently match/i),
+      await screen.findByText(/no prioritised opportunities are available/i),
     ).toBeVisible();
     expect(screen.queryByText(/add your company profile/i)).toBeNull();
   });
@@ -511,7 +491,8 @@ describe("Tender Radar screen", () => {
   it("shows the gaps that explain a score", async () => {
     wrap(
       <TenderRadar
-        endpoint={endpoint({
+        embedded
+        recommendations={endpoint({
           state: "ready",
           recommendations: [recommendation],
           hasMore: false,
@@ -530,7 +511,7 @@ describe("Tender Radar screen", () => {
       }),
       refresh: vi.fn(),
     } as unknown as RecommendationsEndpoint;
-    wrap(<TenderRadar endpoint={failing} />);
+    wrap(<TenderRadar embedded recommendations={failing} />);
     expect(await screen.findByRole("alert")).toBeVisible();
   });
 });

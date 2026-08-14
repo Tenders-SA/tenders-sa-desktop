@@ -195,7 +195,14 @@ export function AppRoutes({
 
           <Route
             path="radar"
-            element={<TenderRadar endpoint={clients.recommendations} />}
+            element={
+              <TenderRadar
+                recommendations={clients.recommendations}
+                savedTenders={clients.savedTenders}
+                company={clients.company}
+                subscription={clients.subscription}
+              />
+            }
           />
           <Route
             path="tenders"

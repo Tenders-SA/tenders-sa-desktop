@@ -82,6 +82,44 @@ describe("navigation reachability", () => {
     ).toBeVisible();
   });
 
+  it("mounts the single composite Tender Radar owner at /radar", async () => {
+    const routeClients = stubApiClients({
+      recommendations: {
+        list: vi.fn(async () => ({
+          state: "empty",
+          recommendations: [],
+          hasMore: false,
+          offset: 0,
+          limit: 50,
+        })),
+      } as unknown as ApiClients["recommendations"],
+      savedTenders: {
+        listAllIds: vi.fn(async () => []),
+      } as unknown as ApiClients["savedTenders"],
+      company: {
+        getExtendedProfile: vi.fn(async () => ({
+          company: { id: "c1", name: "Acme", industryCodes: [] },
+          profile: null,
+        })),
+      } as unknown as ApiClients["company"],
+      subscription: {
+        getStatus: vi.fn(async () => ({
+          kind: "subscribed",
+          subscription: { tier: "professional" },
+        })),
+      } as unknown as ApiClients["subscription"],
+    });
+
+    renderAt("/radar", routeClients);
+    expect(
+      await screen.findByRole("heading", { name: /your tender radar/i }),
+    ).toBeVisible();
+    expect(routeClients.recommendations.list).toHaveBeenCalledWith(
+      { minScore: 30, limit: 50 },
+      expect.any(AbortSignal),
+    );
+  });
+
   it("mounts the tender detail route", () => {
     renderAt("/tenders/t1");
     expect(clients.tenders.get).toHaveBeenCalledWith("t1", expect.anything());

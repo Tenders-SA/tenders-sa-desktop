@@ -35,8 +35,9 @@ export function stubApiClients(
       explain: idle(),
       newCount: idle(),
       refresh: idle(),
+      scanScenario: idle(),
     },
-    savedTenders: { list: idle(), toggleSave: idle() },
+    savedTenders: { list: idle(), listAllIds: idle(), toggleSave: idle() },
     applications: {
       list: idle(),
       get: idle(),
@@ -58,6 +59,7 @@ export function stubApiClients(
     },
     company: {
       getProfile: idle(),
+      getExtendedProfile: idle(),
       getExperiences: idle(),
       getPersonnel: idle(),
       getCidb: idle(),

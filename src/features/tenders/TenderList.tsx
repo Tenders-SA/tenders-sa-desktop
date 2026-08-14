@@ -251,7 +251,7 @@ export function TenderList({
 
       {view === "matched" && recommendations && (
         <div role="tabpanel" className="mt-6">
-          <TenderRadar endpoint={recommendations} embedded />
+          <TenderRadar recommendations={recommendations} embedded />
         </div>
       )}
 

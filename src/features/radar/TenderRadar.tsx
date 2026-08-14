@@ -60,15 +60,9 @@ type EmbeddedTenderRadarProps = {
 };
 
 /** Removed in TASK-3.7 after the two existing consumers are rewired. */
-type TransitionalTenderRadarProps = {
-  endpoint: RecommendationsEndpoint;
-  embedded?: boolean;
-};
-
 export type TenderRadarProps =
   | FullTenderRadarProps
-  | EmbeddedTenderRadarProps
-  | TransitionalTenderRadarProps;
+  | EmbeddedTenderRadarProps;
 
 interface RadarWorkspaceSnapshot {
   access: RadarAccess;
@@ -116,13 +110,8 @@ const radarWorkspaceSnapshotSchema = z.custom<RadarWorkspaceSnapshot>(
  * new user hunting for tenders that were never going to appear.
  */
 export function TenderRadar(props: TenderRadarProps) {
-  if ("endpoint" in props) {
-    return (
-      <CompactRadar endpoint={props.endpoint} embedded={props.embedded ?? false} />
-    );
-  }
   if (props.embedded) {
-    return <CompactRadar endpoint={props.recommendations} embedded />;
+    return <CompactRadar endpoint={props.recommendations} />;
   }
   return <FullRadarController {...props} />;
 }
@@ -422,76 +411,32 @@ function FullRadarController({
 
 function CompactRadar({
   endpoint,
-  embedded = false,
 }: {
   endpoint: RecommendationsEndpoint;
-  embedded?: boolean;
 }) {
-  const [minScore, setMinScore] = useState(60);
-  const [offset, setOffset] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const query = { minScore, offset, limit: 20 };
+  const query = { minScore: 60, offset: 0, limit: 5 };
   const state = useWorkspaceAsync({
     key: workspaceQueryKey("radar", query),
     schema: radarResultSchema,
     entity: "radar-list",
     load: (signal) => endpoint.list(query, signal),
-    deps: [endpoint, minScore, offset],
+    deps: [endpoint],
   });
 
   return (
     <section
-      aria-labelledby={embedded ? "company-matches-heading" : "radar-heading"}
-      className={embedded ? "" : "max-w-4xl"}
+      aria-labelledby="company-matches-heading"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        {embedded ? (
-          <div>
-            <h2
-              id="company-matches-heading"
-              className="text-base font-semibold text-foreground"
-            >
-              Prioritised opportunities
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Server-calculated against your company profile and readiness.
-            </p>
-          </div>
-        ) : (
-          <h1
-            id="radar-heading"
-            className="text-xl font-semibold text-foreground"
-          >
-            Tender Radar
-          </h1>
-        )}
-        <button
-          type="button"
-          disabled={refreshing}
-          onClick={() => {
-            setRefreshing(true);
-            // Recomputing is server work that can take a while; the reload
-            // shows whatever the parent has once it finishes.
-            endpoint
-              .refresh()
-              .catch(() => undefined)
-              .finally(() => {
-                setRefreshing(false);
-                state.reload();
-              });
-          }}
-          className="rounded border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"
-        >
-          {refreshing ? "Recalculating…" : "Recalculate matches"}
-        </button>
+        <div>
+          <h2 id="company-matches-heading" className="text-base font-semibold text-foreground">
+            Prioritised opportunities
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Server-calculated against your company profile and readiness.
+          </p>
+        </div>
       </div>
-
-      {!embedded && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          Open tenders scored against your company profile.
-        </p>
-      )}
       <div className="mt-2">
         <WorkspaceDataStatus
           stale={state.stale}
@@ -499,30 +444,6 @@ function CompactRadar({
           refreshFailed={state.refreshFailed}
           subject="saved matches"
         />
-      </div>
-
-      <div className="mt-4 flex items-center gap-2">
-        <label
-          htmlFor="radar-min-score"
-          className="text-sm text-muted-foreground"
-        >
-          Minimum match
-        </label>
-        <select
-          id="radar-min-score"
-          value={minScore}
-          onChange={(event) => {
-            setOffset(0);
-            setMinScore(Number(event.target.value));
-          }}
-          className="rounded border border-input bg-background px-2 py-1.5 text-sm text-foreground"
-        >
-          {[40, 50, 60, 70, 80, 90].map((value) => (
-            <option key={value} value={value}>
-              {value}%
-            </option>
-          ))}
-        </select>
       </div>
 
       <div className="mt-6">
@@ -538,8 +459,7 @@ function CompactRadar({
             if (result.recommendations.length === 0) {
               return (
                 <p className="text-sm text-muted-foreground">
-                  No open tenders currently match at {minScore}% or above. Try
-                  lowering the minimum match.
+                  No prioritised opportunities are available right now.
                 </p>
               );
             }
@@ -554,27 +474,6 @@ function CompactRadar({
                   ))}
                 </ul>
 
-                <nav
-                  aria-label="Pagination"
-                  className="mt-6 flex items-center justify-between"
-                >
-                  <button
-                    type="button"
-                    disabled={offset === 0}
-                    onClick={() => setOffset((o) => Math.max(0, o - 20))}
-                    className="rounded border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!result.hasMore}
-                    onClick={() => setOffset((o) => o + 20)}
-                    className="rounded border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </nav>
               </>
             );
           }}
