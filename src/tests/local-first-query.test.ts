@@ -104,6 +104,22 @@ describe("LocalFirstQueryClient", () => {
     expect(result.value.title).toBe("Remote tender");
   });
 
+  it("uses the remote response when the local cache read never settles", async () => {
+    const cache = {
+      read: vi.fn(() => new Promise(() => undefined)),
+      write: vi.fn(async () => undefined),
+    } as unknown as WorkspaceCache;
+
+    const result = await new LocalFirstQueryClient(cache, 1).load({
+      key: "application:1",
+      schema: z.object({ title: z.string() }),
+      entity: "application-detail",
+      fetcher: async () => ({ title: "Remote application" }),
+    });
+
+    expect(result.value.title).toBe("Remote application");
+  });
+
   it("returns a valid remote response when the local cache cannot be written", async () => {
     const cache = {
       read: vi.fn(async () => undefined),
