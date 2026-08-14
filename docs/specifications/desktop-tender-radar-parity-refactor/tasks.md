@@ -46,7 +46,7 @@
   - **Verify:** Focused endpoint tests cover valid scan results, invalid envelopes, 403 entitlement denial, server error, abort, and no mutation retry.
   - **Commit:** `feat(tender-radar-parity/1.1): extend radar recommendation contracts`
 
-- [ ] **TASK-1.2: Project the existing extended company profile contract**
+- [x] **TASK-1.2: Project the existing extended company profile contract**
   - **Refs:** REQ-9, INT-1, INT-4, REL-1
   - **Files:** Modify `src/services/api/endpoints/company.ts`, `src/tests/module-endpoints.test.ts`
   - **Pre-check:** Re-read parent `src/app/api/v1/company/profile/extended/route.ts`; do not use the non-existent CIDB GET contract.

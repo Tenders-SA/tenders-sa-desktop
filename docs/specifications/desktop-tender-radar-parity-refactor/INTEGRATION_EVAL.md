@@ -30,8 +30,8 @@ implementation complete until the final result is PASS.
   server-authoritative numeric score.
 - [x] Scenario scan uses the existing authenticated transport and never retries.
 - [x] Scenario 403, 500, malformed body, and abort remain distinct handled failures.
-- [ ] Extended profile projects the six required main-Radar signals.
-- [ ] Missing extended profile is distinct from endpoint failure.
+- [x] Extended profile projects the six required main-Radar signals.
+- [x] Missing extended profile is distinct from endpoint failure.
 - [ ] Saved IDs are complete across pagination with no per-card request.
 - [ ] Save mutation behavior remains one non-retried authoritative toggle.
 - [ ] Existing endpoint consumers and endpoint tests remain green.

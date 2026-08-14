@@ -62,6 +62,25 @@ const companyProfileSchema = z
 
 export type CompanyProfile = z.infer<typeof companyProfileSchema>;
 
+const radarExtendedProfileSchema = z.object({
+  company: z.object({
+    id: z.string(),
+    name: z.string(),
+    registrationNumber: z.string().nullable().optional(),
+    bbbeeLevel: z.union([z.number(), z.string()]).nullable().optional(),
+    industryCodes: stringList,
+    annualTurnover: z.union([z.number(), z.string()]).nullable().optional(),
+  }),
+  profile: z
+    .object({
+      companyType: z.string().nullable().optional(),
+      cidbGrading: z.string().nullable().optional(),
+    })
+    .nullable(),
+});
+
+export type RadarExtendedProfile = z.infer<typeof radarExtendedProfileSchema>;
+
 export interface CompanyProfileUpdate {
   name: string;
   registrationNumber: string | null;
@@ -153,6 +172,26 @@ export class CompanyEndpoint extends AuthenticatedEndpoint {
         method: "GET",
         path: "/api/v1/company/profile",
         schema: companyProfileSchema,
+        headers: await this.authHeaders(),
+        signal,
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.kind === "not-found") {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  /** Six profile signals used by the canonical Radar completeness card. */
+  async getExtendedProfile(
+    signal?: AbortSignal,
+  ): Promise<RadarExtendedProfile | undefined> {
+    try {
+      return await this.transport.request({
+        method: "GET",
+        path: "/api/v1/company/profile/extended",
+        schema: radarExtendedProfileSchema,
         headers: await this.authHeaders(),
         signal,
       });

@@ -1216,6 +1216,69 @@ describe("applications endpoint — additional-info Q&A", () => {
 });
 
 describe("company endpoint", () => {
+  it("projects the six Radar completeness signals from the extended route", async () => {
+    const { endpoint, fetchImpl } = harness(CompanyEndpoint, () =>
+      jsonResponse(radarParityContractFixtures.extendedProfile),
+    );
+    const result = await endpoint.getExtendedProfile();
+
+    expect(result).toEqual({
+      company: {
+        id: "company-1",
+        name: "Example Civils",
+        registrationNumber: "2020/123456/07",
+        bbbeeLevel: 2,
+        industryCodes: ["4100"],
+        annualTurnover: 12_000_000,
+      },
+      profile: { companyType: "PRIVATE_COMPANY", cidbGrading: "6CE" },
+    });
+    expect(lastCall(fetchImpl)[0]).toContain(
+      "/api/v1/company/profile/extended",
+    );
+  });
+
+  it("keeps partial and null extended-profile signals honest", async () => {
+    for (const body of [
+      {
+        company: { id: "c1", name: "Partial", industryCodes: null },
+        profile: { companyType: null, cidbGrading: null },
+      },
+      {
+        company: { id: "c1", name: "No profile", industryCodes: [] },
+        profile: null,
+      },
+    ]) {
+      const { endpoint } = harness(CompanyEndpoint, () => jsonResponse(body));
+      const result = await endpoint.getExtendedProfile();
+      expect(result?.company.industryCodes).toEqual([]);
+      expect(result?.company.registrationNumber).toBeUndefined();
+    }
+  });
+
+  it("treats an extended-profile 404 as a missing profile", async () => {
+    const { endpoint } = harness(CompanyEndpoint, () =>
+      jsonResponse({ error: "Company not found" }, 404),
+    );
+    await expect(endpoint.getExtendedProfile()).resolves.toBeUndefined();
+  });
+
+  it("rejects malformed extended profiles and preserves server failures", async () => {
+    const malformed = harness(CompanyEndpoint, () =>
+      jsonResponse({ company: { name: "Missing id" }, profile: null }),
+    ).endpoint;
+    await expect(malformed.getExtendedProfile()).rejects.toMatchObject({
+      kind: "malformed",
+    });
+
+    const failed = harness(CompanyEndpoint, () =>
+      jsonResponse({ error: "boom" }, 500),
+    ).endpoint;
+    await expect(failed.getExtendedProfile()).rejects.toMatchObject({
+      kind: "server",
+    });
+  });
+
   it("updates the canonical profile with typed arrays and returns save metadata", async () => {
     const { endpoint, fetchImpl } = harness(CompanyEndpoint, () =>
       jsonResponse({
