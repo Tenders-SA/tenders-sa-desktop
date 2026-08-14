@@ -139,12 +139,36 @@ const radarParityContractFixtures = {
   },
   savedPages: [
     {
-      tenders: [{ id: "tender-other", savedAt: "2026-08-01T00:00:00.000Z" }],
+      tenders: [
+        {
+          id: "tender-other",
+          savedAt: "2026-08-01T00:00:00.000Z",
+          title: "Other tender",
+          referenceNumber: null,
+          closingDate: null,
+          status: "ACTIVE",
+          province: null,
+          organization: null,
+          categories: [],
+        },
+      ],
       pagination: { total: 2, page: 1, limit: 1, totalPages: 2 },
       stats: { closed: 0 },
     },
     {
-      tenders: [{ id: "tender-1", savedAt: "2026-08-02T00:00:00.000Z" }],
+      tenders: [
+        {
+          id: "tender-1",
+          savedAt: "2026-08-02T00:00:00.000Z",
+          title: "Bridge repairs",
+          referenceNumber: "RFQ-1",
+          closingDate: "2026-09-01T00:00:00.000Z",
+          status: "ACTIVE",
+          province: "Gauteng",
+          organization: "SANRAL",
+          categories: ["Construction"],
+        },
+      ],
       pagination: { total: 2, page: 2, limit: 1, totalPages: 2 },
       stats: { closed: 0 },
     },
@@ -717,6 +741,53 @@ describe("saved tenders endpoint (Opportunities)", () => {
       getToken: async () => "tok",
     });
     await expect(endpoint.toggleSave("t1")).rejects.toBeDefined();
+    expect(calls).toBe(1);
+  });
+
+  it("collects saved IDs through the server-returned final page", async () => {
+    let calls = 0;
+    const { endpoint, fetchImpl } = harness(SavedTendersEndpoint, () => {
+      const body = radarParityContractFixtures.savedPages[calls];
+      calls += 1;
+      return jsonResponse(body);
+    });
+
+    await expect(endpoint.listAllIds()).resolves.toEqual([
+      "tender-other",
+      "tender-1",
+    ]);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(lastCall(fetchImpl)[0]).toContain("page=2");
+    expect(lastCall(fetchImpl)[0]).toContain("limit=50");
+  });
+
+  it("keeps an intermediate saved-page failure explicit", async () => {
+    let calls = 0;
+    const { endpoint } = harness(SavedTendersEndpoint, () => {
+      calls += 1;
+      return calls === 1
+        ? jsonResponse(radarParityContractFixtures.savedPages[0])
+        : jsonResponse({ error: "boom" }, 500);
+    });
+
+    await expect(endpoint.listAllIds()).rejects.toMatchObject({ kind: "server" });
+    // The failed second-page GET follows the shared safe-read retry policy;
+    // it still rejects instead of returning the known-incomplete first page.
+    expect(calls).toBe(4);
+  });
+
+  it("stops saved pagination when its shared signal aborts", async () => {
+    const controller = new AbortController();
+    let calls = 0;
+    const { endpoint } = harness(SavedTendersEndpoint, () => {
+      calls += 1;
+      controller.abort();
+      return jsonResponse(radarParityContractFixtures.savedPages[0]);
+    });
+
+    await expect(endpoint.listAllIds(controller.signal)).rejects.toMatchObject({
+      kind: "cancelled",
+    });
     expect(calls).toBe(1);
   });
 });

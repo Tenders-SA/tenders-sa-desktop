@@ -32,9 +32,9 @@ implementation complete until the final result is PASS.
 - [x] Scenario 403, 500, malformed body, and abort remain distinct handled failures.
 - [x] Extended profile projects the six required main-Radar signals.
 - [x] Missing extended profile is distinct from endpoint failure.
-- [ ] Saved IDs are complete across pagination with no per-card request.
-- [ ] Save mutation behavior remains one non-retried authoritative toggle.
-- [ ] Existing endpoint consumers and endpoint tests remain green.
+- [x] Saved IDs are complete across pagination with no per-card request.
+- [x] Save mutation behavior remains one non-retried authoritative toggle.
+- [x] Existing endpoint consumers and endpoint tests remain green.
 
 ## Phase 2 evaluation — model and orchestration
 

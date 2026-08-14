@@ -11,7 +11,7 @@
 
 - [x] Specification approved
 - [x] Phase 0 complete
-- [ ] Phase 1 complete
+- [x] Phase 1 complete
 - [ ] Phase 2 complete
 - [ ] Phase 3 complete
 - [ ] Phase 4 complete
@@ -54,7 +54,7 @@
   - **Verify:** Tests cover complete, partial, null-profile, 404, malformed, and server-failure responses.
   - **Commit:** `feat(tender-radar-parity/1.2): project extended company profile`
 
-- [ ] **TASK-1.3: Add complete saved-ID reconciliation without N+1 requests**
+- [x] **TASK-1.3: Add complete saved-ID reconciliation without N+1 requests**
   - **Refs:** REQ-8, INT-1, INT-4, PERF-1, REL-2
   - **Files:** Modify `src/services/api/endpoints/saved-tenders.ts`, `src/tests/module-endpoints.test.ts`
   - **Pre-check:** Confirm the parent list route's current maximum page size and returned `totalPages`; confirm toggle remains a non-idempotent mutation.

@@ -93,6 +93,26 @@ export class SavedTendersEndpoint extends AuthenticatedEndpoint {
   }
 
   /**
+   * Collects the complete saved ID set for workspace reconciliation.
+   * Pages stay sequential so the server-returned `totalPages` remains the
+   * authority and one abort signal can stop the whole traversal.
+   */
+  async listAllIds(signal?: AbortSignal): Promise<string[]> {
+    const ids = new Set<string>();
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+      const result = await this.list({ page, limit: 50 }, signal);
+      for (const tender of result.tenders) ids.add(tender.id);
+      totalPages = result.totalPages;
+      page += 1;
+    } while (page <= totalPages);
+
+    return [...ids];
+  }
+
+  /**
    * Toggles saved state and returns what it now IS.
    *
    * The return value is the authority, not the caller's assumption: if two
