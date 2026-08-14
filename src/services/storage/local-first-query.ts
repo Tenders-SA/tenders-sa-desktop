@@ -17,33 +17,18 @@ export type LocalFirstSnapshot<T> =
 export class LocalFirstQueryClient {
   private readonly inFlight = new Map<string, Promise<unknown>>();
 
-  constructor(
-    private readonly cache: WorkspaceCache,
-    private readonly localReadTimeoutMs = 1_000,
-  ) {}
+  constructor(private readonly cache: WorkspaceCache) {}
 
   async cached<T>(
     key: string,
     schema: ZodType<T, ZodTypeDef, unknown>,
     entity: WorkspaceCacheEntity,
   ) {
-    return new Promise<WorkspaceCacheHit<T> | undefined>((resolve) => {
-      let settled = false;
-      const finish = (value: WorkspaceCacheHit<T> | undefined) => {
-        if (settled) return;
-        settled = true;
-        globalThis.clearTimeout(timeout);
-        resolve(value);
-      };
-      const timeout = globalThis.setTimeout(
-        () => finish(undefined),
-        this.localReadTimeoutMs,
-      );
-      void this.cache
-        .read(key, schema, entity)
-        .then(finish)
-        .catch(() => finish(undefined));
-    });
+    try {
+      return await this.cache.read(key, schema, entity);
+    } catch {
+      return undefined;
+    }
   }
 
   refresh<T>(

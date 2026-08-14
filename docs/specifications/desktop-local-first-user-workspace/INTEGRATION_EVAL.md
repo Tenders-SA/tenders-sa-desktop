@@ -57,6 +57,11 @@
 ## Verification notes
 
 - The parent repository and APIs were not modified.
+- Application first-open regression verified on Windows on 2026-08-14: one
+  affected application remained behind the detail loading boundary for more
+  than 6 seconds before the fix, then rendered from its ready cockpit snapshot
+  in 168 ms after the fix. A separate application with no prior detail or
+  cockpit snapshot rendered in 534 ms while full detail continued loading.
 - The queue allowlist remains response-document saves only; AI generation and
   other non-idempotent operations remain remote-only.
 - Two `cargo test` attempts and one `cargo check --tests` attempt spent the

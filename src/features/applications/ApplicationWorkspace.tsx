@@ -115,6 +115,16 @@ export function ApplicationWorkspace({
     load: (signal) => endpoint.getCockpit(applicationId, signal),
     deps: [endpoint, applicationId],
   });
+  const cockpitApplication =
+    cockpitState.status === "ready"
+      ? applicationFromCockpit(cockpitState.value)
+      : undefined;
+  const visibleState =
+    state.status === "ready" || !cockpitApplication
+      ? state
+      : ({ status: "ready", value: cockpitApplication } as const);
+  const showingCockpitFallback =
+    state.status !== "ready" && cockpitApplication !== undefined;
 
   return (
     <section
@@ -123,9 +133,12 @@ export function ApplicationWorkspace({
     >
       <div className="mb-3">
         <WorkspaceDataStatus
-          stale={state.stale}
-          refreshing={state.refreshing}
-          refreshFailed={state.refreshFailed}
+          stale={state.stale || showingCockpitFallback}
+          refreshing={
+            state.refreshing ||
+            (showingCockpitFallback && state.status === "loading")
+          }
+          refreshFailed={state.refreshFailed || state.status === "error"}
           subject="the saved workspace"
         />
         <WorkspaceDataStatus
@@ -137,7 +150,7 @@ export function ApplicationWorkspace({
       </div>
       <div>
         <AsyncSection
-          state={state}
+          state={visibleState}
           subject="this application"
           onRetry={state.reload}
         >
@@ -162,6 +175,39 @@ export function ApplicationWorkspace({
       </div>
     </section>
   );
+}
+
+function applicationFromCockpit(
+  cockpit: CockpitPayload,
+): ApplicationDetail | undefined {
+  const applicationId = cockpit.application?.id;
+  const tenderId = cockpit.tender?.id;
+  const title = cockpit.tender?.title;
+  if (!applicationId || !tenderId || !title) return undefined;
+
+  return {
+    id: applicationId,
+    tenderId,
+    status: cockpit.application?.status ?? "DRAFT",
+    submittedAt: cockpit.application?.submittedAt ?? null,
+    createdAt: cockpit.application?.createdAt ?? "",
+    updatedAt: cockpit.application?.updatedAt ?? "",
+    notes: cockpit.application?.notes ?? null,
+    isArchived: false,
+    tender: {
+      id: tenderId,
+      title,
+      referenceNumber: cockpit.tender?.referenceNumber ?? null,
+      sourceOrganization: cockpit.tender?.sourceOrganization ?? null,
+      closingDate: cockpit.tender?.closingDate ?? null,
+      estimatedValue: cockpit.tender?.estimatedValue ?? null,
+      province: cockpit.tender?.province ?? null,
+    },
+    company:
+      cockpit.company?.id && cockpit.company.name
+        ? { id: cockpit.company.id, name: cockpit.company.name }
+        : undefined,
+  };
 }
 
 function WorkspaceBody({

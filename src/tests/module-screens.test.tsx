@@ -518,6 +518,22 @@ describe("ApplicationWorkspace — workspace cockpit", () => {
     expect(screen.getByText("BridgeCo")).toBeVisible();
   });
 
+  it("opens from the ready cockpit while the full application detail is still loading", async () => {
+    const neverSettles = new Promise<never>(() => undefined);
+    wrap(
+      <ApplicationWorkspace
+        endpoint={endpoint({ get: vi.fn(() => neverSettles) })}
+        applicationId="a1"
+      />,
+    );
+
+    expect(await screen.findByText(/add information/i)).toBeVisible();
+    expect(
+      screen.getByText(/checking for updates — showing the saved workspace/i),
+    ).toBeVisible();
+    expect(screen.queryByText(/loading this application/i)).toBeNull();
+  });
+
   it("keeps every established assistance capability reachable without implicit mutations", async () => {
     const ep = endpoint();
     wrap(<ApplicationWorkspace endpoint={ep} applicationId="a1" />);

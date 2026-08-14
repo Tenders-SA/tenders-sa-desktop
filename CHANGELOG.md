@@ -91,9 +91,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- Tender applications that have not been opened on this device no longer stay
-  stuck on the loading screen when the local workspace cache is unavailable;
-  the desktop app now continues to the live application data promptly.
+- Tender applications can now open from their available workspace summary
+  while slower full details continue loading, instead of keeping the entire
+  workspace behind a loading screen.
 - Saved applications and their tender analysis now open from the local
   workspace when connectivity is unavailable, while still refreshing from the
   service when it is reachable.
