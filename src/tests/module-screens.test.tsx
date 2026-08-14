@@ -272,6 +272,11 @@ describe("Application workspace", () => {
     wrap(<ApplicationWorkspace endpoint={endpoint()} applicationId="a1" />);
     expect(await screen.findByText("Tax clearance")).toBeVisible();
     expect(screen.getByText("Acme")).toBeVisible();
+    const backLinks = screen.getAllByRole("link", {
+      name: "Back to applications",
+    });
+    expect(backLinks).toHaveLength(1);
+    expect(backLinks[0].querySelector("svg")).not.toBeNull();
   });
 
   it("says requirements were not extracted rather than implying none exist", async () => {

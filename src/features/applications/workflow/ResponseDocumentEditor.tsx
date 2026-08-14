@@ -3,6 +3,33 @@ import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TableKit } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
+import {
+  Bold,
+  Columns3,
+  Eraser,
+  FileDown,
+  FileText,
+  IndentDecrease,
+  IndentIncrease,
+  Italic,
+  Link,
+  List,
+  ListOrdered,
+  LoaderCircle,
+  Minus,
+  Plus,
+  Quote,
+  Redo2,
+  RotateCcw,
+  Rows3,
+  Save,
+  Send,
+  Strikethrough,
+  Table2,
+  Undo2,
+  Unlink,
+  type LucideIcon,
+} from "lucide-react";
 import { describeApiError } from "../../../services/api/describe-error";
 import type { ExportPackageFormat } from "../../../services/api/endpoints/applications";
 import type { ResponseDocVersionEntry } from "../../../services/storage/response-doc-store";
@@ -40,7 +67,7 @@ export function ResponseDocumentEditor(props: Props) {
   const [state, setState] = useState<"idle" | "saving">("idle");
   const [error, setError] = useState<string>();
   const [generateError, setGenerateError] = useState<string>();
-  const [instructions, setInstructions] = useState("");
+  const [prompt, setPrompt] = useState("");
   const previousContent = useRef(props.content);
   const dirty = draft !== props.content;
   const isGenerating = props.status?.state === "generating";
@@ -114,10 +141,16 @@ export function ResponseDocumentEditor(props: Props) {
   }
 
   async function generate() {
+    if (dirty) {
+      setGenerateError(
+        "Save or revert your unsaved edits before asking AI to change this document.",
+      );
+      return;
+    }
     setGenerateError(undefined);
     try {
-      await props.onGenerate(instructions.trim() || undefined);
-      setInstructions("");
+      await props.onGenerate(prompt.trim() || undefined);
+      setPrompt("");
     } catch (cause) {
       setGenerateError(describeGenerateError(cause));
     }
@@ -143,55 +176,27 @@ export function ResponseDocumentEditor(props: Props) {
                 ? "Unsaved changes"
                 : "Saved"}
           </span>
-          <button
-            type="button"
+          <IconButton
+            label="Download response PDF"
+            icon={FileDown}
             onClick={() => void exportLatest("pdf")}
             disabled={props.exportState === "exporting" || state !== "idle"}
-            className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            Download response PDF
-          </button>
-          <button
-            type="button"
+          />
+          <IconButton
+            label="Download response Word"
+            icon={FileText}
             onClick={() => void exportLatest("docx")}
             disabled={props.exportState === "exporting" || state !== "idle"}
-            className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            Download response Word
-          </button>
-          <button
-            type="button"
+          />
+          <IconButton
+            label="Revert document"
+            icon={RotateCcw}
             onClick={() => {
               restore(props.content);
               props.onDiscardLocalDraft?.();
             }}
             disabled={!dirty || state !== "idle"}
-            className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            Revert
-          </button>
-          <input
-            value={instructions}
-            onChange={(event) => setInstructions(event.target.value)}
-            placeholder="Optional AI instructions"
-            aria-label="Optional instructions for the AI"
-            disabled={isGenerating || state !== "idle"}
-            className="w-44 rounded border border-border bg-background px-2 py-1.5 text-sm"
           />
-          <button
-            type="button"
-            onClick={() => void generate()}
-            disabled={isGenerating || state !== "idle"}
-            className="rounded border border-border px-3 py-1.5 text-sm disabled:opacity-50"
-          >
-            {isGenerating
-              ? "Generating…"
-              : failed
-                ? "Retry"
-                : props.content
-                  ? "Regenerate"
-                  : "Generate"}
-          </button>
           {isGenerating && props.staleGenerating && (
             <button
               type="button"
@@ -201,14 +206,13 @@ export function ResponseDocumentEditor(props: Props) {
               Check again
             </button>
           )}
-          <button
-            type="button"
+          <IconButton
+            label="Save document"
+            icon={Save}
             onClick={() => void save().catch(() => {})}
             disabled={!dirty || state !== "idle" || isGenerating}
-            className="rounded bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          >
-            Save
-          </button>
+            primary
+          />
         </div>
       </div>
       {(error || generateError || props.exportError) && (
@@ -292,8 +296,8 @@ export function ResponseDocumentEditor(props: Props) {
           ))}
         </details>
       ) : null}
-      <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto min-h-full w-full max-w-[850px] bg-white px-8 py-10 text-slate-900 shadow-md sm:px-14 sm:py-14">
+      <div className="min-h-0 flex-1 overflow-auto bg-background/40 px-4 py-6 sm:px-8">
+        <div className="mx-auto min-h-full w-full max-w-[900px] rounded-xl border border-border/60 bg-card/35 px-6 py-8 text-foreground shadow-sm sm:px-10 sm:py-10">
           <EditorContent
             editor={editor}
             onKeyDown={(event) => {
@@ -308,78 +312,195 @@ export function ResponseDocumentEditor(props: Props) {
           />
         </div>
       </div>
+      <div className="border-t border-border bg-card/80 px-4 py-3 backdrop-blur sm:px-6">
+        <div className="mx-auto flex max-w-[900px] items-end gap-2 rounded-xl border border-border bg-background/80 p-2 shadow-sm focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15">
+          <textarea
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                if (!isGenerating && state === "idle") void generate();
+              }
+            }}
+            rows={2}
+            placeholder="Tell AI how you want this document changed…"
+            aria-label="Instructions for AI document changes"
+            disabled={isGenerating || state !== "idle"}
+            className="max-h-32 min-h-12 min-w-0 flex-1 resize-y bg-transparent px-2 py-1.5 text-sm leading-6 outline-none placeholder:text-muted-foreground disabled:opacity-60"
+          />
+          <button
+            type="button"
+            onClick={() => void generate()}
+            disabled={isGenerating || state !== "idle"}
+            aria-label="Send AI instruction"
+            title={
+              isGenerating
+                ? "Generating document"
+                : props.content
+                  ? "Send instruction and regenerate"
+                  : "Send instruction and generate"
+            }
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground outline-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            {isGenerating ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-4 animate-spin"
+              />
+            ) : (
+              <Send aria-hidden="true" className="size-4" />
+            )}
+          </button>
+        </div>
+        <p className="mx-auto mt-1.5 flex max-w-[900px] justify-between gap-3 px-1 text-[11px] text-muted-foreground">
+          <span>Enter to send · Shift+Enter for a new line</span>
+          <span>
+            {isGenerating
+              ? "Generating…"
+              : failed
+                ? "Retry generation"
+                : props.content
+                  ? "Regenerate with AI"
+                  : "Generate with AI"}
+          </span>
+        </p>
+      </div>
     </section>
   );
 }
 
 function Toolbar({ editor }: { editor: Editor | null }) {
   if (!editor) return <div role="toolbar" aria-label="Formatting controls" />;
-  const action = (label: string, active: boolean, run: () => void) => (
-    <button
+  const currentStyle = editor.isActive("heading", { level: 1 })
+    ? "1"
+    : editor.isActive("heading", { level: 2 })
+      ? "2"
+      : editor.isActive("heading", { level: 3 })
+        ? "3"
+        : editor.isActive("heading", { level: 4 })
+          ? "4"
+          : "paragraph";
+  const action = (
+    label: string,
+    icon: LucideIcon,
+    active: boolean,
+    run: () => void,
+    disabled = false,
+  ) => (
+    <IconButton
       key={label}
-      type="button"
-      aria-label={label}
-      title={label}
-      aria-pressed={active}
+      label={label}
+      icon={icon}
+      active={active}
+      disabled={disabled}
       onClick={run}
-      className={`rounded px-2 py-1 text-sm ${active ? "bg-primary/15 text-primary" : "hover:bg-muted"}`}
-    >
-      {label}
-    </button>
+    />
+  );
+  const separator = (key: string) => (
+    <span key={key} aria-hidden="true" className="mx-0.5 h-6 w-px bg-border" />
   );
   return (
     <div
       role="toolbar"
       aria-label="Formatting controls"
-      className="flex max-w-full flex-wrap gap-1"
+      className="flex max-w-full flex-wrap items-center gap-0.5"
     >
-      {action("Undo", false, () => {
-        editor.chain().focus().undo().run();
-      })}
-      {action("Redo", false, () => {
-        editor.chain().focus().redo().run();
-      })}
-      {[1, 2, 3, 4].map((level) =>
-        action(
-          `Heading ${level}`,
-          editor.isActive("heading", { level }),
-          () => {
+      {action(
+        "Undo",
+        Undo2,
+        false,
+        () => {
+          editor.chain().focus().undo().run();
+        },
+        !editor.can().undo(),
+      )}
+      {action(
+        "Redo",
+        Redo2,
+        false,
+        () => {
+          editor.chain().focus().redo().run();
+        },
+        !editor.can().redo(),
+      )}
+      {separator("history")}
+      <label className="sr-only" htmlFor="response-text-style">
+        Text style
+      </label>
+      <select
+        id="response-text-style"
+        aria-label="Text style"
+        title="Text style"
+        value={currentStyle}
+        onChange={(event) => {
+          const value = event.target.value;
+          if (value === "paragraph")
+            editor.chain().focus().setParagraph().run();
+          else
             editor
               .chain()
               .focus()
-              .toggleHeading({ level: level as 1 | 2 | 3 | 4 })
+              .setHeading({ level: Number(value) as 1 | 2 | 3 | 4 })
               .run();
-          },
-        ),
-      )}
-      {action("Bold", editor.isActive("bold"), () => {
+        }}
+        className="h-8 w-28 rounded-md border border-border bg-background px-2 text-xs font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <option value="paragraph">Paragraph</option>
+        <option value="1">Heading 1</option>
+        <option value="2">Heading 2</option>
+        <option value="3">Heading 3</option>
+        <option value="4">Heading 4</option>
+      </select>
+      {separator("style")}
+      {action("Bold", Bold, editor.isActive("bold"), () => {
         editor.chain().focus().toggleBold().run();
       })}
-      {action("Italic", editor.isActive("italic"), () => {
+      {action("Italic", Italic, editor.isActive("italic"), () => {
         editor.chain().focus().toggleItalic().run();
       })}
-      {action("Strikethrough", editor.isActive("strike"), () => {
+      {action("Strikethrough", Strikethrough, editor.isActive("strike"), () => {
         editor.chain().focus().toggleStrike().run();
       })}
-      {action("Bulleted list", editor.isActive("bulletList"), () => {
+      {separator("text")}
+      {action("Bulleted list", List, editor.isActive("bulletList"), () => {
         editor.chain().focus().toggleBulletList().run();
       })}
-      {action("Numbered list", editor.isActive("orderedList"), () => {
-        editor.chain().focus().toggleOrderedList().run();
-      })}
-      {action("Indent list", false, () => {
-        editor.chain().focus().sinkListItem("listItem").run();
-      })}
-      {action("Outdent list", false, () => {
-        editor.chain().focus().liftListItem("listItem").run();
-      })}
-      {action("Blockquote", editor.isActive("blockquote"), () => {
+      {action(
+        "Numbered list",
+        ListOrdered,
+        editor.isActive("orderedList"),
+        () => {
+          editor.chain().focus().toggleOrderedList().run();
+        },
+      )}
+      {action(
+        "Indent list",
+        IndentIncrease,
+        false,
+        () => {
+          editor.chain().focus().sinkListItem("listItem").run();
+        },
+        !editor.can().sinkListItem("listItem"),
+      )}
+      {action(
+        "Outdent list",
+        IndentDecrease,
+        false,
+        () => {
+          editor.chain().focus().liftListItem("listItem").run();
+        },
+        !editor.can().liftListItem("listItem"),
+      )}
+      {separator("lists")}
+      {action("Blockquote", Quote, editor.isActive("blockquote"), () => {
         editor.chain().focus().toggleBlockquote().run();
       })}
-      {action("Horizontal rule", false, () => {
+      {action("Horizontal rule", Minus, false, () => {
         editor.chain().focus().setHorizontalRule().run();
       })}
-      {action("Add or edit link", editor.isActive("link"), () => {
+      {separator("structure")}
+      {action("Add or edit link", Link, editor.isActive("link"), () => {
         const href = window.prompt(
           "Link address",
           editor.getAttributes("link").href ?? "https://",
@@ -394,31 +515,130 @@ function Toolbar({ editor }: { editor: Editor | null }) {
             .setLink({ href })
             .run();
       })}
-      {action("Remove link", false, () => {
-        editor.chain().focus().unsetLink().run();
-      })}
-      {action("Insert table", false, () => {
-        editor
-          .chain()
-          .focus()
-          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-          .run();
-      })}
-      {action("Add row", false, () => {
-        editor.chain().focus().addRowAfter().run();
-      })}
-      {action("Remove row", false, () => {
-        editor.chain().focus().deleteRow().run();
-      })}
-      {action("Add column", false, () => {
-        editor.chain().focus().addColumnAfter().run();
-      })}
-      {action("Remove column", false, () => {
-        editor.chain().focus().deleteColumn().run();
-      })}
-      {action("Clear formatting", false, () => {
+      {action(
+        "Remove link",
+        Unlink,
+        false,
+        () => {
+          editor.chain().focus().unsetLink().run();
+        },
+        !editor.isActive("link"),
+      )}
+      {separator("link")}
+      <details className="group relative">
+        <summary
+          aria-label="Table options"
+          title="Table options"
+          className="flex size-8 cursor-pointer list-none items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden"
+        >
+          <Table2 aria-hidden="true" className="size-4" strokeWidth={1.8} />
+        </summary>
+        <div className="absolute left-0 top-9 z-30 grid min-w-48 gap-1 rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-lg">
+          <TableMenuButton
+            icon={Table2}
+            label="Insert table"
+            onClick={() =>
+              editor
+                .chain()
+                .focus()
+                .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                .run()
+            }
+          />
+          <TableMenuButton
+            icon={Rows3}
+            label="Add row"
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            disabled={!editor.can().addRowAfter()}
+          />
+          <TableMenuButton
+            icon={Rows3}
+            label="Remove row"
+            onClick={() => editor.chain().focus().deleteRow().run()}
+            disabled={!editor.can().deleteRow()}
+            destructive
+          />
+          <TableMenuButton
+            icon={Columns3}
+            label="Add column"
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            disabled={!editor.can().addColumnAfter()}
+          />
+          <TableMenuButton
+            icon={Columns3}
+            label="Remove column"
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+            disabled={!editor.can().deleteColumn()}
+            destructive
+          />
+        </div>
+      </details>
+      {separator("table")}
+      {action("Clear formatting", Eraser, false, () => {
         editor.chain().focus().clearNodes().unsetAllMarks().run();
       })}
     </div>
+  );
+}
+
+function IconButton({
+  label,
+  icon: Icon,
+  active = false,
+  primary = false,
+  ...buttonProps
+}: {
+  label: string;
+  icon: LucideIcon;
+  active?: boolean;
+  primary?: boolean;
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={active || undefined}
+      {...buttonProps}
+      className={`flex size-8 items-center justify-center rounded-md outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 ${
+        primary
+          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+          : active
+            ? "bg-primary/15 text-primary"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      }`}
+    >
+      <Icon aria-hidden="true" className="size-4" strokeWidth={1.8} />
+    </button>
+  );
+}
+
+function TableMenuButton({
+  icon: Icon,
+  label,
+  destructive = false,
+  ...buttonProps
+}: {
+  icon: LucideIcon;
+  label: string;
+  destructive?: boolean;
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      {...buttonProps}
+      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 ${destructive ? "text-destructive" : ""}`}
+    >
+      <Icon aria-hidden="true" className="size-4" strokeWidth={1.8} />
+      <span>{label}</span>
+      {label.startsWith("Add") && (
+        <Plus aria-hidden="true" className="ml-auto size-3" />
+      )}
+      {label.startsWith("Remove") && (
+        <Minus aria-hidden="true" className="ml-auto size-3" />
+      )}
+    </button>
   );
 }

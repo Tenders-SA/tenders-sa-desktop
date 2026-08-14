@@ -107,14 +107,7 @@ export function ApplicationWorkspace({
       aria-labelledby="workspace-heading"
       className="w-full min-w-0 max-w-none"
     >
-      <Link
-        to="/applications"
-        className="text-sm text-muted-foreground hover:underline"
-      >
-        ← Back to applications
-      </Link>
-
-      <div className="mt-4">
+      <div>
         <AsyncSection
           state={state}
           subject="this application"

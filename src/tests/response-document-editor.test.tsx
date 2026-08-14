@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ResponseDocumentEditor } from "../features/applications/workflow/ResponseDocumentEditor";
@@ -73,18 +73,94 @@ describe("ResponseDocumentEditor", () => {
     expect(
       await screen.findByRole("toolbar", { name: "Formatting controls" }),
     ).toBeVisible();
+    expect(screen.getByRole("combobox", { name: "Text style" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Heading 1" })).toBeNull();
     for (const name of [
       "Bold",
       "Italic",
-      "Heading 1",
       "Bulleted list",
       "Numbered list",
       "Undo",
       "Redo",
-      "Insert table",
       "Add or edit link",
+      "Table options",
     ]) {
-      expect(screen.getByRole("button", { name })).toBeVisible();
+      expect(screen.getByLabelText(name)).toBeVisible();
     }
+  });
+
+  it("groups heading and table commands into compact menus", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    const style = await screen.findByRole("combobox", { name: "Text style" });
+    await user.selectOptions(style, "1");
+    expect(style).toHaveValue("1");
+
+    await user.click(screen.getByLabelText("Table options"));
+    for (const name of [
+      "Insert table",
+      "Add row",
+      "Remove row",
+      "Add column",
+      "Remove column",
+    ]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("submits multiline AI instructions from the bottom composer with Enter", async () => {
+    const user = userEvent.setup();
+    const onGenerate = vi.fn(async () => {});
+    renderEditor({ content: "", onGenerate });
+    const composer = await screen.findByRole("textbox", {
+      name: "Instructions for AI document changes",
+    });
+    await user.type(
+      composer,
+      "Make this more concise{shift>}{enter}{/shift}Keep evidence",
+    );
+    fireEvent.keyDown(composer, { key: "Enter", shiftKey: false });
+    await waitFor(() =>
+      expect(onGenerate).toHaveBeenCalledWith(
+        "Make this more concise\nKeep evidence",
+      ),
+    );
+    expect(composer).toHaveValue("");
+  });
+
+  it("does not regenerate over unsaved manual edits", async () => {
+    const user = userEvent.setup();
+    const onGenerate = vi.fn(async () => {});
+    renderEditor({ content: "Existing response", onGenerate });
+    const editor = await screen.findByRole("textbox", {
+      name: "Edit Capability Statement",
+    });
+    await user.click(editor);
+    await user.keyboard(" changed");
+    await user.click(
+      screen.getByRole("button", { name: "Send AI instruction" }),
+    );
+    expect(onGenerate).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /save or revert your unsaved edits/i,
+    );
+  });
+
+  it("regenerates a clean existing document from the composer", async () => {
+    const user = userEvent.setup();
+    const onGenerate = vi.fn(async () => {});
+    renderEditor({ content: "Existing response", onGenerate });
+    const composer = await screen.findByRole("textbox", {
+      name: "Instructions for AI document changes",
+    });
+    await user.type(composer, "Emphasise electrical engineering");
+    await user.click(
+      screen.getByRole("button", { name: "Send AI instruction" }),
+    );
+    await waitFor(() =>
+      expect(onGenerate).toHaveBeenCalledWith(
+        "Emphasise electrical engineering",
+      ),
+    );
   });
 });

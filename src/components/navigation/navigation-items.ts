@@ -21,8 +21,29 @@
  * available would produce exactly the dishonest affordance REQ-16 forbids.
  */
 
+import {
+  Bell,
+  BriefcaseBusiness,
+  Building2,
+  CalendarDays,
+  FileChartColumnIncreasing,
+  FileText,
+  FolderLock,
+  Handshake,
+  Landmark,
+  LayoutDashboard,
+  ListTodo,
+  Radar,
+  Search,
+  Settings,
+  Trophy,
+  Users,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 export interface NavigationItem {
   label: string;
+  icon: LucideIcon;
   /** Only set when the destination actually exists. */
   path?: string;
   available: boolean;
@@ -38,40 +59,72 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
   {
     label: "Workflow",
     items: [
-      { label: "Command Centre", path: "/", available: true },
-      { label: "Tender Radar", path: "/radar", available: true },
-      { label: "Opportunities", path: "/opportunities", available: true },
+      {
+        label: "Command Centre",
+        icon: LayoutDashboard,
+        path: "/",
+        available: true,
+      },
+      { label: "Tender Radar", icon: Radar, path: "/radar", available: true },
+      {
+        label: "Opportunities",
+        icon: Search,
+        path: "/opportunities",
+        available: true,
+      },
       {
         label: "Application Workspaces",
+        icon: BriefcaseBusiness,
         path: "/applications",
         available: true,
       },
-      { label: "Proposals", available: false },
-      { label: "Calendar", path: "/calendar", available: true },
-      { label: "Tasks", path: "/tasks", available: true },
+      { label: "Proposals", icon: FileText, available: false },
+      {
+        label: "Calendar",
+        icon: CalendarDays,
+        path: "/calendar",
+        available: true,
+      },
+      { label: "Tasks", icon: ListTodo, path: "/tasks", available: true },
     ],
   },
   {
     label: "Company and intelligence",
     items: [
-      { label: "Company Profile", path: "/company", available: true },
+      {
+        label: "Company Profile",
+        icon: Building2,
+        path: "/company",
+        available: true,
+      },
       {
         label: "Company Document Vault",
+        icon: FolderLock,
         path: "/documents",
         available: true,
       },
-      { label: "JV and Partner Network", available: false },
-      { label: "Supplier Intelligence", path: "/suppliers", available: true },
-      { label: "Buyer Intelligence", available: false },
-      { label: "Award Intelligence", available: false },
+      { label: "JV and Partner Network", icon: Handshake, available: false },
+      {
+        label: "Supplier Intelligence",
+        icon: Users,
+        path: "/suppliers",
+        available: true,
+      },
+      { label: "Buyer Intelligence", icon: Landmark, available: false },
+      { label: "Award Intelligence", icon: Trophy, available: false },
     ],
   },
   {
     label: "System",
     items: [
-      { label: "Notifications", path: "/notifications", available: true },
-      { label: "Reports", available: false },
-      { label: "Settings", path: "/settings", available: true },
+      {
+        label: "Notifications",
+        icon: Bell,
+        path: "/notifications",
+        available: true,
+      },
+      { label: "Reports", icon: FileChartColumnIncreasing, available: false },
+      { label: "Settings", icon: Settings, path: "/settings", available: true },
     ],
   },
 ];

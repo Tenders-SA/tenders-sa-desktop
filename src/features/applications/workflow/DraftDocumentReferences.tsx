@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 import type {
   ApplicationDetail,
   ResponseBlueprintDoc,
@@ -92,10 +93,12 @@ export function DraftDocumentReferences({
               <p className="text-sm font-semibold">Document references</p>
               <button
                 type="button"
+                aria-label="Close references"
+                title="Close references"
                 onClick={() => setOpen(false)}
-                className="rounded border border-border px-2 py-1 text-sm"
+                className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
               >
-                Close
+                <X aria-hidden="true" className="size-4" />
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-5">
@@ -163,26 +166,28 @@ function ReferencesBody({
             No related tender files identified.
           </p>
         ) : (
-          <div className="mt-2 space-y-3">
+          <div className="mt-2 space-y-1.5">
             {tenderDocuments.map((document) =>
               documentsEndpoint ? (
                 <DocumentDownloadButton
                   key={document.id}
                   endpoint={documentsEndpoint}
                   documentId={document.id}
-                  documentName={
-                    document.fileName ??
-                    document.documentCategory ??
-                    "Tender document"
+                  documentName={readableDocumentLabel(document)}
+                  documentNameTooltip={
+                    document.fileName ?? document.documentCategory ?? undefined
                   }
                   savePort={savePort}
                   documentActionPort={documentActionPort}
+                  compact
                 />
               ) : (
-                <p key={document.id} className="text-xs text-muted-foreground">
-                  {document.fileName ??
-                    document.documentCategory ??
-                    "Tender document"}
+                <p
+                  key={document.id}
+                  title={document.fileName ?? undefined}
+                  className="truncate text-xs text-muted-foreground"
+                >
+                  {readableDocumentLabel(document)}
                 </p>
               ),
             )}
@@ -195,5 +200,34 @@ function ReferencesBody({
         submission.
       </p>
     </>
+  );
+}
+
+function normalizeTenderFilename(value: string): string {
+  const filename = value.split(/[\\/]/).pop() ?? value;
+  const withoutExtension = filename.replace(/\.[a-z0-9]{1,8}$/i, "");
+  const withoutOpaquePrefix = withoutExtension.replace(
+    /^(?:[a-f0-9]{8,}|\d{6,})[-_ ]+/i,
+    "",
+  );
+  const words = withoutOpaquePrefix
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!words) return "Tender document";
+  return words
+    .split(" ")
+    .map((word) => {
+      const upper = word.toUpperCase();
+      if (["RFQ", "RFP", "SBD", "PDF", "BOQ"].includes(upper)) return upper;
+      return `${word.charAt(0).toUpperCase()}${word.slice(1).toLowerCase()}`;
+    })
+    .join(" ");
+}
+
+function readableDocumentLabel(document: TenderDocument): string {
+  return normalizeTenderFilename(
+    document.fileName ?? document.documentCategory ?? "Tender document",
   );
 }

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
 import { ClosingLabel } from "../../tenders/ClosingLabel";
 import {
   deriveWorkflowStages,
@@ -44,9 +45,10 @@ export function ApplicationWorkflowShell({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/applications"
-          className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
-          ← Back to applications
+          <ArrowLeft aria-hidden="true" className="size-4" />
+          <span>Back to applications</span>
         </Link>
         <Link
           to={`/tenders/${encodeURIComponent(tenderId)}`}

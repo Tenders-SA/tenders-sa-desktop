@@ -13,9 +13,17 @@ export function Sidebar() {
       aria-label="Primary"
       className="flex w-64 shrink-0 flex-col gap-6 overflow-y-auto border-r border-sidebar-border bg-sidebar-background p-4"
     >
-      <span className="px-2 text-sm font-semibold text-foreground">
-        Tenders-SA Desktop
-      </span>
+      <div className="flex items-center gap-2 px-2">
+        <img
+          src="/tenders-sa-icon.png"
+          alt=""
+          aria-hidden="true"
+          className="size-8 rounded-lg"
+        />
+        <span className="text-sm font-semibold text-foreground">
+          Tenders-SA Desktop
+        </span>
+      </div>
 
       {NAVIGATION_GROUPS.map((group) => (
         <div key={group.label} className="flex flex-col gap-1">
@@ -23,21 +31,23 @@ export function Sidebar() {
             {group.label}
           </h2>
           <ul className="flex flex-col gap-0.5">
-            {group.items.map((item) =>
-              item.available && item.path ? (
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              return item.available && item.path ? (
                 <li key={item.label}>
                   <NavLink
                     to={item.path}
                     end
                     className={({ isActive }) =>
                       [
-                        "block rounded px-2 py-1.5 text-sm",
+                        "flex items-center gap-2 rounded px-2 py-1.5 text-sm",
                         isActive
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
                           : "text-sidebar-foreground hover:bg-secondary",
                       ].join(" ")
                     }
                   >
+                    <Icon aria-hidden="true" className="size-4 shrink-0" />
                     {item.label}
                   </NavLink>
                 </li>
@@ -46,13 +56,14 @@ export function Sidebar() {
                   <span
                     aria-disabled="true"
                     title="Not available in this build"
-                    className="block cursor-not-allowed rounded px-2 py-1.5 text-sm text-muted-foreground opacity-60"
+                    className="flex cursor-not-allowed items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground opacity-60"
                   >
+                    <Icon aria-hidden="true" className="size-4 shrink-0" />
                     {item.label}
                   </span>
                 </li>
-              ),
-            )}
+              );
+            })}
           </ul>
         </div>
       ))}

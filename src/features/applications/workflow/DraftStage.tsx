@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PanelLeft, PanelRight, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AsyncSection } from "../../../components/common/AsyncSection";
 import type {
@@ -311,10 +312,12 @@ export function DraftStage({
                   </div>
                   <button
                     type="button"
+                    aria-label="Close editor"
+                    title="Close editor"
                     onClick={close}
-                    className="rounded border border-border px-3 py-2 text-sm"
+                    className="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    Close editor
+                    <X aria-hidden="true" className="size-4" />
                   </button>
                 </header>
                 <div className="min-h-0 flex-1 overflow-y-auto p-6">
@@ -346,10 +349,12 @@ export function DraftStage({
                   </div>
                   <button
                     type="button"
+                    aria-label="Close editor"
+                    title="Close editor"
                     onClick={close}
-                    className="rounded border border-border px-3 py-2 text-sm"
+                    className="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    Close editor
+                    <X aria-hidden="true" className="size-4" />
                   </button>
                 </header>
                 <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)] max-md:grid-cols-1">
@@ -357,6 +362,7 @@ export function DraftStage({
                     <ResponseDocumentNavigator
                       documents={usableDocuments}
                       selectedKey=""
+                      dirtyKey={dirty ? selectedDocumentKey : undefined}
                       responseDocs={responseDocs}
                       status={statuses}
                       onSelect={selectDocument}
@@ -401,24 +407,38 @@ export function DraftStage({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    aria-label={
+                      showDocuments ? "Hide documents" : "Show documents"
+                    }
+                    title={showDocuments ? "Hide documents" : "Show documents"}
+                    aria-pressed={showDocuments}
                     onClick={() => setShowDocuments((value) => !value)}
-                    className="rounded border border-border px-3 py-2 text-sm"
+                    className={`flex size-9 items-center justify-center rounded-md outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring ${showDocuments ? "bg-primary/15 text-primary" : "text-muted-foreground"}`}
                   >
-                    {showDocuments ? "Hide documents" : "Show documents"}
+                    <PanelLeft aria-hidden="true" className="size-4" />
                   </button>
                   <button
                     type="button"
+                    aria-label={
+                      showReferences ? "Hide references" : "Show references"
+                    }
+                    title={
+                      showReferences ? "Hide references" : "Show references"
+                    }
+                    aria-pressed={showReferences}
                     onClick={() => setShowReferences((value) => !value)}
-                    className="rounded border border-border px-3 py-2 text-sm"
+                    className={`flex size-9 items-center justify-center rounded-md outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring ${showReferences ? "bg-primary/15 text-primary" : "text-muted-foreground"}`}
                   >
-                    {showReferences ? "Hide references" : "Show references"}
+                    <PanelRight aria-hidden="true" className="size-4" />
                   </button>
                   <button
                     type="button"
+                    aria-label="Close editor"
+                    title="Close editor"
                     onClick={close}
-                    className="rounded border border-border px-3 py-2 text-sm"
+                    className="flex size-9 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    Close editor
+                    <X aria-hidden="true" className="size-4" />
                   </button>
                 </div>
               </header>
@@ -430,6 +450,7 @@ export function DraftStage({
                     <ResponseDocumentNavigator
                       documents={usableDocuments}
                       selectedKey={key}
+                      dirtyKey={dirty ? key : undefined}
                       responseDocs={responseDocs}
                       status={statuses}
                       onSelect={selectDocument}

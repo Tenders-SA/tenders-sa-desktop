@@ -211,7 +211,7 @@ describe("DraftStage", () => {
       screen.getByRole("textbox", { name: "Edit Pricing Schedule" }),
     ).toHaveTextContent("");
     expect(screen.getByText("Complete the official returnable")).toBeVisible();
-    expect(screen.getByText("Annexure B Pricing Schedule.xlsx")).toBeVisible();
+    expect(screen.getByText("Annexure B Pricing Schedule")).toBeVisible();
 
     await user.click(
       screen.getByRole("button", { name: /transformation commitments/i }),
@@ -219,7 +219,9 @@ describe("DraftStage", () => {
     expect(
       screen.getByRole("textbox", { name: "Edit Transformation Commitments" }),
     ).toHaveTextContent("");
-    await user.click(screen.getByRole("button", { name: "Generate" }));
+    await user.click(
+      screen.getByRole("button", { name: "Send AI instruction" }),
+    );
     expect(endpoint.generateResponseDocument).toHaveBeenCalledWith(
       "a1",
       "transformation_commitments",
@@ -235,10 +237,16 @@ describe("DraftStage", () => {
     });
     await user.click(editor);
     await user.keyboard("{Control>}a{/Control}Our delivery method");
-    await user.click(screen.getByRole("button", { name: "Heading 2" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Text style" }),
+      "2",
+    );
     expect(editor.querySelector("h2")).toHaveTextContent("Our delivery method");
+    expect(
+      screen.getByRole("button", { name: /technical proposal unsaved/i }),
+    ).toBeVisible();
 
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Save document" }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
     const savedMarkdown = (save.mock.calls as unknown[][])[0]?.[2];
     expect(String(savedMarkdown).trim()).toBe("## Our delivery method");
@@ -411,7 +419,9 @@ describe("DraftStage", () => {
       expect(
         await screen.findByRole("textbox", { name: "Edit Technical Proposal" }),
       ).toBeVisible();
-      fireEvent.click(screen.getByRole("button", { name: "Generate" }));
+      fireEvent.click(
+        screen.getByRole("button", { name: "Send AI instruction" }),
+      );
 
       await waitFor(() =>
         expect(
@@ -463,7 +473,9 @@ describe("DraftStage", () => {
       </MemoryRouter>,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Generate" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Send AI instruction" }),
+    );
     expect(
       await screen.findByText(/generating this document needs a paid plan/i),
     ).toBeVisible();
@@ -501,7 +513,9 @@ describe("DraftStage", () => {
       </MemoryRouter>,
     );
 
-    await user.click(await screen.findByRole("button", { name: "Generate" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Send AI instruction" }),
+    );
     expect(
       await screen.findByText(
         /complete the required additional information before generating/i,
@@ -537,7 +551,10 @@ describe("DraftStage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("button", { name: "Retry" })).toBeVisible();
+    expect(
+      await screen.findByRole("button", { name: "Send AI instruction" }),
+    ).toBeVisible();
+    expect(screen.getByText("Retry generation")).toBeVisible();
     expect(screen.getByText(/generation failed — retry it/i)).toBeVisible();
     expect(screen.queryByText("AI service was busy")).toBeNull();
   });
@@ -699,7 +716,7 @@ describe("DraftStage", () => {
     expect(generate).toHaveBeenCalledWith("a1", "technical");
   });
 
-  it("passes optional instructions as the generate prompt and clears them", async () => {
+  it("sends composer instructions as the generate prompt and clears them", async () => {
     const user = userEvent.setup();
     const generate = vi.fn(async () => {});
     render(
@@ -715,15 +732,17 @@ describe("DraftStage", () => {
 
     await user.type(
       screen.getByRole("textbox", {
-        name: "Optional instructions for the AI",
+        name: "Instructions for AI document changes",
       }),
       "Keep it short",
     );
-    await user.click(screen.getByRole("button", { name: "Generate" }));
+    await user.click(
+      screen.getByRole("button", { name: "Send AI instruction" }),
+    );
     await waitFor(() => expect(generate).toHaveBeenCalledWith("Keep it short"));
     expect(
       screen.getByRole("textbox", {
-        name: "Optional instructions for the AI",
+        name: "Instructions for AI document changes",
       }),
     ).toHaveValue("");
   });
@@ -807,7 +826,7 @@ describe("DraftStage", () => {
     });
     await user.click(editor);
     await user.keyboard("{Control>}a{/Control}Offline content");
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Save document" }));
 
     await waitFor(() =>
       expect(store.enqueueSave).toHaveBeenCalledWith(
@@ -849,7 +868,7 @@ describe("DraftStage", () => {
     });
     await user.click(editor);
     await user.keyboard("{Control>}a{/Control}Offline content");
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Save document" }));
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Sync now" })).toBeVisible(),
     );

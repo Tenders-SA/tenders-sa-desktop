@@ -11,6 +11,27 @@
   one blueprint controller and explicit unsaved-change guards.
 - **Boundary:** Parent repository and document-analysis pipeline are read-only.
 
+### Toolbar refinement amendment
+
+The existing Tiptap editor remains the only authoring surface and command
+owner. Its toolbar uses locally bundled Lucide React icons, native `title`
+tooltips and accessible labels. Commands are grouped as history, text style,
+inline emphasis, lists, structure, links, tables and clearing. A native select
+owns paragraph/heading choice, while a compact table menu exposes insertion and
+row/column mutations. Document actions remain separate from formatting.
+
+The same Lucide vocabulary extends into both workbench rails. Navigator state
+is derived from the existing response status plus Draft's current dirty key;
+no new persistence state is introduced. Reference-file labels are a display-
+only normalization of the existing filename, with the original retained in a
+tooltip and the established download/open component providing compact actions.
+
+The canvas uses theme tokens and a subtle bounded writing area rather than a
+print-white page. Export remains server-owned and therefore independent of the
+webview theme. The existing optional generation prompt moves into a persistent
+bottom textarea; it calls the same `onGenerate(prompt)` path and blocks while
+the selected document has unsaved manual edits.
+
 ## Information architecture
 
 ```text

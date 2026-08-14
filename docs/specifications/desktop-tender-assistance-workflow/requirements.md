@@ -172,6 +172,28 @@ italic, strike, lists/indentation,
 links, tables, clear formatting and undo/redo. Source Markdown may be exposed
 only as an optional advanced view.
 
+The formatting toolbar must use compact, familiar icon controls with accessible
+names, tooltips, visible focus and selection-aware states. Paragraph and heading
+levels 1–4 use one text-style selector, related commands are separated into
+visual groups, and table row/column operations use one compact table menu.
+Save, Revert and response-package export actions remain visually separate from
+formatting and use labelled icon controls; Generate/Regenerate may retain text
+because its changing lifecycle state is meaningful.
+
+The document navigator uses compact file rows and distinct Saved, Unsaved,
+Generating, Failed and Not started status icons. The drafting-reference pane
+normalizes source filenames into readable labels, truncates them within the
+rail, retains the original filename as a tooltip and exposes open/download as
+labelled icon actions.
+
+The editor canvas integrates with the application theme rather than simulating
+a white printed page; this presentation must not affect canonical Markdown or
+server-generated PDF/DOCX styling. A persistent multiline AI composer below
+the canvas replaces the toolbar instructions field. Enter submits and
+Shift+Enter inserts a line break, using the existing keyed generation contract
+and bounded refresh. Duplicate submission is disabled while generating, and
+dirty manual edits must be saved or reverted before AI regeneration starts.
+
 ### REQ-6C — Editor export and latest-content safety
 
 The workbench header must expose honest **Download response PDF** and

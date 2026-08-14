@@ -24,8 +24,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A "Generate all remaining" action on the Draft stage list, one explicit press
   per plan, that starts generation for every document that has no saved content
   yet and reports plan/precondition failures per document.
-- An optional instructions field in the response editor, sent with the next
-  Generate or Regenerate press and cleared once the request is accepted.
+- A multiline AI instruction composer in the response editor, sent with the
+  next Generate or Regenerate request and cleared once it is accepted.
 - A full-screen response-document editor for tender applications, with a
   document navigator, drafting references, Markdown formatting controls and
   explicit save, revert and generation actions, plus Save, Discard or Stay
@@ -45,6 +45,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The primary sidebar now pairs every destination with a familiar icon and uses
+  the official Tenders-SA mark in both the application shell and Windows app
+  packaging.
+- The response editor toolbar now uses familiar document-formatting icons,
+  grouped controls, a single text-style selector and a compact table menu,
+  making common editing and export actions faster to recognise.
+- Response drafting now uses compact document and status icons, readable
+  official-file labels, a dark-theme writing canvas and a persistent AI
+  instruction composer for generating or refining the selected response.
 - The tender response editor is now a full-screen visual document workbench:
   headings, lists, links and tables render as normal document content, the
   document/reference rails can be collapsed, and PDF or Word response packages

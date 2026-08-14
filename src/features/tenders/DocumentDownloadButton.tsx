@@ -12,6 +12,7 @@
  */
 
 import { useState } from "react";
+import { Download, ExternalLink, LoaderCircle } from "lucide-react";
 import { ApiError } from "../../services/api/errors";
 import { describeApiError } from "../../services/api/describe-error";
 import type { DownloadResult } from "../../services/api/transport";
@@ -44,6 +45,8 @@ export interface DocumentDownloadButtonProps {
   savePort?: SaveDownloadPort;
   documentActionPort?: DocumentActionPort;
   showOpen?: boolean;
+  compact?: boolean;
+  documentNameTooltip?: string;
 }
 
 type DownloadState =
@@ -59,6 +62,8 @@ export function DocumentDownloadButton({
   savePort = createTauriSavePort(),
   documentActionPort = createTauriDocumentActionPort(),
   showOpen = true,
+  compact = false,
+  documentNameTooltip,
 }: DocumentDownloadButtonProps) {
   const [state, setState] = useState<DownloadState>({ status: "idle" });
 
@@ -100,6 +105,62 @@ export function DocumentDownloadButton({
   }
 
   const busy = state.status === "downloading" || state.status === "opening";
+
+  if (compact) {
+    return (
+      <div className="rounded-md border border-border/70 bg-background/30 px-2 py-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span
+            className="min-w-0 flex-1 truncate text-xs font-medium text-foreground"
+            title={documentNameTooltip ?? documentName}
+          >
+            {documentName ?? "Tender document"}
+          </span>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={download}
+            aria-label={`Download ${documentName ?? "tender document"}`}
+            title={`Download ${documentName ?? "tender document"}`}
+            className="flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+          >
+            {state.status === "downloading" ? (
+              <LoaderCircle
+                aria-hidden="true"
+                className="size-3.5 animate-spin"
+              />
+            ) : (
+              <Download aria-hidden="true" className="size-3.5" />
+            )}
+          </button>
+          {showOpen && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={openDocument}
+              aria-label={`Open ${documentName ?? "tender document"}`}
+              title={`Open ${documentName ?? "tender document"}`}
+              className="flex size-7 shrink-0 items-center justify-center rounded text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+            >
+              {state.status === "opening" ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-3.5 animate-spin"
+                />
+              ) : (
+                <ExternalLink aria-hidden="true" className="size-3.5" />
+              )}
+            </button>
+          )}
+        </div>
+        {state.status === "error" && (
+          <p role="alert" className="mt-1 text-xs text-destructive">
+            {state.message}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2">

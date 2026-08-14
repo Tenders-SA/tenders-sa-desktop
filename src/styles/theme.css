@@ -119,9 +119,16 @@
     opacity: 1;
   }
 }
-/* Response workbench: print-like document typography inside application chrome. */
+/* Response workbench: comfortable writing typography integrated with app chrome. */
 .response-document {
-  font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  color: hsl(var(--foreground));
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
   font-size: 1rem;
   line-height: 1.75;
 }
@@ -168,18 +175,18 @@
   margin: 0.25rem 0;
 }
 .response-document blockquote {
-  border-left: 3px solid #94a3b8;
-  color: #475569;
+  border-left: 3px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
   margin: 1rem 0;
   padding-left: 1rem;
 }
 .response-document a {
-  color: #0369a1;
+  color: hsl(var(--primary));
   text-decoration: underline;
 }
 .response-document hr {
   border: 0;
-  border-top: 1px solid #cbd5e1;
+  border-top: 1px solid hsl(var(--border));
   margin: 1.5rem 0;
 }
 .response-document table {
@@ -190,15 +197,15 @@
 }
 .response-document th,
 .response-document td {
-  border: 1px solid #94a3b8;
+  border: 1px solid hsl(var(--border));
   padding: 0.5rem 0.625rem;
   text-align: left;
   vertical-align: top;
 }
 .response-document th {
-  background: #f1f5f9;
+  background: hsl(var(--muted) / 0.65);
   font-weight: 700;
 }
 .response-document .selectedCell {
-  background: #e0f2fe;
+  background: hsl(var(--primary) / 0.16);
 }

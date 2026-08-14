@@ -94,12 +94,29 @@ describe("navigation model", () => {
       }
     }
   });
+
+  it("gives every sidebar destination a recognisable icon", () => {
+    for (const item of ALL_NAVIGATION_ITEMS) {
+      expect(item.icon, `${item.label} must have an icon`).toBeTypeOf("object");
+    }
+  });
 });
 
 describe("AppLayout", () => {
   it("renders the primary navigation landmark", () => {
     renderShell();
     expect(screen.getByRole("navigation", { name: "Primary" })).toBeVisible();
+  });
+
+  it("renders menu icons as decorative graphics without changing link names", () => {
+    renderShell();
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    expect(
+      within(nav).getByRole("link", { name: "Command Centre" }),
+    ).toBeVisible();
+    expect(nav.querySelectorAll('svg[aria-hidden="true"]')).toHaveLength(
+      ALL_NAVIGATION_ITEMS.length,
+    );
   });
 
   it("renders later-phase destinations as disabled, not as links", () => {
