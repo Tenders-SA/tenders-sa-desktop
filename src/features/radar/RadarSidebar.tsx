@@ -9,11 +9,13 @@ export function RadarSidebar({
   profileState,
   topGap,
   access,
+  onOpenScenario,
 }: {
   profile: RadarProfileProjection | null;
   profileState: "ready" | "missing" | "unavailable";
   topGap: string | null;
   access: RadarAccess;
+  onOpenScenario?: () => void;
 }) {
   return (
     <aside aria-label="Radar profile guidance" className="space-y-4">
@@ -70,6 +72,11 @@ export function RadarSidebar({
           <p className="mt-2 text-sm text-muted-foreground">
             Test profile changes against the existing server calculation.
           </p>
+          {onOpenScenario && (
+            <button type="button" onClick={onOpenScenario} className="mt-3 rounded border border-primary/30 px-3 py-1.5 text-sm font-medium text-primary">
+              Open scenario preview
+            </button>
+          )}
         </section>
       )}
     </aside>

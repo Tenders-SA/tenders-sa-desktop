@@ -18,6 +18,7 @@ import type { CompanyEndpoint } from "../../services/api/endpoints/company";
 import type { SubscriptionEndpoint } from "../../services/api/endpoints/subscription";
 import {
   capRadarMatches,
+  applyRadarScenario,
   countRadarBands,
   filterRadarMatches,
   findTopRadarGap,
@@ -36,6 +37,8 @@ import { RadarHeader } from "./RadarHeader";
 import { RadarControls } from "./RadarControls";
 import { RadarCard } from "./RadarCard";
 import { RadarSidebar } from "./RadarSidebar";
+import { RadarScenarioPanel } from "./RadarScenarioPanel";
+import type { RadarScenarioResult } from "../../services/api/endpoints/recommendations";
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
   style: "currency",
@@ -161,6 +164,9 @@ function FullRadarController({
     kind: "success" | "error";
     message: string;
   } | null>(null);
+  const [scenarioOpen, setScenarioOpen] = useState(false);
+  const [scenarioResult, setScenarioResult] = useState<RadarScenarioResult | null>(null);
+  const [sortBeforeScenario, setSortBeforeScenario] = useState<RadarSort | null>(null);
   const state = useWorkspaceAsync({
     key: workspaceQueryKey("radar-workspace-v2", { minScore: 30, limit: 50 }),
     schema: radarWorkspaceSnapshotSchema,
@@ -251,7 +257,10 @@ function FullRadarController({
               );
             }
             if (snapshot.profileState === "missing") return <NoProfileNotice />;
-            const displayedMatches = snapshot.matches.map((match) => ({
+            const scenarioMatches = scenarioResult
+              ? applyRadarScenario(snapshot.matches, scenarioResult)
+              : snapshot.matches;
+            const displayedMatches = scenarioMatches.map((match) => ({
               ...match,
               isSaved: savedOverrides[match.tenderId] ?? match.isSaved,
             }));
@@ -380,8 +389,28 @@ function FullRadarController({
                     profileState={snapshot.profileState}
                     topGap={findTopRadarGap(displayedMatches)}
                     access={snapshot.access}
+                    onOpenScenario={() => setScenarioOpen(true)}
                   />
                 </div>
+                {scenarioOpen && (
+                  <RadarScenarioPanel
+                    recommendations={recommendations}
+                    activeResult={scenarioResult}
+                    onApply={(result) => {
+                      if (!scenarioResult) setSortBeforeScenario(sort);
+                      setScenarioResult(result);
+                      setSort("best_match");
+                      setRevealCount(RADAR_REVEAL_SIZE);
+                    }}
+                    onExit={() => {
+                      setScenarioResult(null);
+                      setScenarioOpen(false);
+                      if (sortBeforeScenario) setSort(sortBeforeScenario);
+                      setSortBeforeScenario(null);
+                    }}
+                    onClose={() => setScenarioOpen(false)}
+                  />
+                )}
               </div>
             );
           }}

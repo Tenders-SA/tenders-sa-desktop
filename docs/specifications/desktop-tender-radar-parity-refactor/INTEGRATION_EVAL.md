@@ -60,9 +60,9 @@ implementation complete until the final result is PASS.
 - [x] Saved state is known before mutation controls enable.
 - [x] Save/unsave adopts the server-returned boolean and reports failures without drift.
 - [x] Profile sidebar links to `/company` and isolates profile read failures.
-- [ ] Scenario scan appears only for Professional/Enterprise presentation and remains
+- [x] Scenario scan appears only for Professional/Enterprise presentation and remains
   server-authorized.
-- [ ] Scenario preview announces projected values, restores prior sort, and exits cleanly.
+- [x] Scenario preview announces projected values, restores prior sort, and exits cleanly.
 - [ ] No Eligible Only, Not Relevant/undo, AI summary, fake email digest, or unavailable
   JV action is present.
 - [ ] No minimum-score selector, previous/next listing, or fire-and-forget recalculate

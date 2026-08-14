@@ -77,6 +77,7 @@ describe("Tender Radar screen", () => {
       explain: vi.fn(),
       newCount: vi.fn(),
       refresh: vi.fn(async () => {}),
+      scanScenario: vi.fn(),
     } as unknown as RecommendationsEndpoint;
   }
 
@@ -352,6 +353,76 @@ describe("Tender Radar screen", () => {
       "href",
       "/company",
     );
+  });
+
+  it("applies a paid server scenario temporarily and restores the previous sort", async () => {
+    const recommendations = endpoint({
+      state: "ready",
+      recommendations: [recommendation],
+      hasMore: false,
+      offset: 0,
+      limit: 50,
+    });
+    recommendations.scanScenario = vi.fn(async () => ({
+      scenarioType: "standard" as const,
+      scannedCount: 1,
+      current: { highlyQualified: 1, potential: 0, nearMiss: 0, total: 1 },
+      scenario: { highlyQualified: 1, potential: 0, nearMiss: 0, total: 1 },
+      delta: { averageDelta: 8, improvedCount: 1, topMovers: [] },
+      rows: [
+        { id: "r1", title: "Bridge repairs", currentScore: 82, scenarioScore: 90, delta: 8 },
+      ],
+    }));
+    wrap(fullRadar({ recommendations }));
+    const user = userEvent.setup();
+
+    const sort = await screen.findByLabelText(/sort matches/i);
+    await user.selectOptions(sort, "highest_value");
+    await user.click(screen.getByRole("button", { name: /open scenario preview/i }));
+    await user.click(screen.getByRole("button", { name: /run scenario scan/i }));
+
+    expect(await screen.findByText("90% match")).toBeVisible();
+    expect(screen.getByText(/projected \+8 points/i)).toBeVisible();
+    expect(sort).toHaveValue("best_match");
+    await user.click(
+      screen.getByRole("button", { name: /exit scenario and restore base scores/i }),
+    );
+    expect(screen.getByText("82% match")).toBeVisible();
+    expect(sort).toHaveValue("highest_value");
+  });
+
+  it("does not present scenario scanning to Starter accounts", async () => {
+    wrap(fullRadar({
+      subscription: {
+        getStatus: vi.fn(async () => ({
+          kind: "subscribed",
+          subscription: { tier: "starter" },
+        })),
+      } as unknown as SubscriptionEndpoint,
+    }));
+    await screen.findByRole("heading", { name: /your tender radar/i });
+    expect(screen.queryByRole("button", { name: /open scenario preview/i })).toBeNull();
+  });
+
+  it("reports a denied scenario without altering the base score", async () => {
+    const recommendations = endpoint({
+      state: "ready",
+      recommendations: [recommendation],
+      hasMore: false,
+      offset: 0,
+      limit: 50,
+    });
+    recommendations.scanScenario = vi.fn(async () => {
+      throw new ApiError({ kind: "forbidden", message: "denied", status: 403 });
+    });
+    wrap(fullRadar({ recommendations }));
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /open scenario preview/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /run scenario scan/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/base radar scores are unchanged/i);
+    expect(screen.getByText("82% match")).toBeVisible();
   });
 
   it("locks the existing standalone listing controls before replacement", async () => {

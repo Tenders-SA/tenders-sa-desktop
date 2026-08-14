@@ -122,7 +122,7 @@
   - **Verify:** Complete, partial, missing, unavailable, and no-gap fixtures render accurately with no local AI or fake digest control.
   - **Commit:** `feat(tender-radar-parity/3.5): add radar profile guidance`
 
-- [ ] **TASK-3.6: Add paid scenario scanning and temporary score overlay**
+- [x] **TASK-3.6: Add paid scenario scanning and temporary score overlay**
   - **Refs:** REQ-4, REQ-11, REQ-12, SEC-2, REL-2, A11Y-1
   - **Files:** Create `src/features/radar/RadarScenarioPanel.tsx`; modify `src/features/radar/RadarSidebar.tsx`, `src/features/radar/TenderRadar.tsx`, `src/tests/module-screens.test.tsx`
   - **Pre-check:** Confirm server still gates the route and response row IDs are matching-score IDs used by loaded recommendations.
