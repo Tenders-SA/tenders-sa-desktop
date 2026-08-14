@@ -272,6 +272,57 @@ describe("Tender Radar screen", () => {
     expect(screen.queryByText(/eligible only|not relevant|joint venture/i)).toBeNull();
   });
 
+  it("adopts the server-returned saved state after one toggle", async () => {
+    const toggleSave = vi.fn(async () => false);
+    wrap(fullRadar({
+      savedTenders: {
+        listAllIds: vi.fn(async () => ["t1"]),
+        toggleSave,
+      } as unknown as SavedTendersEndpoint,
+    }));
+
+    const user = userEvent.setup();
+    const button = await screen.findByRole("button", {
+      name: /remove bridge repairs from saved tenders/i,
+    });
+    await user.click(button);
+    expect(toggleSave).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByText(/bridge repairs removed from saved tenders/i),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: /save bridge repairs/i })).toBeVisible();
+  });
+
+  it("disables save controls while initial saved state is unavailable", async () => {
+    wrap(fullRadar({
+      savedTenders: {
+        listAllIds: vi.fn(async () => { throw new Error("saved down"); }),
+        toggleSave: vi.fn(),
+      } as unknown as SavedTendersEndpoint,
+    }));
+
+    expect(
+      await screen.findByRole("button", { name: /save bridge repairs/i }),
+    ).toBeDisabled();
+  });
+
+  it("keeps the known saved state when a toggle fails", async () => {
+    wrap(fullRadar({
+      savedTenders: {
+        listAllIds: vi.fn(async () => []),
+        toggleSave: vi.fn(async () => { throw new Error("save down"); }),
+      } as unknown as SavedTendersEndpoint,
+    }));
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /save bridge repairs/i }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /could not update saved state/i,
+    );
+    expect(screen.getByRole("button", { name: /save bridge repairs/i })).toBeVisible();
+  });
+
   it("locks the existing standalone listing controls before replacement", async () => {
     // Spec: desktop-tender-radar-parity-refactor §TASK-0.1. These assertions
     // intentionally describe the old screen and are removed only by TASK-3.7.

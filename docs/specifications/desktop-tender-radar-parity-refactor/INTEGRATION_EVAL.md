@@ -57,8 +57,8 @@ implementation complete until the final result is PASS.
 - [ ] Match tabs, supported filters, sorts, and 15-row reveal work by keyboard.
 - [ ] Cards show only contract-backed fields and link to native tender detail.
 - [ ] Unknown factor/field values are omitted or labelled unknown, never rendered as zero.
-- [ ] Saved state is known before mutation controls enable.
-- [ ] Save/unsave adopts the server-returned boolean and reports failures without drift.
+- [x] Saved state is known before mutation controls enable.
+- [x] Save/unsave adopts the server-returned boolean and reports failures without drift.
 - [ ] Profile sidebar links to `/company` and isolates profile read failures.
 - [ ] Scenario scan appears only for Professional/Enterprise presentation and remains
   server-authorized.

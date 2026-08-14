@@ -106,7 +106,7 @@
   - **Verify:** Full, partial, near-miss, invalid-date, and missing-field fixtures remain legible and accessible without invented values.
   - **Commit:** `feat(tender-radar-parity/3.3): add decision-ready radar cards`
 
-- [ ] **TASK-3.4: Add authoritative saved-state actions**
+- [x] **TASK-3.4: Add authoritative saved-state actions**
   - **Refs:** REQ-8, REQ-12, REL-2, A11Y-1
   - **Files:** Modify `src/features/radar/RadarCard.tsx`, `src/features/radar/TenderRadar.tsx`, `src/tests/module-screens.test.tsx`
   - **Pre-check:** Confirm initial saved state is known before enabling the toggle and transport mutations still never retry.

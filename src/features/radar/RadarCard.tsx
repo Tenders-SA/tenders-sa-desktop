@@ -21,7 +21,17 @@ const BAND_LABELS: Record<RadarBand, string> = {
   not_fit: "Below Radar threshold",
 };
 
-export function RadarCard({ match }: { match: RadarWorkspaceMatch }) {
+export function RadarCard({
+  match,
+  onToggleSave,
+  saveDisabled = false,
+  saving = false,
+}: {
+  match: RadarWorkspaceMatch;
+  onToggleSave?: (match: RadarWorkspaceMatch) => void;
+  saveDisabled?: boolean;
+  saving?: boolean;
+}) {
   const displayedScore = effectiveRadarScore(match);
   const displayedBand = classifyRadarScore(displayedScore);
   const ai = match.aiRecommendation;
@@ -61,6 +71,17 @@ export function RadarCard({ match }: { match: RadarWorkspaceMatch }) {
                 Projected {match.scenarioDelta >= 0 ? "+" : ""}
                 {match.scenarioDelta} points
               </p>
+            )}
+            {onToggleSave && (
+              <button
+                type="button"
+                disabled={saveDisabled || saving}
+                onClick={() => onToggleSave(match)}
+                aria-label={match.isSaved ? `Remove ${match.title} from saved tenders` : `Save ${match.title}`}
+                className="mt-3 rounded border border-border px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
+              >
+                {saving ? "Saving…" : match.isSaved ? "Saved" : "Save tender"}
+              </button>
             )}
           </div>
         </div>

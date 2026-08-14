@@ -149,6 +149,12 @@ function FullRadarController({
   });
   const [sort, setSort] = useState<RadarSort>("best_match");
   const [revealCount, setRevealCount] = useState(RADAR_REVEAL_SIZE);
+  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({});
+  const [savingIds, setSavingIds] = useState<string[]>([]);
+  const [saveNotice, setSaveNotice] = useState<{
+    kind: "success" | "error";
+    message: string;
+  } | null>(null);
   const state = useWorkspaceAsync({
     key: workspaceQueryKey("radar-workspace-v2", { minScore: 30, limit: 50 }),
     schema: radarWorkspaceSnapshotSchema,
@@ -235,11 +241,16 @@ function FullRadarController({
               );
             }
             if (snapshot.profileState === "missing") return <NoProfileNotice />;
+            const displayedMatches = snapshot.matches.map((match) => ({
+              ...match,
+              isSaved: savedOverrides[match.tenderId] ?? match.isSaved,
+            }));
+            const filteredMatches = filterRadarMatches(displayedMatches, filters);
             return (
               <div>
                 <RadarHeader
                   access={snapshot.access}
-                  counts={countRadarBands(snapshot.matches)}
+                  counts={countRadarBands(displayedMatches)}
                   lastUpdated={snapshot.lastUpdated}
                 />
                 <RadarControls
@@ -269,12 +280,21 @@ function FullRadarController({
                     Profile guidance is temporarily unavailable.
                   </p>
                 )}
+                {saveNotice && (
+                  <p
+                    role={saveNotice.kind === "error" ? "alert" : "status"}
+                    aria-live="polite"
+                    className={`mb-3 text-sm ${saveNotice.kind === "error" ? "text-destructive" : "text-foreground"}`}
+                  >
+                    {saveNotice.message}
+                  </p>
+                )}
                 {snapshot.matches.length === 0 && (
                   <p className="mt-6 text-sm text-muted-foreground">
                     No current Radar matches are available.
                   </p>
                 )}
-                {snapshot.matches.length > 0 && filterRadarMatches(snapshot.matches, filters).length === 0 && (
+                {displayedMatches.length > 0 && filteredMatches.length === 0 && (
                   <div className="mt-6 rounded border border-border p-5">
                     <p className="text-sm text-muted-foreground">
                       No matches meet these filters.
@@ -293,13 +313,51 @@ function FullRadarController({
                 )}
                 <ul className="flex flex-col gap-3">
                   {revealRadarMatches(
-                    sortRadarMatches(filterRadarMatches(snapshot.matches, filters), sort),
+                    sortRadarMatches(filteredMatches, sort),
                     revealCount,
                   ).map((match) => (
-                    <RadarCard key={match.matchingScoreId} match={match} />
+                    <RadarCard
+                      key={match.matchingScoreId}
+                      match={match}
+                      saveDisabled={snapshot.savedState !== "ready"}
+                      saving={savingIds.includes(match.tenderId)}
+                      onToggleSave={async (selected) => {
+                        if (
+                          snapshot.savedState !== "ready" ||
+                          savingIds.includes(selected.tenderId)
+                        ) {
+                          return;
+                        }
+                        setSavingIds((ids) => [...ids, selected.tenderId]);
+                        setSaveNotice(null);
+                        try {
+                          const saved = await savedTenders.toggleSave(selected.tenderId);
+                          setSavedOverrides((current) => ({
+                            ...current,
+                            [selected.tenderId]: saved,
+                          }));
+                          setSaveNotice({
+                            kind: "success",
+                            message: saved
+                              ? `${selected.title} saved.`
+                              : `${selected.title} removed from saved tenders.`,
+                          });
+                          state.reload();
+                        } catch {
+                          setSaveNotice({
+                            kind: "error",
+                            message: `Could not update saved state for ${selected.title}.`,
+                          });
+                        } finally {
+                          setSavingIds((ids) =>
+                            ids.filter((id) => id !== selected.tenderId),
+                          );
+                        }
+                      }}
+                    />
                   ))}
                 </ul>
-                {filterRadarMatches(snapshot.matches, filters).length > revealCount && (
+                {filteredMatches.length > revealCount && (
                   <button
                     type="button"
                     onClick={() => setRevealCount((count) => count + RADAR_REVEAL_SIZE)}
