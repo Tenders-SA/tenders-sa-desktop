@@ -31,6 +31,7 @@ import {
 } from "./radar-workspace-model";
 import { RadarHeader } from "./RadarHeader";
 import { RadarControls } from "./RadarControls";
+import { RadarCard } from "./RadarCard";
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
   style: "currency",
@@ -295,12 +296,7 @@ function FullRadarController({
                     sortRadarMatches(filterRadarMatches(snapshot.matches, filters), sort),
                     revealCount,
                   ).map((match) => (
-                    <li key={match.matchingScoreId} className="rounded border border-border bg-card p-4">
-                      <Link to={`/tenders/${encodeURIComponent(match.tenderId)}`} className="font-medium hover:underline">
-                        {match.title}
-                      </Link>
-                      <p className="mt-1 text-sm text-muted-foreground">{match.score}% match</p>
-                    </li>
+                    <RadarCard key={match.matchingScoreId} match={match} />
                   ))}
                 </ul>
                 {filterRadarMatches(snapshot.matches, filters).length > revealCount && (

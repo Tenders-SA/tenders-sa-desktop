@@ -168,7 +168,10 @@ describe("Tender Radar screen", () => {
     expect(screen.getByText(/professional · up to 50 matches/i)).toBeVisible();
     expect(screen.getByText(/radar last calculated/i)).toBeVisible();
     expect(screen.getByText("All matches").nextElementSibling).toHaveTextContent("1");
-    expect(screen.getByText("Highly qualified").nextElementSibling).toHaveTextContent("1");
+    const qualifiedMetric = screen
+      .getAllByText("Highly qualified")
+      .find((element) => element.tagName === "DT");
+    expect(qualifiedMetric?.nextElementSibling).toHaveTextContent("1");
   });
 
   it("renders a real free-tier state with existing desktop destinations", async () => {
@@ -237,6 +240,36 @@ describe("Tender Radar screen", () => {
     expect(screen.queryByText("Radar item 16")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: /load 15 more/i }));
     expect(screen.getByText("Radar item 16")).toBeVisible();
+  });
+
+  it("renders missing and invalid card facts without inventing values", async () => {
+    const partial = {
+      ...recommendation,
+      tender: {
+        ...recommendation.tender,
+        closingDate: "not-a-date",
+        estimatedValue: null,
+        sourceOrganization: null,
+        province: null,
+      },
+      factors: null,
+      reasoning: null,
+      improvementAreas: null,
+    };
+    wrap(fullRadar({
+      recommendations: endpoint({
+        state: "ready",
+        recommendations: [partial],
+        hasMore: false,
+        offset: 0,
+        limit: 50,
+      }),
+    }));
+
+    expect(await screen.findByText(/closing date unknown/i)).toBeVisible();
+    expect(screen.getByText(/value not recorded/i)).toBeVisible();
+    expect(screen.getByText(/buyer not recorded/i)).toBeVisible();
+    expect(screen.queryByText(/eligible only|not relevant|joint venture/i)).toBeNull();
   });
 
   it("locks the existing standalone listing controls before replacement", async () => {

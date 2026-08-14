@@ -98,7 +98,7 @@
   - **Verify:** Keyboard/control tests prove each state change produces deterministic rows and resets reveal count without changing base data.
   - **Commit:** `feat(tender-radar-parity/3.2): add radar navigation and controls`
 
-- [ ] **TASK-3.3: Replace generic rows with desktop-native Radar cards**
+- [x] **TASK-3.3: Replace generic rows with desktop-native Radar cards**
   - **Refs:** REQ-7, REQ-8, REQ-12, A11Y-1
   - **Files:** Create `src/features/radar/RadarCard.tsx`; modify `src/features/radar/MatchFactors.tsx`, `src/features/radar/TenderRadar.tsx`, `src/tests/module-screens.test.tsx`
   - **Pre-check:** Enumerate fields actually returned by the recommendation schema; confirm `/tenders/:tenderId` remains the native detail route.
