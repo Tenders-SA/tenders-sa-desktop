@@ -65,6 +65,152 @@ function lastCall(fetchImpl: ReturnType<typeof vi.fn>) {
   return calls[calls.length - 1] as unknown as [string, RequestInit];
 }
 
+// Spec: desktop-tender-radar-parity-refactor §TASK-0.1
+// These values mirror the parent route bodies re-read on 2026-08-14. Keeping
+// the fixtures beside the endpoint harness lets later tasks prove their
+// projections without quietly inventing a different envelope.
+const radarParityContractFixtures = {
+  recommendation30Feed: {
+    success: true,
+    state: "ready",
+    recommendations: [
+      {
+        id: "matching-score-1",
+        tenderId: "tender-1",
+        tender: {
+          id: "tender-1",
+          title: "Bridge repairs",
+          referenceNumber: "RFQ-1",
+          description: null,
+          closingDate: "2026-09-01T00:00:00.000Z",
+          estimatedValue: 500_000,
+          province: "Gauteng",
+          sourceOrganization: "SANRAL",
+          status: "ACTIVE",
+        },
+        score: 50,
+        baseScore: 48,
+        reasoning: "Potential fit",
+        factors: null,
+        improvementAreas: ["CIDB grade 6 required"],
+        calculatedAt: "2026-08-14T08:00:00.000Z",
+        matchCategory: "good_match",
+      },
+    ],
+    pagination: { limit: 50, offset: 0, hasMore: false },
+  },
+  noProfile: {
+    success: true,
+    state: "no_company_profile",
+    recommendations: [],
+  },
+  extendedProfile: {
+    company: {
+      id: "company-1",
+      name: "Example Civils",
+      registrationNumber: "2020/123456/07",
+      taxNumber: null,
+      bbbeeLevel: 2,
+      bbbeeCertificateUrl: null,
+      industryCodes: ["4100"],
+      provincesOperating: ["Gauteng"],
+      companySize: "SMALL",
+      annualTurnover: 12_000_000,
+      certifications: [],
+      capabilitiesDescription: null,
+    },
+    profile: {
+      id: "profile-1",
+      companyType: "PRIVATE_COMPANY",
+      profileDocument: null,
+      profileText: null,
+      equipmentAssets: null,
+      operationalCapacity: null,
+      cidbGrading: "6CE",
+      professionalBodies: null,
+      completenessScore: 80,
+      missingFields: ["Company Profile"],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-08-14T08:00:00.000Z",
+    },
+    experiences: [],
+    keyPersonnel: [],
+    completeness: { score: 80, missingFields: ["Company Profile"] },
+  },
+  savedPages: [
+    {
+      tenders: [{ id: "tender-other", savedAt: "2026-08-01T00:00:00.000Z" }],
+      pagination: { total: 2, page: 1, limit: 1, totalPages: 2 },
+      stats: { closed: 0 },
+    },
+    {
+      tenders: [{ id: "tender-1", savedAt: "2026-08-02T00:00:00.000Z" }],
+      pagination: { total: 2, page: 2, limit: 1, totalPages: 2 },
+      stats: { closed: 0 },
+    },
+  ],
+  scenario: {
+    success: true,
+    data: {
+      scenarioType: "cidb",
+      scannedCount: 1,
+      current: { highlyQualified: 0, potential: 1, nearMiss: 0, total: 1 },
+      scenario: { highlyQualified: 1, potential: 0, nearMiss: 0, total: 1 },
+      delta: {
+        averageDelta: 22,
+        improvedCount: 1,
+        topMovers: [
+          {
+            id: "matching-score-1",
+            title: "Bridge repairs",
+            currentScore: 50,
+            scenarioScore: 72,
+            delta: 22,
+          },
+        ],
+      },
+      rows: [
+        {
+          id: "matching-score-1",
+          title: "Bridge repairs",
+          currentScore: 50,
+          scenarioScore: 72,
+          delta: 22,
+        },
+      ],
+    },
+  },
+  entitlementTiers: ["free", "starter", "professional", "enterprise"],
+} as const;
+
+describe("Tender Radar parity parent contract fixtures", () => {
+  it("pins the existing endpoint envelopes before adapter changes", () => {
+    expect(radarParityContractFixtures.recommendation30Feed.pagination).toEqual({
+      limit: 50,
+      offset: 0,
+      hasMore: false,
+    });
+    expect(radarParityContractFixtures.noProfile.state).toBe(
+      "no_company_profile",
+    );
+    expect(radarParityContractFixtures.extendedProfile.profile?.cidbGrading).toBe(
+      "6CE",
+    );
+    expect(radarParityContractFixtures.savedPages[1].pagination.totalPages).toBe(
+      2,
+    );
+    expect(radarParityContractFixtures.scenario.data.rows[0].id).toBe(
+      "matching-score-1",
+    );
+    expect(radarParityContractFixtures.entitlementTiers).toEqual([
+      "free",
+      "starter",
+      "professional",
+      "enterprise",
+    ]);
+  });
+});
+
 describe("dashboard endpoint", () => {
   const actionCenterBody = {
     success: true,
@@ -322,6 +468,22 @@ describe("recommendations endpoint (Tender Radar)", () => {
     expect(result.state).toBe("ready");
     expect(result.recommendations[0].score).toBe(82);
     expect(result.recommendations[0].factors?.province?.score).toBe(10);
+  });
+
+  it("accepts the current 30-score, 50-row Radar feed contract", async () => {
+    const { endpoint, fetchImpl } = harness(RecommendationsEndpoint, () =>
+      jsonResponse(radarParityContractFixtures.recommendation30Feed),
+    );
+
+    const result = await endpoint.list({ minScore: 30, limit: 50 });
+
+    expect(result.recommendations[0]).toMatchObject({
+      id: "matching-score-1",
+      score: 50,
+      matchCategory: "good_match",
+    });
+    expect(lastCall(fetchImpl)[0]).toContain("minScore=30");
+    expect(lastCall(fetchImpl)[0]).toContain("limit=50");
   });
 
   it("surfaces `no_company_profile` as its own state, not as an empty list", async () => {

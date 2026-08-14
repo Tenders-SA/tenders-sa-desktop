@@ -8,16 +8,16 @@ implementation complete until the final result is PASS.
 ## Pre-implementation check
 
 - [x] User explicitly approved `SPEC_CONTRACT.md`.
-- [ ] Desktop `main` and parent reference have been re-synchronized/read.
-- [ ] Recent Radar history and every current `TenderRadar` consumer were reviewed.
-- [ ] Parent API shapes still match the requirements contract matrix.
+- [x] Desktop `main` and parent reference have been re-synchronized/read.
+- [x] Recent Radar history and every current `TenderRadar` consumer were reviewed.
+- [x] Parent API shapes still match the requirements contract matrix.
 - [ ] No canonical parent Radar read endpoint has appeared since spec creation.
 - [ ] No Tier 1/Tier 2 parent file or desktop auth transport requires modification.
-- [ ] User-owned `AGENTS.md` and `.codex-runtime/` state remains outside task scope.
+- [x] User-owned `AGENTS.md` and `.codex-runtime/` state remains outside task scope.
 
 ## Phase 0 evaluation — reality and boundary
 
-- [ ] Fixtures reproduce current recommendation, entitlement, saved, profile, and
+- [x] Fixtures reproduce current recommendation, entitlement, saved, profile, and
   scenario response shapes.
 - [ ] The existing desktop route/component/adapter are confirmed as canonical owners.
 - [ ] Unsupported fields/actions are still unavailable through a complete contract.

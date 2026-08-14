@@ -79,6 +79,29 @@ describe("Tender Radar screen", () => {
     } as unknown as RecommendationsEndpoint;
   }
 
+  it("locks the existing standalone listing controls before replacement", async () => {
+    // Spec: desktop-tender-radar-parity-refactor §TASK-0.1. These assertions
+    // intentionally describe the old screen and are removed only by TASK-3.7.
+    wrap(
+      <TenderRadar
+        endpoint={endpoint({
+          state: "ready",
+          recommendations: [recommendation],
+          hasMore: true,
+          offset: 0,
+          limit: 20,
+        })}
+      />,
+    );
+
+    expect(await screen.findByLabelText(/minimum match/i)).toHaveValue("60");
+    expect(
+      screen.getByRole("button", { name: /recalculate matches/i }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: /previous/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /next/i })).toBeEnabled();
+  });
+
   it("shows the score as a number and as a band", async () => {
     // The band is what a user acts on; a bare percentage invites false
     // precision about a server-side heuristic.

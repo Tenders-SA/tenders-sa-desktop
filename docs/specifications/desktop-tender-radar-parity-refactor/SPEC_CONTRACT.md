@@ -54,7 +54,7 @@ overlays are desktop projections.
 
 ## Task checklist
 
-- [ ] **TASK-0.1: Lock the current desktop and parent Radar contracts with fixtures**
+- [x] **TASK-0.1: Lock the current desktop and parent Radar contracts with fixtures**
 - [ ] **TASK-0.2: Confirm the desktop-only boundary and unsupported parity matrix**
 - [ ] **TASK-1.1: Extend the existing RecommendationsEndpoint for Radar parity inputs**
 - [ ] **TASK-1.2: Project the existing extended company profile contract**

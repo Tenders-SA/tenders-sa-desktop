@@ -20,7 +20,7 @@
 
 ## Phase 0 — protect current contracts and scope
 
-- [ ] **TASK-0.1: Lock the current desktop and parent Radar contracts with fixtures**
+- [x] **TASK-0.1: Lock the current desktop and parent Radar contracts with fixtures**
   - **Refs:** REQ-1, REQ-2, REQ-12, INT-4, Design §Canonical product mapping
   - **Files:** Modify `src/tests/module-endpoints.test.ts`, `src/tests/module-screens.test.tsx`
   - **Pre-check:** Re-read the live parent route files named in `requirements.md`; confirm desktop `HEAD` and parent reference lines have not changed since spec approval.
