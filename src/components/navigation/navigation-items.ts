@@ -32,6 +32,7 @@ import {
   Handshake,
   Landmark,
   LayoutDashboard,
+  List,
   ListTodo,
   Radar,
   Search,
@@ -66,6 +67,7 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
         available: true,
       },
       { label: "Tender Radar", icon: Radar, path: "/radar", available: true },
+      { label: "Tenders", icon: List, path: "/tenders", available: true },
       {
         label: "Opportunities",
         icon: Search,

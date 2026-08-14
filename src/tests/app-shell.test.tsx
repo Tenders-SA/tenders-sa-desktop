@@ -35,6 +35,7 @@ describe("navigation model", () => {
       [
         "Command Centre",
         "Tender Radar",
+        "Tenders",
         "Opportunities",
         "Application Workspaces",
         "Proposals",
@@ -62,6 +63,7 @@ describe("navigation model", () => {
     expect(available.map((item) => item.label)).toEqual([
       "Command Centre",
       "Tender Radar",
+      "Tenders",
       "Opportunities",
       "Application Workspaces",
       "Calendar",

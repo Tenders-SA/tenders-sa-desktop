@@ -8,8 +8,6 @@ import type {
 import { ClosingLabel } from "./ClosingLabel";
 import { describeTenderError } from "./tender-errors";
 import { PROVINCES, PUBLICATION_FILTERS } from "./tender-filter-options";
-import type { RecommendationsEndpoint } from "../../services/api/endpoints/recommendations";
-import { TenderRadar } from "../radar/TenderRadar";
 import { tenderListResultSchema } from "../../services/api/endpoints/tenders";
 import { workspaceQueryKey } from "../../services/storage/cache-key";
 import { useWorkspaceRuntime } from "../../services/storage/workspace-runtime-context";
@@ -17,11 +15,8 @@ import { WorkspaceDataStatus } from "../../components/common/WorkspaceDataStatus
 
 export interface TenderListProps {
   endpoint: TendersEndpoint;
-  recommendations?: RecommendationsEndpoint;
   onOpenTender?: (id: string) => void;
 }
-
-type TenderView = "matched" | "all";
 
 type State =
   | { status: "loading" }
@@ -34,6 +29,36 @@ const ZAR = new Intl.NumberFormat("en-ZA", {
   maximumFractionDigits: 0,
 });
 
+/**
+ * The snippet shown beneath the organisation line, mirroring the parent web
+ * listing's `resolveTenderSnippet` precedence (src/lib/seo/tender-card.ts):
+ *   aiSummary → AI Summary (+ Key Requirements); else description; else none.
+ *
+ * `aiSummary`/`aiKeyRequirements` are declared on the list contract but the
+ * parent `GET /api/tenders` does not return them yet, so the `ai` branch is
+ * dormant and `description` is the live snippet source.
+ */
+type TenderSnippet =
+  | { kind: "ai"; summary: string; keyRequirements: string | null }
+  | { kind: "description"; description: string }
+  | { kind: "none" };
+
+function resolveTenderSnippet(tender: TenderListItem): TenderSnippet {
+  const summary = tender.aiSummary?.trim();
+  if (summary) {
+    return {
+      kind: "ai",
+      summary,
+      keyRequirements: tender.aiKeyRequirements?.trim() || null,
+    };
+  }
+  const description = tender.description?.trim();
+  if (description) {
+    return { kind: "description", description };
+  }
+  return { kind: "none" };
+}
+
 function TenderRow({
   tender,
   onOpen,
@@ -41,6 +66,7 @@ function TenderRow({
   tender: TenderListItem;
   onOpen?: (id: string) => void;
 }) {
+  const snippet = resolveTenderSnippet(tender);
   return (
     <li className="group rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/50">
       <div className="flex items-start justify-between gap-4">
@@ -71,6 +97,26 @@ function TenderRow({
           <p className="mt-2 truncate text-sm text-muted-foreground">
             {tender.sourceOrganization}
           </p>
+          {snippet.kind === "ai" && (
+            <div className="mt-3 space-y-2">
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {snippet.summary}
+              </p>
+              {snippet.keyRequirements && (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  <span className="font-semibold text-card-foreground">
+                    Key requirements:{" "}
+                  </span>
+                  {snippet.keyRequirements}
+                </p>
+              )}
+            </div>
+          )}
+          {snippet.kind === "description" && (
+            <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+              {snippet.description}
+            </p>
+          )}
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             <span>Ref {tender.referenceNumber}</span>
             {tender.industryCategories?.[0] && (
@@ -98,19 +144,14 @@ function TenderRow({
 }
 
 /**
- * Tender discovery — the first product screen with real domain data.
+ * Tender discovery — the full tender listing, always. The "Matched for your
+ * company" view was removed (Slice `desktop-tenders-nav-item`); company-scored
+ * matches live at `/radar`, and `/tenders` is the entire corpus.
  *
  * Pagination is `page`/`limit`, which is what `/api/tenders` implements. An
  * explicit `limit` is always sent (PERF-3).
  */
-export function TenderList({
-  endpoint,
-  recommendations,
-  onOpenTender,
-}: TenderListProps) {
-  const [view, setView] = useState<TenderView>(
-    recommendations ? "matched" : "all",
-  );
+export function TenderList({ endpoint, onOpenTender }: TenderListProps) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -124,7 +165,6 @@ export function TenderList({
   const workspace = useWorkspaceRuntime();
 
   useEffect(() => {
-    if (view !== "all") return;
     const controller = new AbortController();
     let active = true;
     setState({ status: "loading" });
@@ -177,15 +217,7 @@ export function TenderList({
       active = false;
       controller.abort();
     };
-  }, [
-    endpoint,
-    page,
-    submittedSearch,
-    province,
-    publicationType,
-    view,
-    workspace,
-  ]);
+  }, [endpoint, page, submittedSearch, province, publicationType, workspace]);
 
   const result = state.status === "ready" ? state.result : undefined;
   /** Whether a selection, rather than the corpus, could explain an empty page. */
@@ -203,8 +235,8 @@ export function TenderList({
         Find the right tender to prepare
       </h1>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-        Start with opportunities scored for your company, or search the complete
-        tender market when you need to investigate beyond your current matches.
+        Browse the complete tender market and investigate every open opportunity
+        beyond your current matches.
       </p>
       <div className="mt-2">
         <WorkspaceDataStatus
@@ -214,76 +246,33 @@ export function TenderList({
         />
       </div>
 
-      {recommendations && (
-        <div
-          role="tablist"
-          aria-label="Tender views"
-          className="mt-6 inline-flex rounded border border-border bg-card p-1"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === "matched"}
-            onClick={() => setView("matched")}
-            className={`rounded px-4 py-2 text-sm font-medium ${
-              view === "matched"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Matched for your company
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === "all"}
-            onClick={() => setView("all")}
-            className={`rounded px-4 py-2 text-sm font-medium ${
-              view === "all"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            All tenders
-          </button>
-        </div>
-      )}
-
-      {view === "matched" && recommendations && (
-        <div role="tabpanel" className="mt-6">
-          <TenderRadar recommendations={recommendations} embedded />
-        </div>
-      )}
-
-      {view === "all" && (
-        <AllTenders
-          state={state}
-          result={result}
-          search={search}
-          submittedSearch={submittedSearch}
-          province={province}
-          publicationType={publicationType}
-          searchId={searchId}
-          provinceId={provinceId}
-          publicationId={publicationId}
-          narrowed={narrowed}
-          onSearchChange={setSearch}
-          onSearchSubmit={(value) => {
-            setPage(1);
-            setSubmittedSearch(value);
-          }}
-          onProvinceChange={(value) => {
-            setPage(1);
-            setProvince(value);
-          }}
-          onPublicationChange={(value) => {
-            setPage(1);
-            setPublicationType(value);
-          }}
-          onPageChange={setPage}
-          onOpenTender={onOpenTender}
-        />
-      )}
+      <AllTenders
+        state={state}
+        result={result}
+        search={search}
+        submittedSearch={submittedSearch}
+        province={province}
+        publicationType={publicationType}
+        searchId={searchId}
+        provinceId={provinceId}
+        publicationId={publicationId}
+        narrowed={narrowed}
+        onSearchChange={setSearch}
+        onSearchSubmit={(value) => {
+          setPage(1);
+          setSubmittedSearch(value);
+        }}
+        onProvinceChange={(value) => {
+          setPage(1);
+          setProvince(value);
+        }}
+        onPublicationChange={(value) => {
+          setPage(1);
+          setPublicationType(value);
+        }}
+        onPageChange={setPage}
+        onOpenTender={onOpenTender}
+      />
     </section>
   );
 }
@@ -326,15 +315,15 @@ function AllTenders({
   onOpenTender,
 }: AllTendersProps) {
   return (
-    <div role="tabpanel" className="mt-6">
+    <div className="mt-6">
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="mb-4">
           <h2 className="text-base font-semibold text-card-foreground">
             Search the complete tender market
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            These results are not company-scored until they appear in Tender
-            Radar.
+            Results are not company-scored — use Tender Radar to qualify
+            suitable work before committing bid time.
           </p>
         </div>
 

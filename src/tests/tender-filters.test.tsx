@@ -17,7 +17,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 import { TenderList } from "../features/tenders/TenderList";
 import {
   PROVINCES,
@@ -27,7 +26,6 @@ import type {
   TenderListResult,
   TendersEndpoint,
 } from "../services/api/endpoints/tenders";
-import type { RecommendationsEndpoint } from "../services/api/endpoints/recommendations";
 
 const emptyResult: TenderListResult = {
   tenders: [],
@@ -197,86 +195,85 @@ describe("TenderList filters", () => {
   });
 });
 
-describe("company opportunity desk", () => {
-  function recommendationsEndpoint() {
-    const list = vi.fn(async () => ({
-      state: "ready" as const,
-      recommendations: [
+describe("full tender listing (matched view removed)", () => {
+  it("renders the full listing immediately, with no matched/all tabs", async () => {
+    const { endpoint, list } = listEndpoint({
+      ...emptyResult,
+      total: 1,
+      pages: 1,
+      tenders: [
         {
-          id: "match-1",
-          tenderId: "tender-1",
-          tender: {
-            id: "tender-1",
-            title: "Supply and delivery of safety equipment",
-            referenceNumber: "SAFE-2026",
-            description: null,
-            closingDate: "2026-09-01T10:00:00.000Z",
-            estimatedValue: 500_000,
-            province: "Gauteng",
-            sourceOrganization: "Department of Public Works",
-            status: "ACTIVE",
-          },
-          score: 84,
-          baseScore: 82,
-          reasoning: "Strong industry and province alignment.",
-          factors: null,
-          improvementAreas: [],
-          calculatedAt: "2026-08-12T08:00:00.000Z",
-          matchCategory: "highly_qualified" as const,
+          id: "tender-1",
+          tender_id: "ext-1",
+          title: "Supply and delivery of safety equipment",
+          referenceNumber: "SAFE-2026",
+          sourceOrganization: "Department of Public Works",
+          description: "Supply and delivery of safety equipment to depots.",
+          province: "Gauteng",
+          closingDate: "2026-09-01T10:00:00.000Z",
+          estimatedValue: 500_000,
+          publicationType: "TENDER_NOTICE",
         },
       ],
-      hasMore: false,
-      offset: 0,
-      limit: 20,
-    }));
-    return {
-      endpoint: {
-        list,
-        explain: vi.fn(),
-        newCount: vi.fn(),
-        refresh: vi.fn(async () => undefined),
-      } as unknown as RecommendationsEndpoint,
-      list,
-    };
-  }
-
-  it("leads with server-scored company matches and defers the corpus read", async () => {
-    const tenders = listEndpoint();
-    const matches = recommendationsEndpoint();
-
-    render(
-      <MemoryRouter>
-        <TenderList
-          endpoint={tenders.endpoint}
-          recommendations={matches.endpoint}
-        />
-      </MemoryRouter>,
-    );
-
-    expect(await screen.findByText("84%")).toBeVisible();
-    expect(screen.getByText("Strong match")).toBeVisible();
-    expect(matches.list).toHaveBeenCalledTimes(1);
-    expect(tenders.list).not.toHaveBeenCalled();
+    });
+    render(<TenderList endpoint={endpoint} />);
+    await waitFor(() => expect(list).toHaveBeenCalled());
+    // The corpus is fetched on mount — no matched view defers the read.
+    expect(list).toHaveBeenCalledTimes(1);
+    // No matched/all tab strip and no embedded radar.
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryByText("Matched for your company")).toBeNull();
+    expect(screen.queryByText("All tenders")).toBeNull();
   });
 
-  it("loads all tenders only when that view is selected and labels them unscored", async () => {
-    const tenders = listEndpoint();
-    const matches = recommendationsEndpoint();
-
-    render(
-      <MemoryRouter>
-        <TenderList
-          endpoint={tenders.endpoint}
-          recommendations={matches.endpoint}
-        />
-      </MemoryRouter>,
-    );
-
-    await screen.findByText("84%");
-    await userEvent.click(screen.getByRole("tab", { name: "All tenders" }));
-    await waitFor(() => expect(tenders.list).toHaveBeenCalledTimes(1));
+  it("renders each tender's description as the snippet", async () => {
+    const { endpoint } = listEndpoint({
+      ...emptyResult,
+      total: 1,
+      pages: 1,
+      tenders: [
+        {
+          id: "tender-1",
+          tender_id: "ext-1",
+          title: "Supply and delivery of safety equipment",
+          referenceNumber: "SAFE-2026",
+          sourceOrganization: "Department of Public Works",
+          description:
+            "Supply and delivery of safety equipment to provincial depots.",
+          province: "Gauteng",
+          closingDate: "2026-09-01T10:00:00.000Z",
+        },
+      ],
+    });
+    render(<TenderList endpoint={endpoint} />);
     expect(
-      screen.getByText(/not company-scored until they appear in Tender Radar/i),
+      await screen.findByText(
+        "Supply and delivery of safety equipment to provincial depots.",
+      ),
     ).toBeVisible();
+  });
+
+  it("renders no snippet when the tender has neither summary nor description", async () => {
+    const { endpoint } = listEndpoint({
+      ...emptyResult,
+      total: 1,
+      pages: 1,
+      tenders: [
+        {
+          id: "tender-1",
+          tender_id: "ext-1",
+          title: "Supply and delivery of safety equipment",
+          referenceNumber: "SAFE-2026",
+          sourceOrganization: "Department of Public Works",
+          description: null,
+          province: "Gauteng",
+          closingDate: "2026-09-01T10:00:00.000Z",
+        },
+      ],
+    });
+    render(<TenderList endpoint={endpoint} />);
+    await screen.findByText("Supply and delivery of safety equipment");
+    // The org line is present; the description snippet is not.
+    expect(screen.queryByText(/key requirements/i)).toBeNull();
   });
 });
