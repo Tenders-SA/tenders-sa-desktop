@@ -11,6 +11,8 @@
     "allow-encrypt-value",
     "allow-decrypt-value",
     "allow-log-event",
+    "allow-workspace-document-read",
+    "allow-workspace-document-write",
     "sql:default",
     "sql:allow-execute",
     {

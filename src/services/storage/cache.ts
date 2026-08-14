@@ -5,6 +5,7 @@ import {
 } from "../../db/repositories/cache-entries";
 import type { SqlExecutor } from "../../db/executor";
 import type { NativeCrypto } from "./native-crypto";
+import type { WorkspaceOwnerId } from "./workspace-owner";
 
 export interface SetCachedOptions {
   entityType: string;
@@ -25,6 +26,7 @@ export interface SetCachedOptions {
 export async function setCached(
   sql: SqlExecutor,
   crypto: NativeCrypto,
+  ownerId: WorkspaceOwnerId,
   key: string,
   value: string,
   options: SetCachedOptions,
@@ -32,6 +34,7 @@ export async function setCached(
   const sensitive = options.sensitive ?? false;
   const payload = sensitive ? await crypto.encrypt(value) : value;
   await upsertCacheEntry(sql, {
+    ownerId,
     key,
     entityType: options.entityType,
     entityId: options.entityId,
@@ -45,9 +48,10 @@ export async function setCached(
 export async function getCached(
   sql: SqlExecutor,
   crypto: NativeCrypto,
+  ownerId: WorkspaceOwnerId,
   key: string,
 ): Promise<string | undefined> {
-  const row = await getCacheEntry(sql, key);
+  const row = await getCacheEntry(sql, ownerId, key);
   if (!row) {
     return undefined;
   }
@@ -56,7 +60,8 @@ export async function getCached(
 
 export async function pruneExpiredCache(
   sql: SqlExecutor,
+  ownerId: WorkspaceOwnerId,
   nowIso: string = new Date().toISOString(),
 ): Promise<number> {
-  return deleteExpiredCacheEntries(sql, nowIso);
+  return deleteExpiredCacheEntries(sql, ownerId, nowIso);
 }

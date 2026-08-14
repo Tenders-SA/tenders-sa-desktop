@@ -1,11 +1,14 @@
 import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 import { AsyncSection } from "../../components/common/AsyncSection";
-import { useAsync } from "../../hooks/use-async";
 import {
   describeApplicationStatus,
   type ApplicationsEndpoint,
 } from "../../services/api/endpoints/applications";
+import { applicationsResultSchema } from "../../services/api/endpoints/applications";
+import { useWorkspaceAsync } from "../../hooks/use-workspace-async";
+import { workspaceQueryKey } from "../../services/storage/cache-key";
+import { WorkspaceDataStatus } from "../../components/common/WorkspaceDataStatus";
 import { ClosingLabel } from "../tenders/ClosingLabel";
 
 export interface ApplicationListProps {
@@ -45,14 +48,20 @@ export function ApplicationList({ endpoint }: ApplicationListProps) {
   const searchId = useId();
   const statusId = useId();
 
-  const state = useAsync(
-    (signal) =>
-      endpoint.list(
-        { offset, limit: 20, status, search: submittedSearch, archived },
-        signal,
-      ),
-    [endpoint, offset, status, submittedSearch, archived],
-  );
+  const query = {
+    offset,
+    limit: 20,
+    status,
+    search: submittedSearch,
+    archived,
+  };
+  const state = useWorkspaceAsync({
+    key: workspaceQueryKey("applications", query),
+    schema: applicationsResultSchema,
+    entity: "application-list",
+    load: (signal) => endpoint.list(query, signal),
+    deps: [endpoint, offset, status, submittedSearch, archived],
+  });
 
   return (
     <section aria-labelledby="applications-heading" className="max-w-4xl">
@@ -65,6 +74,14 @@ export function ApplicationList({ endpoint }: ApplicationListProps) {
       <p className="mt-2 text-sm text-muted-foreground">
         Tenders you are preparing a bid for.
       </p>
+      <div className="mt-2">
+        <WorkspaceDataStatus
+          stale={state.stale}
+          refreshing={state.refreshing}
+          refreshFailed={state.refreshFailed}
+          subject="saved applications"
+        />
+      </div>
 
       <form
         className="mt-4 flex gap-2"

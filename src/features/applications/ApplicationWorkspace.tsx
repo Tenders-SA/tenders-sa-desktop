@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AsyncSection, Panel } from "../../components/common/AsyncSection";
-import { useAsync, type AsyncState } from "../../hooks/use-async";
+import type { AsyncState } from "../../hooks/use-async";
 import {
   describeApplicationStatus,
   type ApplicationDetail,
   type ApplicationsEndpoint,
   type CockpitPayload,
   type SubmissionReadiness,
+  applicationDetailValueSchema,
+  cockpitSchema,
 } from "../../services/api/endpoints/applications";
 import { describeApiError } from "../../services/api/describe-error";
 import { describeJsonField } from "../tenders/tender-fields";
@@ -35,6 +37,10 @@ import { QualifyStage } from "./workflow/QualifyStage";
 import { PlanStage } from "./workflow/PlanStage";
 import { DraftStage } from "./workflow/DraftStage";
 import { ReviewStage } from "./workflow/ReviewStage";
+import type { WorkspaceOwnerId } from "../../services/storage/workspace-owner";
+import { useWorkspaceAsync } from "../../hooks/use-workspace-async";
+import { workspaceEntityKey } from "../../services/storage/cache-key";
+import { WorkspaceDataStatus } from "../../components/common/WorkspaceDataStatus";
 
 export interface ApplicationWorkspaceProps {
   endpoint: ApplicationsEndpoint;
@@ -55,6 +61,7 @@ export interface ApplicationWorkspaceProps {
   };
   savePort?: SaveDownloadPort;
   documentActionPort?: DocumentActionPort;
+  workspaceOwner?: WorkspaceOwnerId;
 }
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
@@ -88,25 +95,46 @@ export function ApplicationWorkspace({
   documents,
   savePort,
   documentActionPort,
+  workspaceOwner,
 }: ApplicationWorkspaceProps) {
-  const state = useAsync(
-    (signal) => endpoint.get(applicationId, signal),
-    [endpoint, applicationId],
-  );
+  const state = useWorkspaceAsync({
+    key: workspaceEntityKey("application-detail", applicationId),
+    schema: applicationDetailValueSchema,
+    entity: "application-detail",
+    load: (signal) => endpoint.get(applicationId, signal),
+    deps: [endpoint, applicationId],
+  });
 
   // One cockpit request shared by every panel that renders the assist
   // payload (R-W-5): a changed parent shape then degrades one panel to its
   // own error state instead of failing the whole workspace.
-  const cockpitState = useAsync(
-    (signal) => endpoint.getCockpit(applicationId, signal),
-    [endpoint, applicationId],
-  );
+  const cockpitState = useWorkspaceAsync({
+    key: workspaceEntityKey("application-workspace", applicationId),
+    schema: cockpitSchema,
+    entity: "application-workspace",
+    load: (signal) => endpoint.getCockpit(applicationId, signal),
+    deps: [endpoint, applicationId],
+  });
 
   return (
     <section
       aria-labelledby="workspace-heading"
       className="w-full min-w-0 max-w-none"
     >
+      <div className="mb-3">
+        <WorkspaceDataStatus
+          stale={state.stale}
+          refreshing={state.refreshing}
+          refreshFailed={state.refreshFailed}
+          subject="the saved workspace"
+        />
+        <WorkspaceDataStatus
+          stale={cockpitState.stale}
+          refreshing={cockpitState.refreshing}
+          refreshFailed={cockpitState.refreshFailed}
+          subject="saved application analysis"
+        />
+      </div>
       <div>
         <AsyncSection
           state={state}
@@ -127,6 +155,7 @@ export function ApplicationWorkspace({
               documents={documents}
               savePort={savePort}
               documentActionPort={documentActionPort}
+              workspaceOwner={workspaceOwner}
             />
           )}
         </AsyncSection>
@@ -148,6 +177,7 @@ function WorkspaceBody({
   documents,
   savePort,
   documentActionPort,
+  workspaceOwner,
 }: {
   application: ApplicationDetail;
   endpoint: ApplicationsEndpoint;
@@ -161,6 +191,7 @@ function WorkspaceBody({
   documents?: ApplicationWorkspaceProps["documents"];
   savePort?: SaveDownloadPort;
   documentActionPort?: DocumentActionPort;
+  workspaceOwner?: WorkspaceOwnerId;
 }) {
   const navigate = useNavigate();
   const { tender, company } = application;
@@ -205,6 +236,7 @@ function WorkspaceBody({
           tenderId={tender.id}
           documentsEndpoint={documents}
           savePort={savePort}
+          workspaceOwner={workspaceOwner}
         />
       ) : workflowStage === "review" ? (
         <ReviewStage

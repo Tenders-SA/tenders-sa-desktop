@@ -20,12 +20,15 @@ import type {
   ResponseDocDraftRow,
 } from "../db/schema/types";
 
+const owner = `v1-${"a".repeat(64)}`;
+
 describe("cache-entries repository", () => {
   it("upserts with parameterized values, never string-interpolated", async () => {
     const db = new FakeSqlExecutor();
     await upsertCacheEntry(
       db,
       {
+        ownerId: owner,
         key: "tender:1",
         entityType: "tender",
         entityId: "1",
@@ -40,7 +43,7 @@ describe("cache-entries repository", () => {
     expect(sql).toContain("INSERT INTO cache_entries");
     expect(sql).not.toContain("Road works");
     expect(params).toEqual([
-      "tender:1",
+      `${owner}:tender:1`,
       "tender",
       "1",
       null,
@@ -49,12 +52,14 @@ describe("cache-entries repository", () => {
       null,
       "2026-01-01T00:00:00.000Z",
       "2026-01-01T00:00:00.000Z",
+      owner,
     ]);
   });
 
   it("reads a cache entry by key", async () => {
     const db = new FakeSqlExecutor();
     const row: CacheEntryRow = {
+      owner_id: owner,
       key: "tender:1",
       entity_type: "tender",
       entity_id: "1",
@@ -67,21 +72,22 @@ describe("cache-entries repository", () => {
     };
     db.selectResults = [[row]];
 
-    const result = await getCacheEntry(db, "tender:1");
+    const result = await getCacheEntry(db, owner, "tender:1");
     expect(result).toEqual(row);
-    expect(db.calls[0].params).toEqual(["tender:1"]);
+    expect(db.calls[0].params).toEqual([owner, `${owner}:tender:1`]);
   });
 
   it("returns undefined for a missing key without erroring", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [[]];
-    expect(await getCacheEntry(db, "missing")).toBeUndefined();
+    expect(await getCacheEntry(db, owner, "missing")).toBeUndefined();
   });
 
   it("deletes expired entries and reports the count", async () => {
     const db = new FakeSqlExecutor();
     const deleted = await deleteExpiredCacheEntries(
       db,
+      owner,
       "2026-01-01T00:00:00.000Z",
     );
     expect(deleted).toBe(1);
@@ -92,20 +98,28 @@ describe("cache-entries repository", () => {
 describe("local-preferences repository", () => {
   it("round-trips a preference through parameterized queries", async () => {
     const db = new FakeSqlExecutor();
-    await setLocalPreference(db, "theme", "dark", "2026-01-01T00:00:00.000Z");
+    await setLocalPreference(
+      db,
+      owner,
+      "theme",
+      "dark",
+      "2026-01-01T00:00:00.000Z",
+    );
     expect(db.calls[0].params).toEqual([
+      owner,
       "theme",
       "dark",
       "2026-01-01T00:00:00.000Z",
     ]);
 
     const row: LocalPreferenceRow = {
+      owner_id: "legacy-unscoped",
       key: "theme",
       value: "dark",
       updated_at: "2026-01-01T00:00:00.000Z",
     };
     db.selectResults = [[row]];
-    expect(await getLocalPreference(db, "theme")).toBe("dark");
+    expect(await getLocalPreference(db, owner, "theme")).toBe("dark");
   });
 });
 
@@ -115,6 +129,7 @@ describe("sync-operations repository", () => {
     await enqueueSyncOperation(
       db,
       {
+        ownerId: owner,
         id: "op-1",
         idempotencyKey: "idem-1",
         entityType: "application",
@@ -135,6 +150,7 @@ describe("sync-operations repository", () => {
       "{}",
       null,
       "2026-01-01T00:00:00.000Z",
+      owner,
     ]);
   });
 
@@ -145,6 +161,7 @@ describe("sync-operations repository", () => {
     await upsertSyncOperation(
       db,
       {
+        ownerId: owner,
         id: "op-1",
         idempotencyKey: "idem-1",
         entityType: "application",
@@ -167,13 +184,15 @@ describe("sync-operations repository", () => {
       "{}",
       null,
       "2026-01-01T00:00:00.000Z",
+      owner,
     ]);
   });
 
   it("lists only pending operations, oldest first", async () => {
     const db = new FakeSqlExecutor();
-    await listPendingSyncOperations(db);
-    expect(db.calls[0].sql).toContain("WHERE status = 'pending'");
+    await listPendingSyncOperations(db, owner);
+    expect(db.calls[0].sql).toContain("status = 'pending'");
+    expect(db.calls[0].params).toEqual([owner]);
     expect(db.calls[0].sql).toContain("ORDER BY created_at ASC");
   });
 
@@ -204,6 +223,7 @@ describe("response-doc-drafts repository", () => {
     await upsert(
       db,
       {
+        ownerId: owner,
         applicationId: "a1",
         documentKey: "technical",
         content: "enc:content",
@@ -214,7 +234,7 @@ describe("response-doc-drafts repository", () => {
     const { sql, params } = db.calls[0];
     expect(sql).toContain("INSERT INTO response_doc_drafts");
     expect(sql).toContain(
-      "ON CONFLICT(application_id, document_key) DO UPDATE",
+      "ON CONFLICT(owner_id, application_id, document_key) DO UPDATE",
     );
     expect(params).toEqual([
       "a1",
@@ -222,6 +242,7 @@ describe("response-doc-drafts repository", () => {
       "enc:content",
       1,
       "2026-01-01T00:00:00.000Z",
+      owner,
     ]);
   });
 
@@ -230,24 +251,26 @@ describe("response-doc-drafts repository", () => {
     const { getResponseDocDraft: get } =
       await import("../db/repositories/response-doc-drafts");
     const row: ResponseDocDraftRow = {
+      owner_id: owner,
       application_id: "a1",
       document_key: "technical",
       content: "enc:content",
       encrypted: 1,
       updated_at: "2026-01-01T00:00:00.000Z",
+      base_fingerprint: null,
     };
     db.selectResults = [[row]];
-    expect(await get(db, "a1", "technical")).toEqual(row);
-    expect(db.calls[0].params).toEqual(["a1", "technical"]);
+    expect(await get(db, owner, "a1", "technical")).toEqual(row);
+    expect(db.calls[0].params).toEqual([owner, "a1", "technical"]);
   });
 
   it("deletes a draft by composite key", async () => {
     const db = new FakeSqlExecutor();
     const { deleteResponseDocDraft: del } =
       await import("../db/repositories/response-doc-drafts");
-    await del(db, "a1", "technical");
+    await del(db, owner, "a1", "technical");
     expect(db.calls[0].sql).toContain("DELETE FROM response_doc_drafts");
-    expect(db.calls[0].params).toEqual(["a1", "technical"]);
+    expect(db.calls[0].params).toEqual([owner, "a1", "technical"]);
   });
 });
 
@@ -259,6 +282,7 @@ describe("response-doc-versions repository", () => {
     await insertResponseDocVersion(
       db,
       {
+        ownerId: owner,
         id: "v1",
         applicationId: "a1",
         documentKey: "technical",
@@ -276,6 +300,7 @@ describe("response-doc-versions repository", () => {
       1,
       "save",
       "2026-01-01T00:00:00.000Z",
+      owner,
     ]);
   });
 
@@ -283,21 +308,21 @@ describe("response-doc-versions repository", () => {
     const db = new FakeSqlExecutor();
     const { listResponseDocVersions } =
       await import("../db/repositories/response-doc-versions");
-    await listResponseDocVersions(db, "a1", "technical", 5);
+    await listResponseDocVersions(db, owner, "a1", "technical", 5);
     const { sql, params } = db.calls[0];
     expect(sql).toContain("ORDER BY created_at DESC");
-    expect(sql).toContain("LIMIT $3");
-    expect(params).toEqual(["a1", "technical", 5]);
+    expect(sql).toContain("LIMIT $4");
+    expect(params).toEqual([owner, "a1", "technical", 5]);
   });
 
   it("prunes older versions beyond the keep count", async () => {
     const db = new FakeSqlExecutor();
     const { pruneResponseDocVersions } =
       await import("../db/repositories/response-doc-versions");
-    await pruneResponseDocVersions(db, "a1", "technical", 20);
+    await pruneResponseDocVersions(db, owner, "a1", "technical", 20);
     const { sql, params } = db.calls[0];
     expect(sql).toContain("DELETE FROM response_doc_versions");
     expect(sql).toContain("NOT IN");
-    expect(params).toEqual(["a1", "technical", 20]);
+    expect(params).toEqual([owner, "a1", "technical", 20]);
   });
 });

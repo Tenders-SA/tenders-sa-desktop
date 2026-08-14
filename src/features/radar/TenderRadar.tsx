@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AsyncSection } from "../../components/common/AsyncSection";
-import { useAsync } from "../../hooks/use-async";
 import {
   describeMatchCategory,
   type RecommendationsEndpoint,
   type RecommendedTender,
+  radarResultSchema,
 } from "../../services/api/endpoints/recommendations";
 import { ClosingLabel } from "../tenders/ClosingLabel";
 import { MatchFactors } from "./MatchFactors";
+import { useWorkspaceAsync } from "../../hooks/use-workspace-async";
+import { workspaceQueryKey } from "../../services/storage/cache-key";
+import { WorkspaceDataStatus } from "../../components/common/WorkspaceDataStatus";
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
   style: "currency",
@@ -42,10 +45,14 @@ export function TenderRadar({ endpoint, embedded = false }: TenderRadarProps) {
   const [offset, setOffset] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
-  const state = useAsync(
-    (signal) => endpoint.list({ minScore, offset, limit: 20 }, signal),
-    [endpoint, minScore, offset],
-  );
+  const query = { minScore, offset, limit: 20 };
+  const state = useWorkspaceAsync({
+    key: workspaceQueryKey("radar", query),
+    schema: radarResultSchema,
+    entity: "radar-list",
+    load: (signal) => endpoint.list(query, signal),
+    deps: [endpoint, minScore, offset],
+  });
 
   return (
     <section
@@ -99,6 +106,14 @@ export function TenderRadar({ endpoint, embedded = false }: TenderRadarProps) {
           Open tenders scored against your company profile.
         </p>
       )}
+      <div className="mt-2">
+        <WorkspaceDataStatus
+          stale={state.stale}
+          refreshing={state.refreshing}
+          refreshFailed={state.refreshFailed}
+          subject="saved matches"
+        />
+      </div>
 
       <div className="mt-4 flex items-center gap-2">
         <label

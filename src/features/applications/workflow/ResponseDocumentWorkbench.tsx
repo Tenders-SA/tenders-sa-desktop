@@ -4,11 +4,14 @@ import { useAsync } from "../../../hooks/use-async";
 import type { ApiClients } from "../../../app/auth-wiring";
 import { decodeDraftDocumentKey } from "./document-route";
 import { DraftStage } from "./DraftStage";
+import type { WorkspaceOwnerId } from "../../../services/storage/workspace-owner";
 
 export function ResponseDocumentWorkbench({
   clients,
+  workspaceOwner,
 }: {
   clients: ApiClients;
+  workspaceOwner?: WorkspaceOwnerId;
 }) {
   const { applicationId, documentKey } = useParams();
   const navigate = useNavigate();
@@ -40,6 +43,7 @@ export function ResponseDocumentWorkbench({
             tenderDocuments={application.tender.documents}
             tenderId={application.tender.id}
             documentsEndpoint={clients.documents}
+            workspaceOwner={workspaceOwner}
             onNavigate={(url) => navigate(url)}
           />
         )}

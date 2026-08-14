@@ -32,6 +32,7 @@ import {
 import { decodeDraftDocumentKey } from "../../features/applications/workflow/document-route";
 import { ResponseDocumentWorkbench } from "../../features/applications/workflow/ResponseDocumentWorkbench";
 import { TenderDocumentViewerRoute } from "../../features/tenders/TenderDocumentViewerRoute";
+import type { WorkspaceOwnerId } from "../../services/storage/workspace-owner";
 
 export interface AppRoutesProps {
   auth: AuthPort;
@@ -51,6 +52,7 @@ export interface AppRoutesProps {
   /** The signed-in account, for the header's sign-out control. */
   session?: SessionSummary;
   onSignOut?: () => Promise<void>;
+  workspaceOwner?: WorkspaceOwnerId;
 }
 
 /** Reads `:tenderId` so the screen itself stays router-agnostic. */
@@ -92,7 +94,13 @@ function TenderListRoute({ clients }: { clients: ApiClients }) {
   );
 }
 
-function ApplicationWorkspaceRoute({ clients }: { clients: ApiClients }) {
+function ApplicationWorkspaceRoute({
+  clients,
+  workspaceOwner,
+}: {
+  clients: ApiClients;
+  workspaceOwner?: WorkspaceOwnerId;
+}) {
   const { applicationId, stage, documentKey } = useParams();
   if (!applicationId) return <Navigate to="/applications" replace />;
   if (!stage) {
@@ -120,6 +128,7 @@ function ApplicationWorkspaceRoute({ clients }: { clients: ApiClients }) {
       tenders={clients.tenders}
       eligibility={clients.eligibility}
       documents={clients.documents}
+      workspaceOwner={workspaceOwner}
     />
   );
 }
@@ -131,6 +140,7 @@ export function AppRoutes({
   onSignedIn,
   session,
   onSignOut,
+  workspaceOwner,
 }: AppRoutesProps) {
   // While production auth is gated off no session can be established, so the
   // shell would otherwise be unreachable. Derived from the gate rather than
@@ -168,7 +178,12 @@ export function AppRoutes({
       >
         <Route
           path="applications/:applicationId/draft/:documentKey"
-          element={<ResponseDocumentWorkbench clients={clients} />}
+          element={
+            <ResponseDocumentWorkbench
+              clients={clients}
+              workspaceOwner={workspaceOwner}
+            />
+          }
         />
         <Route element={<AppLayout session={session} onSignOut={onSignOut} />}>
           <Route
@@ -204,11 +219,21 @@ export function AppRoutes({
           />
           <Route
             path="applications/:applicationId"
-            element={<ApplicationWorkspaceRoute clients={clients} />}
+            element={
+              <ApplicationWorkspaceRoute
+                clients={clients}
+                workspaceOwner={workspaceOwner}
+              />
+            }
           />
           <Route
             path="applications/:applicationId/:stage"
-            element={<ApplicationWorkspaceRoute clients={clients} />}
+            element={
+              <ApplicationWorkspaceRoute
+                clients={clients}
+                workspaceOwner={workspaceOwner}
+              />
+            }
           />
           <Route
             path="calendar"

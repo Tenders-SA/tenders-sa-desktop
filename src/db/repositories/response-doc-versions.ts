@@ -5,6 +5,7 @@ import type {
 } from "../schema/types";
 
 export interface NewResponseDocVersion {
+  ownerId: string;
   id: string;
   applicationId: string;
   documentKey: string;
@@ -21,8 +22,8 @@ export async function insertResponseDocVersion(
 ): Promise<void> {
   await executor.execute(
     `INSERT INTO response_doc_versions
-       (id, application_id, document_key, content, encrypted, source, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       (id, application_id, document_key, content, encrypted, source, created_at, owner_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       version.id,
       version.applicationId,
@@ -31,41 +32,44 @@ export async function insertResponseDocVersion(
       version.encrypted ? 1 : 0,
       version.source,
       now,
+      version.ownerId,
     ],
   );
 }
 
 export async function listResponseDocVersions(
   executor: SqlExecutor,
+  ownerId: string,
   applicationId: string,
   documentKey: string,
   limit = 20,
 ): Promise<ResponseDocVersionRow[]> {
   return executor.select<ResponseDocVersionRow[]>(
     `SELECT * FROM response_doc_versions
-     WHERE application_id = $1 AND document_key = $2
+     WHERE owner_id = $1 AND application_id = $2 AND document_key = $3
      ORDER BY created_at DESC
-     LIMIT $3`,
-    [applicationId, documentKey, limit],
+     LIMIT $4`,
+    [ownerId, applicationId, documentKey, limit],
   );
 }
 
 export async function pruneResponseDocVersions(
   executor: SqlExecutor,
+  ownerId: string,
   applicationId: string,
   documentKey: string,
   keep = 20,
 ): Promise<number> {
   const result = await executor.execute(
     `DELETE FROM response_doc_versions
-     WHERE application_id = $1 AND document_key = $2
+     WHERE owner_id = $1 AND application_id = $2 AND document_key = $3
        AND id NOT IN (
          SELECT id FROM response_doc_versions
-         WHERE application_id = $1 AND document_key = $2
+         WHERE owner_id = $1 AND application_id = $2 AND document_key = $3
          ORDER BY created_at DESC
-         LIMIT $3
+         LIMIT $4
        )`,
-    [applicationId, documentKey, keep],
+    [ownerId, applicationId, documentKey, keep],
   );
   return result.rowsAffected;
 }

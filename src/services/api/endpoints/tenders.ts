@@ -80,7 +80,7 @@ const tenderListResponseSchema = z.object({
  * inheriting the required list field makes every real detail response fail
  * validation before the page can render.
  */
-const tenderDetailSchema = tenderListItemSchema
+export const tenderDetailSchema = tenderListItemSchema
   .omit({ tender_id: true })
   .extend({
     status: z.string().optional(),
@@ -186,6 +186,14 @@ export interface TenderListResult {
   total: number;
   pages: number;
 }
+
+export const tenderListResultSchema = z.object({
+  tenders: z.array(tenderListItemSchema),
+  page: z.number(),
+  limit: z.number(),
+  total: z.number(),
+  pages: z.number(),
+});
 
 export interface TendersEndpointOptions {
   transport: ApiTransport;

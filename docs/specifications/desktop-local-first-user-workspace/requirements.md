@@ -2,7 +2,7 @@
 
 ## Status and decision
 
-- **Status:** `PENDING USER APPROVAL — SPECIFICATION ONLY`
+- **Status:** `IMPLEMENTED — AUTOMATED GATES COMPLETE; MANUAL WINDOWS VERIFICATION PENDING`
 - **Date:** 2026-08-14
 - **Decision:** enhance the existing SQLite, cache, sync, encryption and response-document stores. Do not create a second database, draft store, API client or server contract.
 - **Parent boundary:** the parent Tenders-SA checkout and backend are read-only. This work consumes only existing desktop endpoint contracts.
@@ -184,4 +184,3 @@ Invalid JSON, decryption failure, missing files, fingerprint mismatch and interr
 - Conflicting local/remote response content preserves both versions.
 - Switching users cannot observe another user's rows, paths or file bytes.
 - Corrupt local state falls back safely without destroying unrelated valid content.
-

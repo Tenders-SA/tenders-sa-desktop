@@ -24,6 +24,18 @@ pub fn migrations() -> Vec<Migration> {
             sql: include_str!("../../migrations/0002_add_lookup_indexes.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "response_doc_drafts",
+            sql: include_str!("../../migrations/0003_response_doc_drafts.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "local_workspace_ownership",
+            sql: include_str!("../../migrations/0004_local_workspace_ownership.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
@@ -38,6 +50,15 @@ mod tests {
 
     const MIGRATION_0001: &str = include_str!("../../migrations/0001_init.sql");
     const MIGRATION_0002: &str = include_str!("../../migrations/0002_add_lookup_indexes.sql");
+    const MIGRATION_0003: &str = include_str!("../../migrations/0003_response_doc_drafts.sql");
+    const MIGRATION_0004: &str = include_str!("../../migrations/0004_local_workspace_ownership.sql");
+
+    fn apply_all(conn: &rusqlite::Connection) {
+        conn.execute_batch(MIGRATION_0001).unwrap();
+        conn.execute_batch(MIGRATION_0002).unwrap();
+        conn.execute_batch(MIGRATION_0003).unwrap();
+        conn.execute_batch(MIGRATION_0004).unwrap();
+    }
 
     fn table_names(conn: &rusqlite::Connection) -> Vec<String> {
         let mut stmt = conn
@@ -52,8 +73,7 @@ mod tests {
     #[test]
     fn applies_cleanly_to_an_empty_database() {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
-        conn.execute_batch(MIGRATION_0001).unwrap();
-        conn.execute_batch(MIGRATION_0002).unwrap();
+        apply_all(&conn);
 
         let tables = table_names(&conn);
         for expected in [
@@ -63,9 +83,49 @@ mod tests {
             "local_file_references",
             "sync_operations",
             "sync_conflicts",
+            "response_doc_drafts",
+            "response_doc_versions",
         ] {
             assert!(tables.contains(&expected.to_string()), "missing {expected}");
         }
+    }
+
+    #[test]
+    fn upgrades_from_v3_without_assigning_legacy_data_to_an_account() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(MIGRATION_0001).unwrap();
+        conn.execute_batch(MIGRATION_0002).unwrap();
+        conn.execute_batch(MIGRATION_0003).unwrap();
+        conn.execute(
+            "INSERT INTO response_doc_drafts (application_id, document_key, content, encrypted, updated_at)
+             VALUES ('a1', 'technical', 'ciphertext', 1, '2026-01-01')",
+            [],
+        )
+        .unwrap();
+        conn.execute_batch(MIGRATION_0004).unwrap();
+
+        let owner: String = conn
+            .query_row(
+                "SELECT owner_id FROM response_doc_drafts WHERE application_id = 'a1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(owner, "legacy-unscoped");
+    }
+
+    #[test]
+    fn owner_indexes_support_isolated_lookup_paths() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        apply_all(&conn);
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name LIKE '%owner%'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(count >= 9, "every local entity family needs an owner index");
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # Desktop Local-First User Workspace — Integration Evaluation
 
-- **Status:** specification complete; implementation not started
+- **Status:** implementation complete; manual Windows verification pending
 - **Date:** 2026-08-14
 
 ## Pre-implementation evidence
@@ -37,17 +37,29 @@
 - [x] Cache and file freshness limitations reflect fields actually exposed by existing desktop schemas.
 - [x] Migration, rollback, security, privacy, performance and corruption behavior are specified.
 - [x] No claim that unimplemented local-first reads already exist.
-- [x] No implementation is marked approved or complete.
+- [x] Implementation status and evidence are synchronized after verification.
 
 ## Implementation gates
 
-- [ ] User approves SPEC_CONTRACT.
-- [ ] T1 audit matrix reviewed before migrations.
-- [ ] T2 ownership migration proves no data loss.
-- [ ] T3 account switching/isolation tests pass.
-- [ ] T4–T5 local-first foundation passes fake-clock and concurrency tests.
-- [ ] T6–T10 read/document consumers pass offline and fallback tests.
-- [ ] T11–T13 local-save/sync/conflict tests pass.
-- [ ] T14 UX accessibility tests pass.
-- [ ] T15 permitted full gates and manual Windows checks pass.
+- [x] User approved SPEC_CONTRACT on 2026-08-14.
+- [x] T1 audit matrix reviewed before migrations.
+- [x] T2 ownership migration is additive and quarantines legacy rows.
+- [x] T3 account-derived owner isolation and path-safety tests pass.
+- [x] T4–T5 local-first foundation passes cache, fake-clock and single-flight tests.
+- [x] T6–T10 read/document consumers pass offline-cache and fallback tests.
+- [x] T11–T13 local-save/sync/conflict tests pass, including encrypted preservation.
+- [x] T14 status UX uses live regions and explicit non-colour wording.
+- [x] T15 automated gates: 857/857 Vitest, TypeScript, ESLint, Prettier,
+      `cargo check`, and diff check pass.
+- [ ] T15 manual Windows checks: offline revisit, restart recovery, account
+      switching, cached document reuse and conflict resolution.
 
+## Verification notes
+
+- The parent repository and APIs were not modified.
+- The queue allowlist remains response-document saves only; AI generation and
+  other non-idempotent operations remain remote-only.
+- Two `cargo test` attempts and one `cargo check --tests` attempt spent the
+  full five-minute runner window waiting/linking the shared Tauri test profile
+  and timed out before emitting a test result. Production Rust code passes
+  `cargo check`; no native test result is claimed.

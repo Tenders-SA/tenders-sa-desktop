@@ -7,6 +7,12 @@ import { loadConfig } from "./app/config/load-config";
 import { markShellInteractive } from "./lib/performance";
 import type { SessionSummary } from "./services/auth/ports";
 import type { AuthWiring } from "./app/auth-wiring";
+import {
+  workspaceOwnerForSession,
+  type WorkspaceOwnerId,
+} from "./services/storage/workspace-owner";
+import { WorkspaceRuntimeProvider } from "./services/storage/workspace-runtime";
+import { WorkspaceSyncCoordinator } from "./services/sync/WorkspaceSyncCoordinator";
 
 /**
  * Composition root.
@@ -95,6 +101,7 @@ function AuthenticatedApp({ wiring }: { wiring: AuthWiring }) {
   // The session itself, not a boolean: the header needs to name the account
   // it is offering to sign out of.
   const [session, setSession] = useState<SessionSummary | undefined>();
+  const [workspaceOwner, setWorkspaceOwner] = useState<WorkspaceOwnerId>();
   const isAuthenticated = session !== undefined;
 
   useEffect(() => {
@@ -111,6 +118,19 @@ function AuthenticatedApp({ wiring }: { wiring: AuthWiring }) {
     // listed to satisfy the exhaustive-deps rule honestly rather than by
     // suppressing it.
   }, [wiring]);
+
+  useEffect(() => {
+    let active = true;
+    setWorkspaceOwner(undefined);
+    if (session) {
+      void workspaceOwnerForSession(session).then((owner) => {
+        if (active) setWorkspaceOwner(owner);
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [session]);
 
   useEffect(() => {
     // Restores a session on start-up, which also renews the token: `/me`
@@ -130,30 +150,37 @@ function AuthenticatedApp({ wiring }: { wiring: AuthWiring }) {
 
   return (
     <AppProviders>
-      <BrowserRouter>
-        <AppRoutes
-          auth={wiring.auth}
-          isAuthenticated={isAuthenticated}
-          // Unconditional, and the prop is required so it cannot become
-          // conditional again: navigation advertises these screens, so their
-          // routes have to exist even with no session. Each screen reports
-          // the 401 as "sign in", which beats a link that quietly goes home.
-          clients={wiring}
-          onSignedIn={setSession}
-          session={session}
-          onSignOut={async () => {
-            // `logout()` clears the keychain even if the remote call fails,
-            // and deleting that entry IS the logout -- the parent does not
-            // revoke. So the local session is dropped unconditionally: any
-            // path that left it set would keep a signed-out user signed in.
-            try {
-              await wiring.auth.logout();
-            } finally {
-              setSession(undefined);
-            }
-          }}
+      <WorkspaceRuntimeProvider ownerId={workspaceOwner}>
+        <WorkspaceSyncCoordinator
+          ownerId={workspaceOwner}
+          applications={wiring.applications}
         />
-      </BrowserRouter>
+        <BrowserRouter>
+          <AppRoutes
+            auth={wiring.auth}
+            isAuthenticated={isAuthenticated}
+            // Unconditional, and the prop is required so it cannot become
+            // conditional again: navigation advertises these screens, so their
+            // routes have to exist even with no session. Each screen reports
+            // the 401 as "sign in", which beats a link that quietly goes home.
+            clients={wiring}
+            onSignedIn={setSession}
+            session={session}
+            workspaceOwner={workspaceOwner}
+            onSignOut={async () => {
+              // `logout()` clears the keychain even if the remote call fails,
+              // and deleting that entry IS the logout -- the parent does not
+              // revoke. So the local session is dropped unconditionally: any
+              // path that left it set would keep a signed-out user signed in.
+              try {
+                await wiring.auth.logout();
+              } finally {
+                setSession(undefined);
+              }
+            }}
+          />
+        </BrowserRouter>
+      </WorkspaceRuntimeProvider>
     </AppProviders>
   );
 }

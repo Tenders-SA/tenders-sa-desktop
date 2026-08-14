@@ -2,6 +2,7 @@ import type { SqlExecutor } from "../executor";
 import type { SyncOperationRow, SyncOperationStatus } from "../schema/types";
 
 export interface NewSyncOperation {
+  ownerId: string;
   id: string;
   idempotencyKey: string;
   entityType: string;
@@ -23,8 +24,8 @@ export async function enqueueSyncOperation(
 ): Promise<void> {
   await executor.execute(
     `INSERT INTO sync_operations
-       (id, idempotency_key, entity_type, entity_id, operation_type, payload, depends_on, status, attempt_count, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 0, $8, $8)
+       (id, idempotency_key, entity_type, entity_id, operation_type, payload, depends_on, status, attempt_count, created_at, updated_at, owner_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 0, $8, $8, $9)
      ON CONFLICT(idempotency_key) DO NOTHING`,
     [
       op.id,
@@ -35,6 +36,7 @@ export async function enqueueSyncOperation(
       op.payload,
       op.dependsOn ?? null,
       now,
+      op.ownerId,
     ],
   );
 }
@@ -52,8 +54,8 @@ export async function upsertSyncOperation(
 ): Promise<void> {
   await executor.execute(
     `INSERT INTO sync_operations
-       (id, idempotency_key, entity_type, entity_id, operation_type, payload, depends_on, status, attempt_count, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 0, $8, $8)
+       (id, idempotency_key, entity_type, entity_id, operation_type, payload, depends_on, status, attempt_count, created_at, updated_at, owner_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 0, $8, $8, $9)
      ON CONFLICT(idempotency_key) DO UPDATE SET
        id = excluded.id,
        entity_type = excluded.entity_type,
@@ -74,15 +76,18 @@ export async function upsertSyncOperation(
       op.payload,
       op.dependsOn ?? null,
       now,
+      op.ownerId,
     ],
   );
 }
 
 export async function listPendingSyncOperations(
   executor: SqlExecutor,
+  ownerId: string,
 ): Promise<SyncOperationRow[]> {
   return executor.select<SyncOperationRow[]>(
-    "SELECT * FROM sync_operations WHERE status = 'pending' ORDER BY created_at ASC",
+    "SELECT * FROM sync_operations WHERE owner_id = $1 AND status = 'pending' ORDER BY created_at ASC",
+    [ownerId],
   );
 }
 

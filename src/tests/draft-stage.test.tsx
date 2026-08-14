@@ -74,6 +74,11 @@ function fakeLocalStore(
         drafts[key] = content;
       },
     ),
+    markSaveSynced: vi.fn(async (applicationId: string, key: string) => {
+      void applicationId;
+      const index = pendingKeys.indexOf(key);
+      if (index >= 0) pendingKeys.splice(index, 1);
+    }),
     listPendingSaveKeys: vi.fn(async (applicationId: string) => {
       void applicationId;
       return [...pendingKeys];
@@ -93,6 +98,8 @@ function fakeLocalStore(
         return replayed;
       },
     ),
+    listConflicts: vi.fn(async () => []),
+    resolveConflict: vi.fn(async () => ""),
   };
 }
 
@@ -115,6 +122,7 @@ function singleDocumentEndpoint(overrides: Partial<ApplicationsEndpoint> = {}) {
 describe("DraftStage", () => {
   it("opens a full-screen workbench and edits the generated response through existing contracts", async () => {
     const user = userEvent.setup();
+    const localStore = fakeLocalStore();
     const save = vi.fn(async () => ({ ok: true, key: "technical" }));
     const endpoint = {
       getResponseBlueprint: vi.fn(async () => ({
@@ -167,6 +175,7 @@ describe("DraftStage", () => {
                 applicationId="a1"
                 documentKey="technical"
                 endpoint={endpoint}
+                localStore={localStore}
                 tenderDocuments={[
                   {
                     id: "price-1",
@@ -248,6 +257,14 @@ describe("DraftStage", () => {
 
     await user.click(screen.getByRole("button", { name: "Save document" }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(localStore.persistDraft).toHaveBeenCalledWith(
+      "a1",
+      "technical",
+      "## Our delivery method",
+    );
+    expect(localStore.enqueueSave.mock.invocationCallOrder[0]).toBeLessThan(
+      save.mock.invocationCallOrder[0],
+    );
     const savedMarkdown = (save.mock.calls as unknown[][])[0]?.[2];
     expect(String(savedMarkdown).trim()).toBe("## Our delivery method");
     await user.click(screen.getByRole("button", { name: "Close editor" }));
@@ -833,6 +850,7 @@ describe("DraftStage", () => {
         "a1",
         "technical",
         "Offline content",
+        "Existing response",
       ),
     );
     expect(

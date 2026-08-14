@@ -13,6 +13,10 @@ import { describeTenderError } from "./tender-errors";
 import { TenderAnalysisWorkbench } from "./detail/TenderAnalysisWorkbench";
 import { TenderDocumentsSection } from "./detail/TenderDocumentsSection";
 import { TenderIntelligenceOverview } from "./detail/TenderIntelligenceOverview";
+import { tenderDetailSchema } from "../../services/api/endpoints/tenders";
+import { workspaceEntityKey } from "../../services/storage/cache-key";
+import { useWorkspaceRuntime } from "../../services/storage/workspace-runtime-context";
+import { WorkspaceDataStatus } from "../../components/common/WorkspaceDataStatus";
 
 export interface TenderDetailProps {
   endpoint: TendersEndpoint;
@@ -40,7 +44,7 @@ export interface TenderDetailProps {
 
 type State =
   | { status: "loading" }
-  | { status: "ready"; tender: TenderDetailData }
+  | { status: "ready"; tender: TenderDetailData; stale?: boolean }
   | { status: "error"; message: string; kind: string };
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
@@ -127,16 +131,39 @@ export function TenderDetail({
   onOpenDocument,
 }: TenderDetailProps) {
   const [state, setState] = useState<State>({ status: "loading" });
+  const workspace = useWorkspaceRuntime();
 
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
     setState({ status: "loading" });
 
-    endpoint
-      .get(tenderId, controller.signal)
-      .then((tender) => {
-        if (active) setState({ status: "ready", tender });
+    const fetcher = () => endpoint.get(tenderId, controller.signal);
+    const request = workspace
+      ? workspace.queries
+          .load({
+            key: workspaceEntityKey("tender-detail", tenderId),
+            schema: tenderDetailSchema,
+            entity: "tender-detail" as const,
+            fetcher,
+            onUpdate: (tender) => {
+              if (active) setState({ status: "ready", tender, stale: false });
+            },
+          })
+          .then((loaded) => ({
+            value: loaded.value,
+            stale: loaded.cached?.stale ?? false,
+          }))
+      : fetcher().then((value) => ({ value, stale: false }));
+
+    request
+      .then(({ value: tender, stale }) => {
+        if (active)
+          setState({
+            status: "ready",
+            tender,
+            stale,
+          });
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.kind === "cancelled") return;
@@ -152,7 +179,7 @@ export function TenderDetail({
       active = false;
       controller.abort();
     };
-  }, [endpoint, tenderId]);
+  }, [endpoint, tenderId, workspace]);
 
   const tender = state.status === "ready" ? state.tender : undefined;
 
@@ -183,6 +210,14 @@ export function TenderDetail({
           {state.message}
         </p>
       )}
+
+      <div className="mt-4">
+        <WorkspaceDataStatus
+          stale={state.status === "ready" && state.stale}
+          refreshing={state.status === "ready" && state.stale}
+          subject="the saved tender"
+        />
+      </div>
 
       {tender && (
         <>

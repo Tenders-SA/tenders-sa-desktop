@@ -12,6 +12,7 @@ describe("sync conflicts", () => {
     const db = new FakeSqlExecutor();
     await recordConflict(
       db,
+      "owner-a",
       {
         id: "c1",
         syncOperationId: "op-1",
@@ -25,6 +26,7 @@ describe("sync conflicts", () => {
 
     const { sql, params } = db.calls[0];
     expect(sql).toContain("'unresolved'");
+    expect(params).toContain("owner-a");
     expect(params).toContain('{"price":100}');
     expect(params).toContain('{"price":120}');
   });
@@ -32,20 +34,23 @@ describe("sync conflicts", () => {
   it("flags proposal and pricing conflicts as human-resolution-only", () => {
     expect(requiresHumanResolution("proposal")).toBe(true);
     expect(requiresHumanResolution("pricing")).toBe(true);
+    expect(requiresHumanResolution("response-document")).toBe(true);
     expect(requiresHumanResolution("tender")).toBe(false);
   });
 
   it("lists unresolved conflicts oldest-first", async () => {
     const db = new FakeSqlExecutor();
-    await listUnresolvedConflicts(db);
+    await listUnresolvedConflicts(db, "owner-a");
     expect(db.calls[0].sql).toContain("resolution_state = 'unresolved'");
     expect(db.calls[0].sql).toContain("ORDER BY created_at ASC");
+    expect(db.calls[0].params).toEqual(["owner-a"]);
   });
 
   it("only resolves a conflict that is still unresolved", async () => {
     const db = new FakeSqlExecutor();
     await markConflictResolved(
       db,
+      "owner-a",
       "c1",
       "resolved_local",
       "2026-01-01T00:00:00.000Z",
@@ -57,6 +62,7 @@ describe("sync conflicts", () => {
     expect(params).toEqual([
       "resolved_local",
       "2026-01-01T00:00:00.000Z",
+      "owner-a",
       "c1",
     ]);
   });

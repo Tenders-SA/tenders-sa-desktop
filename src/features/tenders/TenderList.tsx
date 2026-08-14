@@ -10,6 +10,10 @@ import { describeTenderError } from "./tender-errors";
 import { PROVINCES, PUBLICATION_FILTERS } from "./tender-filter-options";
 import type { RecommendationsEndpoint } from "../../services/api/endpoints/recommendations";
 import { TenderRadar } from "../radar/TenderRadar";
+import { tenderListResultSchema } from "../../services/api/endpoints/tenders";
+import { workspaceQueryKey } from "../../services/storage/cache-key";
+import { useWorkspaceRuntime } from "../../services/storage/workspace-runtime-context";
+import { WorkspaceDataStatus } from "../../components/common/WorkspaceDataStatus";
 
 export interface TenderListProps {
   endpoint: TendersEndpoint;
@@ -21,7 +25,7 @@ type TenderView = "matched" | "all";
 
 type State =
   | { status: "loading" }
-  | { status: "ready"; result: TenderListResult }
+  | { status: "ready"; result: TenderListResult; stale?: boolean }
   | { status: "error"; message: string; kind: string };
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
@@ -117,6 +121,7 @@ export function TenderList({
   const searchId = useId();
   const provinceId = useId();
   const publicationId = useId();
+  const workspace = useWorkspaceRuntime();
 
   useEffect(() => {
     if (view !== "all") return;
@@ -124,19 +129,39 @@ export function TenderList({
     let active = true;
     setState({ status: "loading" });
 
-    endpoint
-      .list(
-        {
-          page,
-          limit: 20,
-          search: submittedSearch,
-          province,
-          publicationType,
-        },
-        controller.signal,
-      )
-      .then((result) => {
-        if (active) setState({ status: "ready", result });
+    const query = {
+      page,
+      limit: 20,
+      search: submittedSearch,
+      province,
+      publicationType,
+    };
+    const fetcher = () => endpoint.list(query, controller.signal);
+    const request = workspace
+      ? workspace.queries
+          .load({
+            key: workspaceQueryKey("tenders", query),
+            schema: tenderListResultSchema,
+            entity: "tender-list" as const,
+            fetcher,
+            onUpdate: (result) => {
+              if (active) setState({ status: "ready", result, stale: false });
+            },
+          })
+          .then((loaded) => ({
+            value: loaded.value,
+            stale: loaded.cached?.stale ?? false,
+          }))
+      : fetcher().then((value) => ({ value, stale: false }));
+
+    request
+      .then(({ value: result, stale }) => {
+        if (active)
+          setState({
+            status: "ready",
+            result,
+            stale,
+          });
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.kind === "cancelled") return;
@@ -152,7 +177,15 @@ export function TenderList({
       active = false;
       controller.abort();
     };
-  }, [endpoint, page, submittedSearch, province, publicationType, view]);
+  }, [
+    endpoint,
+    page,
+    submittedSearch,
+    province,
+    publicationType,
+    view,
+    workspace,
+  ]);
 
   const result = state.status === "ready" ? state.result : undefined;
   /** Whether a selection, rather than the corpus, could explain an empty page. */
@@ -173,6 +206,13 @@ export function TenderList({
         Start with opportunities scored for your company, or search the complete
         tender market when you need to investigate beyond your current matches.
       </p>
+      <div className="mt-2">
+        <WorkspaceDataStatus
+          stale={state.status === "ready" && state.stale}
+          refreshing={state.status === "ready" && state.stale}
+          subject="saved tender results"
+        />
+      </div>
 
       {recommendations && (
         <div

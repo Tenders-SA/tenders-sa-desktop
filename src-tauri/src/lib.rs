@@ -34,6 +34,8 @@ pub fn run() {
             commands::vault::encrypt_value,
             commands::vault::decrypt_value,
             commands::log::log_event,
+            commands::workspace::workspace_document_read,
+            commands::workspace::workspace_document_write,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,6 +7,8 @@ fn main() {
             "encrypt_value",
             "decrypt_value",
             "log_event",
+            "workspace_document_read",
+            "workspace_document_write",
         ]),
     ))
     .expect("failed to run tauri-build");

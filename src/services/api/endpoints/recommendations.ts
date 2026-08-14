@@ -115,6 +115,14 @@ export interface RadarResult {
   limit: number;
 }
 
+export const radarResultSchema = z.object({
+  state: z.enum(["ready", "empty", "no_company_profile"]),
+  recommendations: z.array(recommendedTenderSchema),
+  hasMore: z.boolean(),
+  offset: z.number(),
+  limit: z.number(),
+});
+
 export interface RadarQuery {
   limit?: number;
   offset?: number;

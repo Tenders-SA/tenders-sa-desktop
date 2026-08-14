@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { useAsync } from "../../../hooks/use-async";
+import { useWorkspaceAsync } from "../../../hooks/use-workspace-async";
 import type {
   BlueprintPayload,
   GenerateResponseDocResult,
   ResponseBlueprint,
   ResponseDocSaveResult,
 } from "../../../services/api/endpoints/applications";
+import { blueprintPayloadSchema } from "../../../services/api/endpoints/applications";
 import { describeGenerateError } from "./response-doc-status";
+import { workspaceEntityKey } from "../../../services/storage/cache-key";
 
 const POLL_INTERVAL_MS = 4000;
 const POLL_MAX_TICKS = 15;
@@ -57,10 +59,13 @@ export function useResponseBlueprintWorkspace(
   endpoint: ResponseBlueprintWorkspaceEndpoint,
   applicationId: string,
 ) {
-  const state = useAsync(
-    (signal) => endpoint.getResponseBlueprint(applicationId, signal),
-    [endpoint, applicationId],
-  );
+  const state = useWorkspaceAsync({
+    key: workspaceEntityKey("response-blueprint", applicationId),
+    schema: blueprintPayloadSchema,
+    entity: "response-blueprint",
+    load: (signal) => endpoint.getResponseBlueprint(applicationId, signal),
+    deps: [endpoint, applicationId],
+  });
   const [overlay, setOverlay] = useState<ResponseBlueprintOverlay>({});
   const [pendingKeys, setPendingKeys] = useState<string[]>([]);
   const [staleGenerating, setStaleGenerating] = useState<

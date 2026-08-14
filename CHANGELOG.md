@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Previously opened tenders, Radar matches, applications, analysis and tender
+  documents now remain available in an account-isolated local workspace. Saved
+  results appear immediately while updates run in the background, response
+  saves resume after reconnecting, and competing local/server edits are kept
+  for explicit review instead of silently overwriting either version.
 - A side-by-side tender document viewer that keeps the original file, its
   document-specific extracted analysis, and the tender's file list together.
   PDF files include page and zoom controls, while unsupported formats provide

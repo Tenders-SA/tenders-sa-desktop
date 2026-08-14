@@ -2,7 +2,9 @@
 
 ## Status
 
-All tasks are `BLOCKED — AWAITING USER APPROVAL`. Specification creation does not authorize implementation.
+User approved implementation on 2026-08-14. T1–T14 are complete. T15 automated
+gates are complete; manual Windows offline/restart/account-switch verification
+remains open.
 
 | # | Task | Primary files/owners | Pre-check | Verification |
 |---|---|---|---|---|
@@ -22,10 +24,30 @@ All tasks are `BLOCKED — AWAITING USER APPROVAL`. Specification creation does 
 | T14 | Add shared subtle cache/sync status UX and maintenance | `SyncStatus`, affected screens | status semantics pinned | keyboard/live-region and honest local-vs-remote wording tests |
 | T15 | Complete security/performance review, changelog, full gates and manual Windows verification | tests/spec/changelog | inspect final diff and permissions | permitted full suite; user verifies offline/restart/account switching |
 
+## Completion evidence (2026-08-14)
+
+- T1–T5: flow audit, ordered migrations 0001–0004, owner isolation,
+  encrypted cache, canonical keys, retention, stale fallback and single-flight
+  refresh are implemented and covered by Rust/TypeScript tests.
+- T6–T10: Tenders, Radar, tender details, internal document bytes,
+  applications, cockpit and response-blueprint projections use the shared
+  local-first runtime while retaining the existing endpoint fallback.
+- T11–T13: response saves persist and queue before remote I/O; the application
+  coordinator replays only response-document saves; remote-base divergence
+  records both encrypted versions and exposes keep-local, keep-remote and
+  merge/edit resolution.
+- T14: shared accessible status copy distinguishes cached refresh, offline,
+  refresh failure, pending sync, active sync and conflicts.
+- T15 automated evidence: 857/857 Vitest tests, TypeScript, ESLint, Prettier,
+  `cargo check`, and `git diff --check` pass. `cargo test` could not reach the
+  test phase within two five-minute runner windows while linking the Tauri test
+  profile; `cargo check --tests` likewise timed out without reaching a result.
+  Production Rust code passes `cargo check`. Manual Windows verification
+  remains pending.
+
 ## Sequencing gates
 
 - T2–T5 form the foundation and must land before feature consumers.
 - Each consumer migration (T6–T10) must preserve the existing network path as safe fallback.
 - T11–T13 may not broaden the queue beyond response-document saves without a new approved amendment.
 - No task modifies the parent checkout.
-

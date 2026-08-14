@@ -3,6 +3,9 @@ import { FakeSqlExecutor } from "./fakes/sql-executor";
 import { getCached, setCached } from "../services/storage/cache";
 import type { NativeCrypto } from "../services/storage/native-crypto";
 import type { CacheEntryRow } from "../db/schema/types";
+import { assertWorkspaceOwner } from "../services/storage/workspace-owner";
+
+const owner = assertWorkspaceOwner(`v1-${"a".repeat(64)}`);
 
 function fakeCrypto(): NativeCrypto {
   return {
@@ -15,7 +18,7 @@ describe("storage/cache", () => {
   it("stores non-sensitive values as plain payload", async () => {
     const db = new FakeSqlExecutor();
     const crypto = fakeCrypto();
-    await setCached(db, crypto, "tender:1", '{"title":"Road works"}', {
+    await setCached(db, crypto, owner, "tender:1", '{"title":"Road works"}', {
       entityType: "tender",
       entityId: "1",
     });
@@ -29,7 +32,7 @@ describe("storage/cache", () => {
     const crypto = fakeCrypto();
     const secret = "session-secret-do-not-persist-in-plaintext";
 
-    await setCached(db, crypto, "session-cache", secret, {
+    await setCached(db, crypto, owner, "session-cache", secret, {
       entityType: "session",
       entityId: "device",
       sensitive: true,
@@ -45,6 +48,7 @@ describe("storage/cache", () => {
     const db = new FakeSqlExecutor();
     const crypto = fakeCrypto();
     const row: CacheEntryRow = {
+      owner_id: owner,
       key: "session-cache",
       entity_type: "session",
       entity_id: "device",
@@ -57,7 +61,7 @@ describe("storage/cache", () => {
     };
     db.selectResults = [[row]];
 
-    const value = await getCached(db, crypto, "session-cache");
+    const value = await getCached(db, crypto, owner, "session-cache");
     expect(value).toBe("top-secret");
   });
 
@@ -65,6 +69,7 @@ describe("storage/cache", () => {
     const db = new FakeSqlExecutor();
     const crypto = fakeCrypto();
     const row: CacheEntryRow = {
+      owner_id: owner,
       key: "tender:1",
       entity_type: "tender",
       entity_id: "1",
@@ -77,13 +82,13 @@ describe("storage/cache", () => {
     };
     db.selectResults = [[row]];
 
-    expect(await getCached(db, crypto, "tender:1")).toBe("plain-value");
+    expect(await getCached(db, crypto, owner, "tender:1")).toBe("plain-value");
   });
 
   it("returns undefined for a cache miss", async () => {
     const db = new FakeSqlExecutor();
     const crypto = fakeCrypto();
     db.selectResults = [[]];
-    expect(await getCached(db, crypto, "missing")).toBeUndefined();
+    expect(await getCached(db, crypto, owner, "missing")).toBeUndefined();
   });
 });

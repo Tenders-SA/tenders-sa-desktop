@@ -19,6 +19,12 @@ import { tauriSqlExecutor } from "../../db/tauri-sql-executor";
 import { ApiError } from "../api/errors";
 import type { NativeCrypto } from "./native-crypto";
 import { tauriNativeCrypto } from "./native-crypto";
+import type { WorkspaceOwnerId } from "./workspace-owner";
+import {
+  listUnresolvedConflicts,
+  markConflictResolved,
+  recordConflict,
+} from "../sync/conflicts";
 
 /**
  * Slice 10 (LD-1..LD-4) — local-first drafting for response documents.
@@ -35,11 +41,34 @@ export const RESPONSE_DOC_SAVE_OPERATION = "save";
 export const RESPONSE_DOC_SAVE_IDEMPOTENCY_PREFIX = "response-doc-save";
 export const RESPONSE_DOC_VERSION_LIMIT = 20;
 
+function redactedSyncError(cause: unknown): string {
+  if (cause instanceof ApiError) return `Sync ${cause.kind}`.slice(0, 80);
+  return "Sync failed";
+}
+
 export interface ResponseDocVersionEntry {
   id: string;
   content: string;
   source: ResponseDocVersionSource;
   createdAt: string;
+}
+
+export interface ResponseDocConflictEntry {
+  id: string;
+  applicationId: string;
+  documentKey: string;
+  localContent: string;
+  remoteContent: string;
+  createdAt: string;
+}
+
+export type ResponseDocConflictResolution = "local" | "remote" | "merged";
+
+interface ResponseDocSyncPayload {
+  applicationId: string;
+  documentKey: string;
+  content: string;
+  baseContent?: string;
 }
 
 export interface ResponseDocLocalStore {
@@ -73,7 +102,10 @@ export interface ResponseDocLocalStore {
     applicationId: string,
     documentKey: string,
     content: string,
+    baseContent?: string,
   ): Promise<void>;
+  /** Mark the owner-scoped queued save complete after the remote accepted it. */
+  markSaveSynced(applicationId: string, documentKey: string): Promise<void>;
   /** LD-2 — document keys with an outstanding queued save. */
   listPendingSaveKeys(applicationId: string): Promise<string[]>;
   /**
@@ -88,17 +120,37 @@ export interface ResponseDocLocalStore {
       documentKey: string,
       content: string,
     ) => Promise<void>,
+    readRemote?: (
+      applicationId: string,
+      documentKey: string,
+    ) => Promise<string | undefined>,
   ): Promise<number>;
+  listConflicts(
+    applicationId: string,
+    documentKey: string,
+  ): Promise<ResponseDocConflictEntry[]>;
+  resolveConflict(
+    conflictId: string,
+    resolution: ResponseDocConflictResolution,
+    mergedContent: string | undefined,
+    save: (
+      applicationId: string,
+      documentKey: string,
+      content: string,
+    ) => Promise<void>,
+  ): Promise<string>;
 }
 
 export function createResponseDocStore(
   sql: SqlExecutor,
   crypto: NativeCrypto,
+  ownerId: WorkspaceOwnerId,
 ): ResponseDocLocalStore {
   return {
     async persistDraft(applicationId, documentKey, content) {
       const encrypted = await crypto.encrypt(content);
       await upsertResponseDocDraft(sql, {
+        ownerId,
         applicationId,
         documentKey,
         content: encrypted,
@@ -107,18 +159,24 @@ export function createResponseDocStore(
     },
 
     async loadDraft(applicationId, documentKey) {
-      const row = await getResponseDocDraft(sql, applicationId, documentKey);
+      const row = await getResponseDocDraft(
+        sql,
+        ownerId,
+        applicationId,
+        documentKey,
+      );
       if (!row) return undefined;
       return row.encrypted ? crypto.decrypt(row.content) : row.content;
     },
 
     async clearDraft(applicationId, documentKey) {
-      await deleteResponseDocDraft(sql, applicationId, documentKey);
+      await deleteResponseDocDraft(sql, ownerId, applicationId, documentKey);
     },
 
     async snapshotVersion(applicationId, documentKey, content, source) {
       const encrypted = await crypto.encrypt(content);
       await insertResponseDocVersion(sql, {
+        ownerId,
         id: globalThis.crypto.randomUUID(),
         applicationId,
         documentKey,
@@ -128,6 +186,7 @@ export function createResponseDocStore(
       });
       await pruneResponseDocVersions(
         sql,
+        ownerId,
         applicationId,
         documentKey,
         RESPONSE_DOC_VERSION_LIMIT,
@@ -137,6 +196,7 @@ export function createResponseDocStore(
     async listVersions(applicationId, documentKey) {
       const rows = await listResponseDocVersions(
         sql,
+        ownerId,
         applicationId,
         documentKey,
         RESPONSE_DOC_VERSION_LIMIT,
@@ -154,13 +214,19 @@ export function createResponseDocStore(
       return entries;
     },
 
-    async enqueueSave(applicationId, documentKey, content) {
+    async enqueueSave(applicationId, documentKey, content, baseContent) {
       const payload = await crypto.encrypt(
-        JSON.stringify({ applicationId, documentKey, content }),
+        JSON.stringify({
+          applicationId,
+          documentKey,
+          content,
+          baseContent,
+        } satisfies ResponseDocSyncPayload),
       );
       await upsertSyncOperation(sql, {
+        ownerId,
         id: globalThis.crypto.randomUUID(),
-        idempotencyKey: `${RESPONSE_DOC_SAVE_IDEMPOTENCY_PREFIX}:${applicationId}:${documentKey}`,
+        idempotencyKey: `${RESPONSE_DOC_SAVE_IDEMPOTENCY_PREFIX}:${ownerId}:${applicationId}:${documentKey}`,
         entityType: RESPONSE_DOC_ENTITY_TYPE,
         entityId: `${applicationId}:${documentKey}`,
         operationType: RESPONSE_DOC_SAVE_OPERATION,
@@ -168,8 +234,20 @@ export function createResponseDocStore(
       });
     },
 
+    async markSaveSynced(applicationId, documentKey) {
+      await sql.execute(
+        `UPDATE sync_operations SET status = 'complete', updated_at = $1
+         WHERE owner_id = $2 AND idempotency_key = $3`,
+        [
+          new Date().toISOString(),
+          ownerId,
+          `${RESPONSE_DOC_SAVE_IDEMPOTENCY_PREFIX}:${ownerId}:${applicationId}:${documentKey}`,
+        ],
+      );
+    },
+
     async listPendingSaveKeys(applicationId) {
-      const ops = (await listPendingSyncOperations(sql)).filter(
+      const ops = (await listPendingSyncOperations(sql, ownerId)).filter(
         (op) =>
           op.entity_type === RESPONSE_DOC_ENTITY_TYPE &&
           op.operation_type === RESPONSE_DOC_SAVE_OPERATION,
@@ -191,19 +269,15 @@ export function createResponseDocStore(
       return [...keys];
     },
 
-    async replayPendingSaves(save) {
-      const ops = (await listPendingSyncOperations(sql)).filter(
+    async replayPendingSaves(save, readRemote) {
+      const ops = (await listPendingSyncOperations(sql, ownerId)).filter(
         (op) =>
           op.entity_type === RESPONSE_DOC_ENTITY_TYPE &&
           op.operation_type === RESPONSE_DOC_SAVE_OPERATION,
       );
       let replayed = 0;
       for (const op of ops) {
-        let parsed: {
-          applicationId: string;
-          documentKey: string;
-          content: string;
-        };
+        let parsed: ResponseDocSyncPayload;
         try {
           parsed = JSON.parse(
             await crypto.decrypt(op.payload),
@@ -216,6 +290,50 @@ export function createResponseDocStore(
         }
         await updateSyncOperationStatus(sql, op.id, "syncing");
         try {
+          if (readRemote && parsed.baseContent !== undefined) {
+            const remoteContent =
+              (await readRemote(parsed.applicationId, parsed.documentKey)) ??
+              "";
+            if (
+              remoteContent !== parsed.baseContent &&
+              remoteContent !== parsed.content
+            ) {
+              const [localVersion, remoteVersion] = await Promise.all([
+                crypto.encrypt(
+                  JSON.stringify({ ...parsed, content: parsed.content }),
+                ),
+                crypto.encrypt(
+                  JSON.stringify({
+                    applicationId: parsed.applicationId,
+                    documentKey: parsed.documentKey,
+                    content: remoteContent,
+                  } satisfies ResponseDocSyncPayload),
+                ),
+              ]);
+              await recordConflict(sql, ownerId, {
+                id: globalThis.crypto.randomUUID(),
+                syncOperationId: op.id,
+                entityType: RESPONSE_DOC_ENTITY_TYPE,
+                entityId: `${parsed.applicationId}:${parsed.documentKey}`,
+                localVersion,
+                remoteVersion,
+                fieldPolicy: "human-response-document",
+              });
+              await updateSyncOperationStatus(sql, op.id, "conflicted");
+              continue;
+            }
+            if (remoteContent === parsed.content) {
+              await updateSyncOperationStatus(sql, op.id, "complete");
+              await deleteResponseDocDraft(
+                sql,
+                ownerId,
+                parsed.applicationId,
+                parsed.documentKey,
+              );
+              replayed += 1;
+              continue;
+            }
+          }
           await save(parsed.applicationId, parsed.documentKey, parsed.content);
         } catch (cause) {
           const transient = cause instanceof ApiError && cause.isTransient;
@@ -225,8 +343,7 @@ export function createResponseDocStore(
             transient ? "pending" : "failed",
             {
               attemptCount: op.attempt_count + 1,
-              lastError:
-                cause instanceof Error ? cause.message : "Unknown error",
+              lastError: redactedSyncError(cause),
             },
           );
           continue;
@@ -234,12 +351,92 @@ export function createResponseDocStore(
         await updateSyncOperationStatus(sql, op.id, "complete");
         await deleteResponseDocDraft(
           sql,
+          ownerId,
           parsed.applicationId,
           parsed.documentKey,
         );
         replayed += 1;
       }
       return replayed;
+    },
+
+    async listConflicts(applicationId, documentKey) {
+      const rows = await listUnresolvedConflicts(sql, ownerId);
+      const matching = rows.filter(
+        (row) =>
+          row.entity_type === RESPONSE_DOC_ENTITY_TYPE &&
+          row.entity_id === `${applicationId}:${documentKey}`,
+      );
+      const entries: ResponseDocConflictEntry[] = [];
+      for (const row of matching) {
+        try {
+          const local = JSON.parse(
+            await crypto.decrypt(row.local_version),
+          ) as ResponseDocSyncPayload;
+          const remote = JSON.parse(
+            await crypto.decrypt(row.remote_version),
+          ) as ResponseDocSyncPayload;
+          entries.push({
+            id: row.id,
+            applicationId,
+            documentKey,
+            localContent: local.content,
+            remoteContent: remote.content,
+            createdAt: row.created_at,
+          });
+        } catch {
+          // A corrupt conflict stays unresolved for diagnostics, but its
+          // ciphertext is never exposed to the webview as document content.
+        }
+      }
+      return entries;
+    },
+
+    async resolveConflict(conflictId, resolution, mergedContent, save) {
+      const row = (await listUnresolvedConflicts(sql, ownerId)).find(
+        (candidate) => candidate.id === conflictId,
+      );
+      if (!row || row.entity_type !== RESPONSE_DOC_ENTITY_TYPE) {
+        throw new Error("Response document conflict is no longer available");
+      }
+      const [local, remote] = await Promise.all([
+        crypto
+          .decrypt(row.local_version)
+          .then((value) => JSON.parse(value) as ResponseDocSyncPayload),
+        crypto
+          .decrypt(row.remote_version)
+          .then((value) => JSON.parse(value) as ResponseDocSyncPayload),
+      ]);
+      const content =
+        resolution === "remote"
+          ? remote.content
+          : resolution === "merged"
+            ? mergedContent
+            : local.content;
+      if (content === undefined) {
+        throw new Error("Merged response document content is required");
+      }
+      if (resolution !== "remote") {
+        await save(local.applicationId, local.documentKey, content);
+      }
+      await markConflictResolved(
+        sql,
+        ownerId,
+        conflictId,
+        resolution === "local"
+          ? "resolved_local"
+          : resolution === "remote"
+            ? "resolved_remote"
+            : "resolved_merged",
+      );
+      await updateSyncOperationStatus(sql, row.sync_operation_id, "complete");
+      await deleteResponseDocDraft(
+        sql,
+        ownerId,
+        local.applicationId,
+        local.documentKey,
+      );
+      return content;
     },
   };
 }
@@ -249,6 +446,8 @@ export function createResponseDocStore(
  * encryption boundary, both established at startup. Injectable so
  * screen tests can substitute fakes.
  */
-export function createTauriResponseDocStore(): ResponseDocLocalStore {
-  return createResponseDocStore(tauriSqlExecutor, tauriNativeCrypto);
+export function createTauriResponseDocStore(
+  ownerId: WorkspaceOwnerId,
+): ResponseDocLocalStore {
+  return createResponseDocStore(tauriSqlExecutor, tauriNativeCrypto, ownerId);
 }

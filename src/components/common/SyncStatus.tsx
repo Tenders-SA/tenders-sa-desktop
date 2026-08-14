@@ -1,4 +1,7 @@
+import { useSyncExternalStore } from "react";
 import { useConnectivity } from "../../hooks/use-connectivity";
+import { useWorkspaceRuntime } from "../../services/storage/workspace-runtime-context";
+import { EMPTY_WORKSPACE_SYNC_SUMMARY } from "../../services/storage/workspace-status";
 
 export interface SyncStatusProps {
   /** Pending offline operations, from TASK-0.6's queue. */
@@ -13,18 +16,28 @@ export interface SyncStatusProps {
  * Status is never conveyed by colour alone: each state carries a text
  * label, satisfying the design system's rule for status signalling.
  */
-export function SyncStatus({
-  pendingCount = 0,
-  conflictCount = 0,
-}: SyncStatusProps) {
+export function SyncStatus({ pendingCount, conflictCount }: SyncStatusProps) {
   const connectivity = useConnectivity();
+  const workspace = useWorkspaceRuntime();
+  const workspaceSummary = useSyncExternalStore(
+    workspace?.status.subscribe ?? (() => () => undefined),
+    workspace?.status.getSnapshot ?? (() => EMPTY_WORKSPACE_SYNC_SUMMARY),
+  );
+  const pending = pendingCount ?? workspaceSummary.pendingCount;
+  const conflicts = conflictCount ?? workspaceSummary.conflictCount;
 
   const parts: string[] = [connectivity === "online" ? "Online" : "Offline"];
-  if (pendingCount > 0) {
-    parts.push(`${pendingCount} pending`);
+  if (workspaceSummary.phase === "syncing") {
+    parts.push("Syncing");
   }
-  if (conflictCount > 0) {
-    parts.push(`${conflictCount} needing review`);
+  if (workspaceSummary.phase === "failed") {
+    parts.push("Sync failed");
+  }
+  if (pending > 0) {
+    parts.push(`${pending} pending`);
+  }
+  if (conflicts > 0) {
+    parts.push(`${conflicts} needing review`);
   }
 
   return (
@@ -41,7 +54,7 @@ export function SyncStatus({
         ].join(" ")}
       />
       <span
-        className={conflictCount > 0 ? "text-warning" : "text-muted-foreground"}
+        className={conflicts > 0 ? "text-warning" : "text-muted-foreground"}
       >
         {parts.join(" · ")}
       </span>

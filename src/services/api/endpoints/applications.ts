@@ -72,6 +72,14 @@ export interface ApplicationsResult {
   hasMore: boolean;
 }
 
+export const applicationsResultSchema = z.object({
+  applications: z.array(applicationSchema),
+  total: z.number(),
+  offset: z.number(),
+  limit: z.number(),
+  hasMore: z.boolean(),
+});
+
 export interface ApplicationsQuery {
   status?: string;
   search?: string;
@@ -143,6 +151,9 @@ export type ApplicationDetail = z.infer<
   typeof applicationDetailSchema
 >["application"];
 
+export const applicationDetailValueSchema =
+  applicationDetailSchema.shape.application;
+
 const validationSchema = z
   .object({
     valid: z.boolean().optional(),
@@ -212,7 +223,7 @@ export type WorkspaceAction = "status" | "stage" | "remove";
  * recognised fields are typed, everything else passes through, and the
  * nullable spots the live payload actually has stay nullable.
  */
-const cockpitSchema = z
+export const cockpitSchema = z
   .object({
     application: z
       .object({
@@ -709,7 +720,7 @@ const responseDocStatusMapSchema = z
     );
   });
 
-const blueprintPayloadSchema = z
+export const blueprintPayloadSchema = z
   .object({
     blueprint: blueprintSchema.nullable().optional(),
     hasAnalysis: z.boolean().optional(),

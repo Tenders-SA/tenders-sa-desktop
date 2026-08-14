@@ -10,6 +10,7 @@ function op(
   overrides: Partial<SyncOperationRow> = {},
 ): SyncOperationRow {
   return {
+    owner_id: `v1-${"a".repeat(64)}`,
     id,
     idempotency_key: `idem-${id}`,
     entity_type: "application",

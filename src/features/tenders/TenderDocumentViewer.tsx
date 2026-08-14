@@ -20,6 +20,7 @@ import { describeApiError } from "../../services/api/describe-error";
 import { DocumentDownloadButton } from "./DocumentDownloadButton";
 import { describeJsonField } from "./tender-fields";
 import { readableTenderDocumentName } from "./document-label";
+import { useWorkspaceRuntime } from "../../services/storage/workspace-runtime-context";
 
 type Document = NonNullable<TenderDetail["documents"]>[number];
 
@@ -53,13 +54,18 @@ export function TenderDocumentViewer({
   const [documentsVisible, setDocumentsVisible] = useState(true);
   const [analysisVisible, setAnalysisVisible] = useState(true);
   const [preview, setPreview] = useState<PreviewState>({ status: "loading" });
+  const workspace = useWorkspaceRuntime();
 
   useEffect(() => {
     if (!selected) return;
     const controller = new AbortController();
     setPreview({ status: "loading" });
-    endpoint
-      .downloadTenderDocument(selected.id, controller.signal)
+    const download = () =>
+      endpoint.downloadTenderDocument(selected.id, controller.signal);
+    const request = workspace
+      ? workspace.documents.open(tender.id, selected, download)
+      : download();
+    request
       .then((result) => setPreview({ status: "ready", result }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
@@ -70,7 +76,7 @@ export function TenderDocumentViewer({
         }
       });
     return () => controller.abort();
-  }, [endpoint, selected]);
+  }, [endpoint, selected, tender.id, workspace]);
 
   if (!selected) {
     return (

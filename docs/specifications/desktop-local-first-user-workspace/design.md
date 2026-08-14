@@ -2,7 +2,7 @@
 
 ## Status
 
-`PENDING USER APPROVAL — NO IMPLEMENTATION AUTHORIZED`
+`IMPLEMENTED — AUTOMATED GATES COMPLETE; MANUAL WINDOWS VERIFICATION PENDING`
 
 ## Architecture decision
 
@@ -162,4 +162,3 @@ Each slice is independently gated and may ship behind a desktop feature flag. Ro
 - Restart/account-switch tests through the composition root.
 - Existing response editor, viewer, routing, download and API endpoint suites remain green.
 - Required gates: `pnpm format:check`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm rust:check`, `git diff --check`. Build remains user-only under repository governance.
-

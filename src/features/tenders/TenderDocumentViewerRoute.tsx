@@ -4,6 +4,9 @@ import type { ApiClients } from "../../app/auth-wiring";
 import type { TenderDetail } from "../../services/api/endpoints/tenders";
 import { describeTenderError } from "./tender-errors";
 import { TenderDocumentViewer } from "./TenderDocumentViewer";
+import { tenderDetailSchema } from "../../services/api/endpoints/tenders";
+import { workspaceEntityKey } from "../../services/storage/cache-key";
+import { useWorkspaceRuntime } from "../../services/storage/workspace-runtime-context";
 
 type State =
   | { status: "loading" }
@@ -18,13 +21,25 @@ export function TenderDocumentViewerRoute({
   const { tenderId, documentId } = useParams();
   const navigate = useNavigate();
   const [state, setState] = useState<State>({ status: "loading" });
+  const workspace = useWorkspaceRuntime();
 
   useEffect(() => {
     if (!tenderId) return;
     const controller = new AbortController();
     setState({ status: "loading" });
-    clients.tenders
-      .get(tenderId, controller.signal)
+    const fetcher = () => clients.tenders.get(tenderId, controller.signal);
+    const request = workspace
+      ? workspace.queries
+          .load({
+            key: workspaceEntityKey("tender-detail", tenderId),
+            schema: tenderDetailSchema,
+            entity: "tender-detail" as const,
+            fetcher,
+            onUpdate: (tender) => setState({ status: "ready", tender }),
+          })
+          .then((loaded) => loaded.value)
+      : fetcher();
+    request
       .then((tender) => setState({ status: "ready", tender }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
@@ -35,7 +50,7 @@ export function TenderDocumentViewerRoute({
         }
       });
     return () => controller.abort();
-  }, [clients.tenders, tenderId]);
+  }, [clients.tenders, tenderId, workspace]);
 
   if (!tenderId || !documentId) return <Navigate to="/tenders" replace />;
   if (state.status === "loading")

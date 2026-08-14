@@ -32,7 +32,11 @@ import {
 } from "lucide-react";
 import { describeApiError } from "../../../services/api/describe-error";
 import type { ExportPackageFormat } from "../../../services/api/endpoints/applications";
-import type { ResponseDocVersionEntry } from "../../../services/storage/response-doc-store";
+import type {
+  ResponseDocConflictEntry,
+  ResponseDocConflictResolution,
+  ResponseDocVersionEntry,
+} from "../../../services/storage/response-doc-store";
 import {
   describeGenerateError,
   type ResponseDocStatusSummary,
@@ -46,7 +50,12 @@ interface Props {
   restoredDraft?: string;
   hasLocalDraft?: boolean;
   pendingSync?: boolean;
+  conflict?: ResponseDocConflictEntry;
   onSyncNow?: () => Promise<void>;
+  onResolveConflict?: (
+    resolution: ResponseDocConflictResolution,
+    mergedContent?: string,
+  ) => Promise<void>;
   versions?: ResponseDocVersionEntry[];
   onRestoreVersion?: (content: string) => void;
   onDiscardLocalDraft?: () => void;
@@ -99,7 +108,8 @@ export function ResponseDocumentEditor(props: Props) {
         "aria-label": `Edit ${props.title}`,
       },
     },
-    onUpdate: ({ editor: current }) => setDraft(current.getMarkdown()),
+    onUpdate: ({ editor: current }) =>
+      setDraft(current.getMarkdown().trimEnd()),
   });
 
   useEffect(() => {
@@ -141,6 +151,12 @@ export function ResponseDocumentEditor(props: Props) {
   }
 
   async function generate() {
+    if (props.conflict) {
+      setGenerateError(
+        "Resolve the saved-copy conflict before asking AI to change this document.",
+      );
+      return;
+    }
     if (dirty) {
       setGenerateError(
         "Save or revert your unsaved edits before asking AI to change this document.",
@@ -159,6 +175,23 @@ export function ResponseDocumentEditor(props: Props) {
   function restore(markdown: string) {
     editor?.commands.setContent(markdown, { contentType: "markdown" });
     setDraft(markdown);
+  }
+
+  async function resolveConflict(
+    resolution: ResponseDocConflictResolution,
+  ): Promise<void> {
+    setState("saving");
+    setError(undefined);
+    try {
+      await props.onResolveConflict?.(
+        resolution,
+        resolution === "merged" ? draft : undefined,
+      );
+    } catch (cause) {
+      setError(describeApiError(cause, "this conflict").message);
+    } finally {
+      setState("idle");
+    }
   }
 
   return (
@@ -210,7 +243,12 @@ export function ResponseDocumentEditor(props: Props) {
             label="Save document"
             icon={Save}
             onClick={() => void save().catch(() => {})}
-            disabled={!dirty || state !== "idle" || isGenerating}
+            disabled={
+              !dirty ||
+              state !== "idle" ||
+              isGenerating ||
+              Boolean(props.conflict)
+            }
             primary
           />
         </div>
@@ -274,6 +312,56 @@ export function ResponseDocumentEditor(props: Props) {
             </button>
           )}
         </p>
+      )}
+      {props.conflict && (
+        <section
+          role="alert"
+          aria-label="Response document conflict"
+          className="border-b border-warning/40 bg-warning/10 px-5 py-3 text-sm"
+        >
+          <p className="font-medium text-warning">Conflict needs review</p>
+          <p className="mt-1 text-muted-foreground">
+            This document changed on the server after your saved copy. Both
+            versions are preserved until you choose one.
+          </p>
+          <details className="mt-2">
+            <summary>Compare preserved versions</summary>
+            <div className="mt-2 grid gap-2 lg:grid-cols-2">
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded border border-border bg-background p-2">
+                {props.conflict.localContent}
+              </pre>
+              <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded border border-border bg-background p-2">
+                {props.conflict.remoteContent}
+              </pre>
+            </div>
+          </details>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={state !== "idle"}
+              onClick={() => void resolveConflict("local")}
+              className="rounded border border-border px-3 py-1.5"
+            >
+              Keep my version
+            </button>
+            <button
+              type="button"
+              disabled={state !== "idle"}
+              onClick={() => void resolveConflict("remote")}
+              className="rounded border border-border px-3 py-1.5"
+            >
+              Use server version
+            </button>
+            <button
+              type="button"
+              disabled={state !== "idle"}
+              onClick={() => void resolveConflict("merged")}
+              className="rounded border border-border px-3 py-1.5"
+            >
+              Use current edit as merged
+            </button>
+          </div>
+        </section>
       )}
       {props.versions?.length && props.onRestoreVersion ? (
         <details className="border-b border-border px-5 py-2 text-xs">

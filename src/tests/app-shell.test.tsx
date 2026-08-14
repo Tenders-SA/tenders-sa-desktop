@@ -10,6 +10,7 @@ import type { AuthPort } from "../services/auth/ports";
 import { stubApiClients } from "./fixtures/api-clients";
 import { ErrorBoundary } from "../components/common/ErrorBoundary";
 import { SyncStatus } from "../components/common/SyncStatus";
+import { WorkspaceDataStatus } from "../components/common/WorkspaceDataStatus";
 import {
   ALL_NAVIGATION_ITEMS,
   NAVIGATION_GROUPS,
@@ -331,6 +332,29 @@ describe("SyncStatus", () => {
     render(<SyncStatus pendingCount={0} conflictCount={0} />);
     const status = screen.getByLabelText("Connectivity and sync status");
     expect(status).not.toHaveTextContent("pending");
+  });
+});
+
+describe("WorkspaceDataStatus", () => {
+  it("stays quiet for a fresh cached projection", () => {
+    const { container } = render(<WorkspaceDataStatus />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("announces background refresh and refresh failure without hiding saved data", () => {
+    const { rerender } = render(
+      <WorkspaceDataStatus stale refreshing subject="saved tenders" />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /checking for updates.*saved tenders/i,
+    );
+
+    rerender(
+      <WorkspaceDataStatus stale refreshFailed subject="saved tenders" />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /update failed.*saved tenders/i,
+    );
   });
 });
 

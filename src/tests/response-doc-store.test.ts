@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "../services/api/errors";
 import {
-  createResponseDocStore,
+  createResponseDocStore as createOwnedResponseDocStore,
   RESPONSE_DOC_ENTITY_TYPE,
   RESPONSE_DOC_SAVE_OPERATION,
 } from "../services/storage/response-doc-store";
@@ -10,8 +10,16 @@ import { FakeSqlExecutor } from "./fakes/sql-executor";
 import type {
   ResponseDocDraftRow,
   ResponseDocVersionRow,
+  SyncConflictRow,
   SyncOperationRow,
 } from "../db/schema/types";
+import { assertWorkspaceOwner } from "../services/storage/workspace-owner";
+
+const owner = assertWorkspaceOwner(`v1-${"a".repeat(64)}`);
+
+function createResponseDocStore(db: FakeSqlExecutor, crypto: NativeCrypto) {
+  return createOwnedResponseDocStore(db, crypto, owner);
+}
 
 function fakeCrypto(): NativeCrypto {
   return {
@@ -24,11 +32,13 @@ function draftRow(
   overrides: Partial<ResponseDocDraftRow> = {},
 ): ResponseDocDraftRow {
   return {
+    owner_id: owner,
     application_id: "a1",
     document_key: "technical",
     content: "enc:draft content",
     encrypted: 1,
     updated_at: "2026-01-01T00:00:00.000Z",
+    base_fingerprint: null,
     ...overrides,
   };
 }
@@ -37,6 +47,7 @@ function versionRow(
   overrides: Partial<ResponseDocVersionRow> = {},
 ): ResponseDocVersionRow {
   return {
+    owner_id: owner,
     id: "v1",
     application_id: "a1",
     document_key: "technical",
@@ -52,6 +63,7 @@ function pendingOp(
   overrides: Partial<SyncOperationRow> = {},
 ): SyncOperationRow {
   return {
+    owner_id: owner,
     id: "op-1",
     idempotency_key: "response-doc-save:a1:technical",
     entity_type: RESPONSE_DOC_ENTITY_TYPE,
@@ -65,6 +77,27 @@ function pendingOp(
     last_error: null,
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function conflictRow(
+  overrides: Partial<SyncConflictRow> = {},
+): SyncConflictRow {
+  return {
+    owner_id: owner,
+    id: "conflict-1",
+    sync_operation_id: "op-1",
+    entity_type: RESPONSE_DOC_ENTITY_TYPE,
+    entity_id: "a1:technical",
+    local_version:
+      'enc:{"applicationId":"a1","documentKey":"technical","content":"local edit"}',
+    remote_version:
+      'enc:{"applicationId":"a1","documentKey":"technical","content":"remote edit"}',
+    field_policy: "human-response-document",
+    resolution_state: "unresolved",
+    created_at: "2026-01-02T00:00:00.000Z",
+    resolved_at: null,
     ...overrides,
   };
 }
@@ -88,7 +121,7 @@ describe("response-doc store (Slice 10)", () => {
     db.selectResults = [[draftRow()]];
 
     expect(await store.loadDraft("a1", "technical")).toBe("draft content");
-    expect(db.calls[0].params).toEqual(["a1", "technical"]);
+    expect(db.calls[0].params).toEqual([owner, "a1", "technical"]);
   });
 
   it("returns undefined for a missing draft", async () => {
@@ -106,7 +139,7 @@ describe("response-doc store (Slice 10)", () => {
     await store.clearDraft("a1", "technical");
 
     expect(db.calls[0].sql).toContain("DELETE FROM response_doc_drafts");
-    expect(db.calls[0].params).toEqual(["a1", "technical"]);
+    expect(db.calls[0].params).toEqual([owner, "a1", "technical"]);
   });
 
   it("snapshots versions encrypted and prunes beyond the cap", async () => {
@@ -167,7 +200,7 @@ describe("response-doc store (Slice 10)", () => {
     expect(sql).toContain("INSERT INTO sync_operations");
     expect(sql).toContain("ON CONFLICT(idempotency_key) DO UPDATE");
     expect(sql).not.toContain("DO NOTHING");
-    expect(params[1]).toBe("response-doc-save:a1:technical");
+    expect(params[1]).toBe(`response-doc-save:${owner}:a1:technical`);
     expect(params).toContain(
       'enc:{"applicationId":"a1","documentKey":"technical","content":"offline content"}',
     );
@@ -230,8 +263,8 @@ describe("response-doc store (Slice 10)", () => {
       call.sql.includes("DELETE FROM response_doc_drafts"),
     );
     expect(deletes).toHaveLength(2);
-    expect(deletes[0].params).toEqual(["a1", "technical"]);
-    expect(deletes[1].params).toEqual(["a1", "cover_letter"]);
+    expect(deletes[0].params).toEqual([owner, "a1", "technical"]);
+    expect(deletes[1].params).toEqual([owner, "a1", "cover_letter"]);
   });
 
   it("keeps transient failures pending and marks hard failures failed", async () => {
@@ -254,10 +287,10 @@ describe("response-doc store (Slice 10)", () => {
       .filter((call) => call.sql.includes("UPDATE sync_operations"))
       .map((call) => call.params);
     expect(updates[0].slice(0, 2)).toEqual(["syncing", null]);
-    expect(updates[1].slice(0, 3)).toEqual(["pending", 1, "No network"]);
+    expect(updates[1].slice(0, 3)).toEqual(["pending", 1, "Sync offline"]);
     expect(updates[2].slice(0, 2)).toEqual(["syncing", null]);
     expect(updates[3][0]).toBe("failed");
-    expect(updates[3][2]).toBe("Not entitled");
+    expect(updates[3][2]).toBe("Sync forbidden");
     expect(
       db.calls.filter((call) =>
         call.sql.includes("DELETE FROM response_doc_drafts"),
@@ -278,5 +311,61 @@ describe("response-doc store (Slice 10)", () => {
       call.sql.includes("UPDATE sync_operations"),
     );
     expect(update?.params[0]).toBe("failed");
+  });
+
+  it("preserves both encrypted versions instead of overwriting a changed remote", async () => {
+    const db = new FakeSqlExecutor();
+    const save = vi.fn(async () => undefined);
+    const readRemote = vi.fn(async () => "remote edit");
+    db.selectResults = [
+      [
+        pendingOp({
+          payload:
+            'enc:{"applicationId":"a1","documentKey":"technical","content":"local edit","baseContent":"original"}',
+        }),
+      ],
+    ];
+    const store = createResponseDocStore(db, fakeCrypto());
+
+    expect(await store.replayPendingSaves(save, readRemote)).toBe(0);
+
+    expect(save).not.toHaveBeenCalled();
+    const conflictInsert = db.calls.find((call) =>
+      call.sql.includes("INSERT INTO sync_conflicts"),
+    );
+    expect(conflictInsert?.params).toContain(owner);
+    expect(conflictInsert?.params).toContain(
+      'enc:{"applicationId":"a1","documentKey":"technical","content":"local edit","baseContent":"original"}',
+    );
+    expect(conflictInsert?.params).toContain(
+      'enc:{"applicationId":"a1","documentKey":"technical","content":"remote edit"}',
+    );
+    expect(
+      db.calls.some(
+        (call) =>
+          call.sql.includes("UPDATE sync_operations") &&
+          call.params[0] === "conflicted",
+      ),
+    ).toBe(true);
+  });
+
+  it("resolves a conflict explicitly and retains the recorded versions", async () => {
+    const db = new FakeSqlExecutor();
+    const save = vi.fn(async () => undefined);
+    db.selectResults = [[conflictRow()]];
+    const store = createResponseDocStore(db, fakeCrypto());
+
+    expect(
+      await store.resolveConflict("conflict-1", "local", undefined, save),
+    ).toBe("local edit");
+
+    expect(save).toHaveBeenCalledWith("a1", "technical", "local edit");
+    const resolution = db.calls.find((call) =>
+      call.sql.includes("UPDATE sync_conflicts"),
+    );
+    expect(resolution?.params[0]).toBe("resolved_local");
+    expect(
+      db.calls.some((call) => call.sql.includes("DELETE FROM sync_conflicts")),
+    ).toBe(false);
   });
 });
