@@ -82,7 +82,7 @@
 
 ## Phase 3 — replace the standalone listing with the parity workspace
 
-- [ ] **TASK-3.1: Add the Radar header, tier states, and headline metrics**
+- [x] **TASK-3.1: Add the Radar header, tier states, and headline metrics**
   - **Refs:** REQ-4, REQ-5, REQ-12, A11Y-1, UX-1
   - **Files:** Create `src/features/radar/RadarHeader.tsx`; modify `src/features/radar/TenderRadar.tsx`, `src/tests/module-screens.test.tsx`
   - **Pre-check:** Compare the main `RadarHeader` and `radar/layout.tsx` with desktop theme and subscription patterns.

@@ -18,10 +18,12 @@ import type { CompanyEndpoint } from "../../services/api/endpoints/company";
 import type { SubscriptionEndpoint } from "../../services/api/endpoints/subscription";
 import {
   capRadarMatches,
+  countRadarBands,
   normalizeRadarMatches,
   type RadarAccess,
   type RadarWorkspaceMatch,
 } from "./radar-workspace-model";
+import { RadarHeader } from "./RadarHeader";
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
   style: "currency",
@@ -185,9 +187,6 @@ function FullRadarController({
 
   return (
     <section aria-labelledby="radar-heading" className="max-w-6xl">
-      <h1 id="radar-heading" className="text-xl font-semibold text-foreground">
-        Tender Radar
-      </h1>
       <div className="mt-2">
         <WorkspaceDataStatus
           stale={state.stale}
@@ -199,24 +198,48 @@ function FullRadarController({
       <div className="mt-6">
         <AsyncSection state={state} subject="your Radar" onRetry={state.reload}>
           {(snapshot) => {
-            if (snapshot.profileState === "missing") return <NoProfileNotice />;
-            if (snapshot.matches.length === 0) {
+            if (snapshot.access === "free") {
               return (
-                <p className="text-sm text-muted-foreground">
-                  No current Radar matches are available.
-                </p>
+                <div className="rounded-xl border border-border bg-card p-6">
+                  <h1 id="radar-heading" className="text-xl font-semibold text-foreground">
+                    Tender Radar is available on Starter and above
+                  </h1>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Explore all tenders now, or review plan details in Settings.
+                    Subscription changes are completed on tenders-sa.org.
+                  </p>
+                  <div className="mt-4 flex gap-4 text-sm font-medium">
+                    <Link to="/tenders" className="text-primary hover:underline">
+                      Browse tenders
+                    </Link>
+                    <Link to="/settings" className="text-primary hover:underline">
+                      View plan details
+                    </Link>
+                  </div>
+                </div>
               );
             }
+            if (snapshot.profileState === "missing") return <NoProfileNotice />;
             return (
               <div>
+                <RadarHeader
+                  access={snapshot.access}
+                  counts={countRadarBands(snapshot.matches)}
+                  lastUpdated={snapshot.lastUpdated}
+                />
                 {snapshot.savedState === "unavailable" && (
-                  <p role="status" className="mb-3 text-sm text-muted-foreground">
+                  <p role="status" className="mb-3 mt-4 text-sm text-muted-foreground">
                     Saved status is temporarily unavailable.
                   </p>
                 )}
                 {snapshot.profileState === "unavailable" && (
                   <p role="status" className="mb-3 text-sm text-muted-foreground">
                     Profile guidance is temporarily unavailable.
+                  </p>
+                )}
+                {snapshot.matches.length === 0 && (
+                  <p className="mt-6 text-sm text-muted-foreground">
+                    No current Radar matches are available.
                   </p>
                 )}
                 <ul className="flex flex-col gap-3">

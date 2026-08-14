@@ -160,6 +160,33 @@ describe("Tender Radar screen", () => {
     expect(screen.queryByText(/upgrade/i)).toBeNull();
   });
 
+  it("renders the paid Radar hierarchy and post-cap headline counts", async () => {
+    wrap(fullRadar());
+    expect(
+      await screen.findByRole("heading", { name: /your tender radar/i }),
+    ).toBeVisible();
+    expect(screen.getByText(/professional · up to 50 matches/i)).toBeVisible();
+    expect(screen.getByText(/radar last calculated/i)).toBeVisible();
+    expect(screen.getByText("All matches").nextElementSibling).toHaveTextContent("1");
+    expect(screen.getByText("Highly qualified").nextElementSibling).toHaveTextContent("1");
+  });
+
+  it("renders a real free-tier state with existing desktop destinations", async () => {
+    wrap(fullRadar({
+      subscription: {
+        getStatus: vi.fn(async () => ({ kind: "none" })),
+      } as unknown as SubscriptionEndpoint,
+    }));
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /tender radar is available on starter and above/i,
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: /browse tenders/i })).toHaveAttribute("href", "/tenders");
+    expect(screen.getByRole("link", { name: /view plan details/i })).toHaveAttribute("href", "/settings");
+  });
+
   it("locks the existing standalone listing controls before replacement", async () => {
     // Spec: desktop-tender-radar-parity-refactor §TASK-0.1. These assertions
     // intentionally describe the old screen and are removed only by TASK-3.7.

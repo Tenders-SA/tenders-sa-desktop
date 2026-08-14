@@ -41,7 +41,7 @@ implementation complete until the final result is PASS.
 - [x] Score bands pass boundary tests at 29/30/49/50/69/70.
 - [x] Free/Starter/Professional/Enterprise caps are 0/10/50/50.
 - [x] Counts are computed after cap and before user filters.
-- [ ] Freshness text refers to Radar calculation/update, not publication.
+- [x] Freshness text refers to Radar calculation/update, not publication.
 - [x] Completeness uses exactly the documented six signals and `20/20/20/20/10/10`.
 - [x] Top-gap selection is normalized and deterministic.
 - [x] Filters/sorts do not mutate cached base matches.
