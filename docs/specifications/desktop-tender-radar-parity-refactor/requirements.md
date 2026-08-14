@@ -83,122 +83,138 @@ the parent exposes a canonical Radar read contract.
 
 ## Functional requirements
 
-- [ ] **REQ-1 — One canonical desktop route:** Keep the existing `/radar` navigation
+- [x] **REQ-1 — One canonical desktop route:** Keep the existing `/radar` navigation
   item, route, `TenderRadar` component, and `RecommendationsEndpoint` as the owners.
   The refactor must not add `RadarV2`, a second menu option, or a parallel endpoint.
-- [ ] **REQ-2 — Server-authoritative scores:** Load stored recommendation scores from
+- [x] **REQ-2 — Server-authoritative scores:** Load stored recommendation scores from
   `GET /api/v1/recommendations`; never calculate or adjust a live match score in the
   desktop. Request up to 50 rows at a minimum score of 30 so the desktop can present
   the main Radar's highly-qualified, potential, and near-miss bands.
-- [ ] **REQ-3 — Canonical category projection:** Derive presentation categories from
+- [x] **REQ-3 — Canonical category projection:** Derive presentation categories from
   the stored numeric score using the main Radar thresholds: `>=70` highly qualified,
   `50–69` potential, `30–49` near miss, and below 30 not fit. The older API label
   `good_match` must not leak into the new UI.
-- [ ] **REQ-4 — Tier-aware workspace:** Read the plan from
+- [x] **REQ-4 — Tier-aware workspace:** Read the plan from
   `SubscriptionEndpoint.getStatus()`. Free users see an honest unavailable state,
   Starter users see their top 10 loaded matches, and Professional/Enterprise users
   see up to the parent limit of 50. A subscription read failure is an error, never an
   upgrade prompt or implicit free-tier decision.
-- [ ] **REQ-5 — Radar header and counts:** Show the main Radar hierarchy: title,
+- [x] **REQ-5 — Radar header and counts:** Show the main Radar hierarchy: title,
   purpose, latest match-calculation time, total visible matches, highly-qualified
   count, closing-this-week count, and profile completeness. Counts must be calculated
   after the tier cap and before user-selected filters, matching the visible entitlement.
-- [ ] **REQ-6 — Match navigation and controls:** Provide All, Highly Qualified,
+- [x] **REQ-6 — Match navigation and controls:** Provide All, Highly Qualified,
   Potential, and Near Miss tabs; Closing Soon and New to Radar This Week filters; and
   Freshest, Best Match, Closing Soonest, and Highest Value sorting. Reset local
   pagination when any filter, tab, sort, or scenario changes.
-- [ ] **REQ-7 — Desktop-native cards:** Each card must show the authoritative score and
+- [x] **REQ-7 — Desktop-native cards:** Each card must show the authoritative score and
   band, native tender-detail link, title, buyer, province, reference, closing urgency,
   estimated value, available factor breakdown, reasoning, improvement gaps, suggested
   actions, and available AI recommendation fields. Missing fields render as absent or
   explicitly unknown, never as zero or a failed qualification.
-- [ ] **REQ-8 — Saved state and mutation:** Reconcile saved IDs using the existing
+- [x] **REQ-8 — Saved state and mutation:** Reconcile saved IDs using the existing
   paginated saved-tender read contract without issuing one request per card. Save and
   unsave must call the existing non-retried toggle once, adopt its returned boolean as
   authority, update the in-memory view and relevant cache, and expose retryable errors
   without falsely changing state.
-- [ ] **REQ-9 — Profile guidance:** Read the existing extended company-profile contract
+- [x] **REQ-9 — Profile guidance:** Read the existing extended company-profile contract
   and project the same six main-Radar signals—registration number, CIDB grading,
   B-BBEE level, annual turnover, industry codes, and company type—using weights
   `20/20/20/20/10/10`. Show missing signals and link to the desktop `/company` route.
-- [ ] **REQ-10 — Top improvement:** Derive the most frequent normalized gap from the
+- [x] **REQ-10 — Top improvement:** Derive the most frequent normalized gap from the
   already-loaded recommendation data. Do not call AI or invent a recommendation when
   no gap exists.
-- [ ] **REQ-11 — Scenario scan:** Professional and Enterprise users may call the
+- [x] **REQ-11 — Scenario scan:** Professional and Enterprise users may call the
   existing `POST /api/radar/scenario-scan` contract for standard, CIDB, JV, B-BBEE,
   or province scenarios. Results are a temporary overlay keyed by matching-score ID;
   they never overwrite cached base scores, write profile data, or persist when the
   user exits the preview.
-- [ ] **REQ-12 — Honest states:** Preserve distinct loading, cached-stale, refreshing,
+- [x] **REQ-12 — Honest states:** Preserve distinct loading, cached-stale, refreshing,
   refresh-failed, no-company-profile, no-matches, filtered-empty, access-unavailable,
   and fatal-contract-error states. Auxiliary profile or saved-state failures may
   degrade only their own surface and must be named to the user.
-- [ ] **REQ-13 — Embedded reuse:** `TenderList` may continue to embed the Radar, but the
+- [x] **REQ-13 — Embedded reuse:** `TenderList` may continue to embed the Radar, but the
   embedded variant must stay compact and use the same endpoint types and category
   projection. It must not render the full header/sidebar workspace inside the tender
   list or duplicate the feed loader.
-- [ ] **REQ-14 — Replacement completion:** Remove the standalone screen's current
+- [x] **REQ-14 — Replacement completion:** Remove the standalone screen's current
   minimum-score selector, generic previous/next listing, and fire-and-forget
   “Recalculate matches” control once their replacements are verified. No obsolete
   standalone path may remain active alongside the new workspace.
 
 ## Non-functional requirements
 
-- [ ] **PERF-1:** Issue the recommendation, entitlement, extended-profile, and initial
+- [x] **PERF-1:** Issue the recommendation, entitlement, extended-profile, and initial
   saved-state request families concurrently. Saved-state pagination may continue only
   through the existing list contract; no per-card status or tender-detail N+1 calls.
-- [ ] **PERF-2:** Render valid account-scoped cached Radar data immediately when
+- [x] **PERF-2:** Render valid account-scoped cached Radar data immediately when
   available and reconcile in the background through `useWorkspaceAsync`.
-- [ ] **SEC-1:** Every parent call must use the existing authenticated endpoint base and
+- [x] **SEC-1:** Every parent call must use the existing authenticated endpoint base and
   read the bearer token from the OS credential store per request. No token may enter
   React state, logs, local storage, SQLite payloads, or URLs.
-- [ ] **SEC-2:** Subscription display logic is not a security boundary. The scenario
+- [x] **SEC-2:** Subscription display logic is not a security boundary. The scenario
   endpoint's parent-side Pro/Enterprise gate remains authoritative.
-- [ ] **REL-1:** Zod schemas must fail closed on unknown contract drift. A validation
+- [x] **REL-1:** Zod schemas must fail closed on unknown contract drift. A validation
   failure renders a handled error and never an empty Radar.
-- [ ] **REL-2:** Mutations use `retry: "never"`; reads retain the existing safe retry,
+- [x] **REL-2:** Mutations use `retry: "never"`; reads retain the existing safe retry,
   account isolation, cancellation, and stale-data behavior.
-- [ ] **A11Y-1:** All information represented by color or a chart also has text; controls
+- [x] **A11Y-1:** All information represented by color or a chart also has text; controls
   are keyboard operable and labelled; focus remains visible; loading and mutation
   outcomes are announced; reduced motion disables urgency animation.
-- [ ] **UX-1:** The full workspace must remain usable at 1024×768 and at the desktop
+- [x] **UX-1:** The full workspace must remain usable at 1024×768 and at the desktop
   shell's narrow supported width without horizontal page scrolling.
-- [ ] **DATA-1:** No parent schema, database, API route, service, matching algorithm,
+- [x] **DATA-1:** No parent schema, database, API route, service, matching algorithm,
   cron, auth module, or payment module changes are permitted.
 
 ## Integration requirements
 
-- [ ] **INT-1:** Extend the existing `RecommendationsEndpoint`, `CompanyEndpoint`, and
+- [x] **INT-1:** Extend the existing `RecommendationsEndpoint`, `CompanyEndpoint`, and
   `SavedTendersEndpoint` contracts; do not create a second transport or auth path.
-- [ ] **INT-2:** Preserve `workspaceQueryKey("radar", ...)`, account-isolated cache
+- [x] **INT-2:** Preserve `workspaceQueryKey("radar", ...)`, account-isolated cache
   ownership, `WorkspaceDataStatus`, and `AsyncSection` error semantics.
-- [ ] **INT-3:** Preserve `/radar`, `/tenders/:tenderId`, `/company`, and the existing
+- [x] **INT-3:** Preserve `/radar`, `/tenders/:tenderId`, `/company`, and the existing
   `ApiClients` composition root.
-- [ ] **INT-4:** Use `GET /api/v1/recommendations`, `GET /api/v1/company/profile/extended`,
+- [x] **INT-4:** Use `GET /api/v1/recommendations`, `GET /api/v1/company/profile/extended`,
   `GET /api/v1/user/saved-tenders`, `POST /api/v1/tenders/[id]/save`,
   `GET /api/subscription/status`, and `POST /api/radar/scenario-scan` only as their
   current contracts permit.
-- [ ] **INT-5:** Keep `src/features/radar/TenderRadar.tsx` as the public screen entry and
+- [x] **INT-5:** Keep `src/features/radar/TenderRadar.tsx` as the public screen entry and
   decompose only into co-located presentation/model helpers.
-- [ ] **INT-6:** Main-app Radar code is read-only reference material; no parent change is
+- [x] **INT-6:** Main-app Radar code is read-only reference material; no parent change is
   implied by approving this desktop specification.
 
 ## Success criteria
 
-- [ ] Clicking the existing Tender Radar menu opens a recognizably equivalent,
+- [x] Clicking the existing Tender Radar menu opens a recognizably equivalent,
   desktop-native version of the main `/radar` workflow rather than the old score list.
-- [ ] The same stored score is shown in the API adapter, card, factors, filters, and
+- [x] The same stored score is shown in the API adapter, card, factors, filters, and
   scenario baseline; the desktop never creates a competing score.
-- [ ] Free, Starter, Professional, and Enterprise fixtures render the correct workspace
+- [x] Free, Starter, Professional, and Enterprise fixtures render the correct workspace
   states without treating an entitlement outage as a denial.
-- [ ] Saved-state toggle, local filtering/sorting, profile guidance, cache refresh, and
+- [x] Saved-state toggle, local filtering/sorting, profile guidance, cache refresh, and
   scenario preview each have focused success and failure tests.
-- [ ] Unsupported eligibility, dismissal/undo, AI summary, email-digest, JV navigation,
+- [x] Unsupported eligibility, dismissal/undo, AI summary, email-digest, JV navigation,
   stale filtering, and publication-type claims do not appear in the UI.
-- [ ] Existing embedded Radar, tender detail, navigation reachability, Opportunities,
+- [x] Existing embedded Radar, tender detail, navigation reachability, Opportunities,
   Settings, and account-isolated cache tests remain green.
-- [ ] Targeted tests, `pnpm run typecheck`, `pnpm run lint`, and
-  `pnpm run format:check` pass; the user performs any release build.
+- [x] Targeted tests, `pnpm run typecheck`, `pnpm run lint`, and task-scoped formatting
+  checks pass; the user performs any release build. The repository-wide formatting
+  command additionally reports two untouched user-owned `.codex-runtime` scripts.
+
+## Implementation evidence
+
+- Route ownership and full/embedded orchestration: `src/app/router/routes.tsx`,
+  `src/features/radar/TenderRadar.tsx`, and `src/features/tenders/TenderList.tsx`.
+- Contract-backed reads and mutations: `src/services/api/endpoints/recommendations.ts`,
+  `src/services/api/endpoints/company.ts`, and
+  `src/services/api/endpoints/saved-tenders.ts`.
+- Immutable category, tier, filtering, profile, and scenario projections:
+  `src/features/radar/radar-workspace-model.ts`.
+- Desktop-native presentation: `RadarHeader.tsx`, `RadarControls.tsx`, `RadarCard.tsx`,
+  `RadarSidebar.tsx`, and `RadarScenarioPanel.tsx` beside the Radar entry component.
+- Requirement and regression coverage: `src/tests/radar-workspace-model.test.ts`,
+  `src/tests/module-endpoints.test.ts`, `src/tests/module-screens.test.tsx`, and
+  `src/tests/navigation-reachability.test.tsx`.
 
 ## Approval gate
 

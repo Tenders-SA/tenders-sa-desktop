@@ -1,6 +1,6 @@
 # Integration evaluation — Desktop Tender Radar parity refactor
 
-**Status:** IN PROGRESS — implementation approved
+**Status:** PASS — implementation and verification complete
 
 Run the relevant section at the end of every implementation phase. Do not mark the
 implementation complete until the final result is PASS.
@@ -72,7 +72,7 @@ implementation complete until the final result is PASS.
 
 ## Final regression evaluation
 
-- [ ] All REQ, INT, PERF, SEC, REL, A11Y, UX, and DATA requirements have code/test evidence.
+- [x] All REQ, INT, PERF, SEC, REL, A11Y, UX, and DATA requirements have code/test evidence.
 - [x] Focused Radar endpoint, model, screen, cache, and navigation tests pass.
 - [x] TenderList embedded Radar tests pass.
 - [x] Tender detail, Opportunities, Settings, Command Centre links, and account-isolated
@@ -105,8 +105,8 @@ implementation complete until the final result is PASS.
 
 ## Result
 
-- **Status:** NOT STARTED
-- **Passed:** 0
+- **Status:** PASS
+- **Passed:** 63
 - **Failed:** 0
-- **Remaining issues:** Implementation in progress.
+- **Remaining issues:** No blocking issues. Five accepted parent-contract limitations remain documented above.
 - **Approved by:** User, 2026-08-14

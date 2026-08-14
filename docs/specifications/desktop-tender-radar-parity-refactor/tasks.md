@@ -14,9 +14,9 @@
 - [x] Phase 1 complete
 - [x] Phase 2 complete
 - [x] Phase 3 complete
-- [ ] Phase 4 complete
-- [ ] Integration evaluation passed
-- [ ] All success criteria verified
+- [x] Phase 4 complete
+- [x] Integration evaluation passed
+- [x] All success criteria verified
 
 ## Phase 0 — protect current contracts and scope
 
@@ -156,7 +156,7 @@
   - **Verify:** All gates are green, the integration evaluation is PASS, no parent file changed, and no release build was run.
   - **Commit:** `chore(tender-radar-parity/4.2): complete desktop verification`
 
-- [ ] **TASK-4.3: Complete specification traceability and handoff**
+- [x] **TASK-4.3: Complete specification traceability and handoff**
   - **Refs:** All requirements and Success Criteria
   - **Files:** Modify `requirements.md`, `tasks.md`, `SPEC_CONTRACT.md`, `INTEGRATION_EVAL.md`; update `CHANGELOG.md` only if the changelog skill says required
   - **Pre-check:** Compare task and contract checklists mechanically and inspect the implementation commit range.
