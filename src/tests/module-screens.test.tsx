@@ -323,6 +323,37 @@ describe("Tender Radar screen", () => {
     expect(screen.getByRole("button", { name: /save bridge repairs/i })).toBeVisible();
   });
 
+  it("shows six-signal profile guidance and the deterministic top gap", async () => {
+    wrap(fullRadar({
+      company: {
+        getExtendedProfile: vi.fn(async () => ({
+          company: {
+            id: "c1",
+            name: "Acme",
+            registrationNumber: "2020/1",
+            bbbeeLevel: 2,
+            industryCodes: ["4100"],
+            annualTurnover: 5_000_000,
+          },
+          profile: { cidbGrading: "6CE", companyType: "PRIVATE_COMPANY" },
+        })),
+      } as unknown as CompanyEndpoint,
+    }));
+
+    expect(
+      await screen.findByRole("complementary", { name: /radar profile guidance/i }),
+    ).toBeVisible();
+    expect(screen.getByText("100%")).toBeVisible();
+    expect(screen.getByText(/profile 100% complete/i)).toBeVisible();
+    expect(screen.getByText("Registration number")).toBeVisible();
+    expect(screen.getByText("Company type")).toBeVisible();
+    expect(screen.getAllByText("CIDB grade 6 required")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: /review company profile/i })).toHaveAttribute(
+      "href",
+      "/company",
+    );
+  });
+
   it("locks the existing standalone listing controls before replacement", async () => {
     // Spec: desktop-tender-radar-parity-refactor §TASK-0.1. These assertions
     // intentionally describe the old screen and are removed only by TASK-3.7.

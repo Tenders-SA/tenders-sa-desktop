@@ -65,7 +65,7 @@ overlays are desktop projections.
 - [x] **TASK-3.2: Add match navigation, filters, sorting, and local reveal**
 - [x] **TASK-3.3: Replace generic rows with desktop-native Radar cards**
 - [x] **TASK-3.4: Add authoritative saved-state actions**
-- [ ] **TASK-3.5: Add profile guidance and top improvement sidebar**
+- [x] **TASK-3.5: Add profile guidance and top improvement sidebar**
 - [ ] **TASK-3.6: Add paid scenario scanning and temporary score overlay**
 - [ ] **TASK-3.7: Wire the full route, preserve embedded use, and remove obsolete standalone controls**
 - [ ] **TASK-4.1: Run focused Radar integration and regression tests**

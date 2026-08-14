@@ -53,13 +53,13 @@ implementation complete until the final result is PASS.
 ## Phase 3 evaluation — user experience
 
 - [ ] Existing menu reaches exactly one `/radar` route and one canonical screen owner.
-- [ ] Header, tier state, counts, freshness, and profile score are text-accessible.
+- [x] Header, tier state, counts, freshness, and profile score are text-accessible.
 - [ ] Match tabs, supported filters, sorts, and 15-row reveal work by keyboard.
 - [ ] Cards show only contract-backed fields and link to native tender detail.
 - [ ] Unknown factor/field values are omitted or labelled unknown, never rendered as zero.
 - [x] Saved state is known before mutation controls enable.
 - [x] Save/unsave adopts the server-returned boolean and reports failures without drift.
-- [ ] Profile sidebar links to `/company` and isolates profile read failures.
+- [x] Profile sidebar links to `/company` and isolates profile read failures.
 - [ ] Scenario scan appears only for Professional/Enterprise presentation and remains
   server-authorized.
 - [ ] Scenario preview announces projected values, restores prior sort, and exits cleanly.

@@ -114,7 +114,7 @@
   - **Verify:** Save, unsave, duplicate-click prevention, unknown initial state, mutation error, and cache-view consistency tests pass.
   - **Commit:** `feat(tender-radar-parity/3.4): wire authoritative saved actions`
 
-- [ ] **TASK-3.5: Add profile guidance and top improvement sidebar**
+- [x] **TASK-3.5: Add profile guidance and top improvement sidebar**
   - **Refs:** REQ-9, REQ-10, REQ-12, INT-3, A11Y-1, UX-1
   - **Files:** Create `src/features/radar/RadarSidebar.tsx`; modify `src/features/radar/TenderRadar.tsx`, `src/tests/module-screens.test.tsx`
   - **Pre-check:** Confirm all six signals exist in the extended-profile projection and `/company` remains reachable.

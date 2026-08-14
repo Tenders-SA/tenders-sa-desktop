@@ -20,18 +20,22 @@ import {
   capRadarMatches,
   countRadarBands,
   filterRadarMatches,
+  findTopRadarGap,
   normalizeRadarMatches,
+  projectRadarProfile,
   RADAR_REVEAL_SIZE,
   revealRadarMatches,
   sortRadarMatches,
   type RadarAccess,
   type RadarFilters,
+  type RadarProfileProjection,
   type RadarSort,
   type RadarWorkspaceMatch,
 } from "./radar-workspace-model";
 import { RadarHeader } from "./RadarHeader";
 import { RadarControls } from "./RadarControls";
 import { RadarCard } from "./RadarCard";
+import { RadarSidebar } from "./RadarSidebar";
 
 const ZAR = new Intl.NumberFormat("en-ZA", {
   style: "currency",
@@ -66,6 +70,7 @@ export type TenderRadarProps =
 interface RadarWorkspaceSnapshot {
   access: RadarAccess;
   matches: RadarWorkspaceMatch[];
+  profile: RadarProfileProjection | null;
   profileState: "ready" | "missing" | "unavailable";
   savedState: "ready" | "unavailable";
   lastUpdated: string | null;
@@ -80,6 +85,7 @@ const radarWorkspaceSnapshotSchema = z.custom<RadarWorkspaceSnapshot>(
         String(candidate.access),
       ) &&
       Array.isArray(candidate.matches) &&
+      (candidate.profile === null || typeof candidate.profile === "object") &&
       ["ready", "missing", "unavailable"].includes(
         String(candidate.profileState),
       ) &&
@@ -193,6 +199,10 @@ function FullRadarController({
       return {
         access,
         matches,
+        profile:
+          profileResult.status === "fulfilled" && profileResult.value
+            ? projectRadarProfile(profileResult.value)
+            : null,
         profileState:
           profileResult.status === "rejected"
             ? "unavailable"
@@ -252,6 +262,7 @@ function FullRadarController({
                   access={snapshot.access}
                   counts={countRadarBands(displayedMatches)}
                   lastUpdated={snapshot.lastUpdated}
+                  completeness={snapshot.profile?.score}
                 />
                 <RadarControls
                   counts={countRadarBands(snapshot.matches)}
@@ -270,14 +281,11 @@ function FullRadarController({
                     setRevealCount(RADAR_REVEAL_SIZE);
                   }}
                 />
+                <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                  <div>
                 {snapshot.savedState === "unavailable" && (
                   <p role="status" className="mb-3 mt-4 text-sm text-muted-foreground">
                     Saved status is temporarily unavailable.
-                  </p>
-                )}
-                {snapshot.profileState === "unavailable" && (
-                  <p role="status" className="mb-3 text-sm text-muted-foreground">
-                    Profile guidance is temporarily unavailable.
                   </p>
                 )}
                 {saveNotice && (
@@ -366,6 +374,14 @@ function FullRadarController({
                     Load 15 more
                   </button>
                 )}
+                  </div>
+                  <RadarSidebar
+                    profile={snapshot.profile}
+                    profileState={snapshot.profileState}
+                    topGap={findTopRadarGap(displayedMatches)}
+                    access={snapshot.access}
+                  />
+                </div>
               </div>
             );
           }}
