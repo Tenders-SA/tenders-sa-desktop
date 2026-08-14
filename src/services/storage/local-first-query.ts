@@ -24,7 +24,11 @@ export class LocalFirstQueryClient {
     schema: ZodType<T, ZodTypeDef, unknown>,
     entity: WorkspaceCacheEntity,
   ) {
-    return this.cache.read(key, schema, entity);
+    try {
+      return await this.cache.read(key, schema, entity);
+    } catch {
+      return undefined;
+    }
   }
 
   refresh<T>(
@@ -38,7 +42,11 @@ export class LocalFirstQueryClient {
     const request = fetcher()
       .then(async (value) => {
         const validated = schema.parse(value);
-        await this.cache.write(key, validated, entity);
+        try {
+          await this.cache.write(key, validated, entity);
+        } catch {
+          // A local persistence failure must not hide a valid remote response.
+        }
         return validated;
       })
       .finally(() => this.inFlight.delete(key));

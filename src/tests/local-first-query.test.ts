@@ -86,6 +86,40 @@ describe("LocalFirstQueryClient", () => {
     expect(result.refreshing).toBe(false);
   });
 
+  it("uses the remote response when the local cache cannot be read", async () => {
+    const cache = {
+      read: vi.fn(async () =>
+        Promise.reject(new Error("database unavailable")),
+      ),
+      write: vi.fn(async () => undefined),
+    } as unknown as WorkspaceCache;
+
+    const result = await new LocalFirstQueryClient(cache).load({
+      key: "tender:1",
+      schema: z.object({ title: z.string() }),
+      entity: "tender-detail",
+      fetcher: async () => ({ title: "Remote tender" }),
+    });
+
+    expect(result.value.title).toBe("Remote tender");
+  });
+
+  it("returns a valid remote response when the local cache cannot be written", async () => {
+    const cache = {
+      read: vi.fn(async () => undefined),
+      write: vi.fn(async () => Promise.reject(new Error("disk unavailable"))),
+    } as unknown as WorkspaceCache;
+
+    const result = await new LocalFirstQueryClient(cache).load({
+      key: "tender:1",
+      schema: z.object({ title: z.string() }),
+      entity: "tender-detail",
+      fetcher: async () => ({ title: "Remote tender" }),
+    });
+
+    expect(result.value.title).toBe("Remote tender");
+  });
+
   it("prefixes persisted keys so two owners cannot replace one primary-key row", async () => {
     const db = new FakeSqlExecutor();
     const crypto = {

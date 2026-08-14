@@ -21,6 +21,8 @@ import { DocumentDownloadButton } from "./DocumentDownloadButton";
 import { describeJsonField } from "./tender-fields";
 import { readableTenderDocumentName } from "./document-label";
 import { useWorkspaceRuntime } from "../../services/storage/workspace-runtime-context";
+import { ApiError } from "../../services/api/errors";
+import { logger } from "../../services/observability";
 
 type Document = NonNullable<TenderDetail["documents"]>[number];
 
@@ -69,6 +71,14 @@ export function TenderDocumentViewer({
       .then((result) => setPreview({ status: "ready", result }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
+          logger.error("tender.document.open.failed", {
+            tenderId: tender.id,
+            documentId: selected.id,
+            errorKind: error instanceof ApiError ? error.kind : "unknown",
+            errorName: error instanceof Error ? error.name : typeof error,
+            errorMessage:
+              error instanceof Error ? error.message : "non-error rejection",
+          });
           setPreview({
             status: "error",
             message: describeApiError(error, "this tender document").message,

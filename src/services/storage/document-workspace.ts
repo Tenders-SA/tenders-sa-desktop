@@ -53,20 +53,30 @@ export class DocumentWorkspace {
     download: () => Promise<DownloadResult>,
   ): Promise<DownloadResult> {
     const fingerprint = tenderDocumentFingerprint(document);
-    const reference = await getLocalFileReference(
-      this.sql,
-      this.ownerId,
-      document.id,
-    );
+    let reference: Awaited<ReturnType<typeof getLocalFileReference>>;
+    try {
+      reference = await getLocalFileReference(
+        this.sql,
+        this.ownerId,
+        document.id,
+      );
+    } catch {
+      reference = undefined;
+    }
     if (
       reference?.fingerprint === fingerprint &&
       reference.cache_state === "ready"
     ) {
-      const bytes = await this.files.read({
-        ownerId: this.ownerId,
-        tenderId,
-        documentId: document.id,
-      });
+      let bytes: number[] | null = null;
+      try {
+        bytes = await this.files.read({
+          ownerId: this.ownerId,
+          tenderId,
+          documentId: document.id,
+        });
+      } catch {
+        // Fall through to the authenticated download when the local file is unreadable.
+      }
       if (bytes) {
         return {
           bytes: Uint8Array.from(bytes),
@@ -77,24 +87,32 @@ export class DocumentWorkspace {
     }
 
     if (reference) {
-      await markLocalFileStale(this.sql, this.ownerId, document.id);
+      try {
+        await markLocalFileStale(this.sql, this.ownerId, document.id);
+      } catch {
+        // Local cleanup is best-effort and must not block the network fallback.
+      }
     }
     const result = await download();
-    const path = await this.files.write({
-      ownerId: this.ownerId,
-      tenderId,
-      documentId: document.id,
-      bytes: Array.from(result.bytes),
-    });
-    await upsertLocalFileReference(this.sql, {
-      ownerId: this.ownerId,
-      tenderId,
-      documentId: document.id,
-      path,
-      filename: result.filename,
-      contentType: result.contentType,
-      fingerprint,
-    });
+    try {
+      const path = await this.files.write({
+        ownerId: this.ownerId,
+        tenderId,
+        documentId: document.id,
+        bytes: Array.from(result.bytes),
+      });
+      await upsertLocalFileReference(this.sql, {
+        ownerId: this.ownerId,
+        tenderId,
+        documentId: document.id,
+        path,
+        filename: result.filename,
+        contentType: result.contentType,
+        fingerprint,
+      });
+    } catch {
+      // The downloaded document is still usable when local persistence fails.
+    }
     return result;
   }
 }

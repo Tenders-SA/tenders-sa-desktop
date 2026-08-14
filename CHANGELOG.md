@@ -91,6 +91,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Saved applications and their tender analysis now open from the local
+  workspace when connectivity is unavailable, while still refreshing from the
+  service when it is reachable.
+- Tender files now continue opening from the service when local cache metadata
+  or file persistence is unavailable, instead of reporting that Tenders-SA
+  could not be reached after a successful download.
+- Offline response-document sync state is now isolated to the signed-in
+  account while remaining compatible with edits already queued locally.
 - Response documents now continue loading when older stored workspace data
   contains nullable metadata or invalid empty map entries; valid Markdown
   drafts are preserved instead of rejecting the entire response as unsupported.

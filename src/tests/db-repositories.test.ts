@@ -143,7 +143,7 @@ describe("sync-operations repository", () => {
     expect(sql).toContain("ON CONFLICT(idempotency_key) DO NOTHING");
     expect(params).toEqual([
       "op-1",
-      "idem-1",
+      `${owner}:idem-1`,
       "application",
       "a1",
       "update",
@@ -177,7 +177,7 @@ describe("sync-operations repository", () => {
     expect(sql).toContain("attempt_count = 0");
     expect(params).toEqual([
       "op-1",
-      "idem-1",
+      `${owner}:idem-1`,
       "application",
       "a1",
       "update",
@@ -200,6 +200,7 @@ describe("sync-operations repository", () => {
     const db = new FakeSqlExecutor();
     await updateSyncOperationStatus(
       db,
+      owner,
       "op-1",
       "failed",
       { attemptCount: 2, lastError: "network timeout" },
@@ -210,6 +211,7 @@ describe("sync-operations repository", () => {
       2,
       "network timeout",
       "2026-01-01T00:00:00.000Z",
+      owner,
       "op-1",
     ]);
   });

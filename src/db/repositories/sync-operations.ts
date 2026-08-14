@@ -12,6 +12,19 @@ export interface NewSyncOperation {
   dependsOn?: string;
 }
 
+export function scopedSyncIdempotencyKey(
+  ownerId: string,
+  idempotencyKey: string,
+): string {
+  if (
+    idempotencyKey.startsWith(`${ownerId}:`) ||
+    idempotencyKey.includes(`:${ownerId}:`)
+  ) {
+    return idempotencyKey;
+  }
+  return `${ownerId}:${idempotencyKey}`;
+}
+
 /**
  * Idempotent enqueue: a duplicate idempotencyKey is a no-op (REQ-7),
  * not an error, so callers can safely retry enqueueing without
@@ -29,7 +42,7 @@ export async function enqueueSyncOperation(
      ON CONFLICT(idempotency_key) DO NOTHING`,
     [
       op.id,
-      op.idempotencyKey,
+      scopedSyncIdempotencyKey(op.ownerId, op.idempotencyKey),
       op.entityType,
       op.entityId,
       op.operationType,
@@ -69,7 +82,7 @@ export async function upsertSyncOperation(
        updated_at = excluded.updated_at`,
     [
       op.id,
-      op.idempotencyKey,
+      scopedSyncIdempotencyKey(op.ownerId, op.idempotencyKey),
       op.entityType,
       op.entityId,
       op.operationType,
@@ -93,6 +106,7 @@ export async function listPendingSyncOperations(
 
 export async function updateSyncOperationStatus(
   executor: SqlExecutor,
+  ownerId: string,
   id: string,
   status: SyncOperationStatus,
   options: { attemptCount?: number; lastError?: string } = {},
@@ -101,7 +115,14 @@ export async function updateSyncOperationStatus(
   await executor.execute(
     `UPDATE sync_operations
      SET status = $1, attempt_count = COALESCE($2, attempt_count), last_error = $3, updated_at = $4
-     WHERE id = $5`,
-    [status, options.attemptCount ?? null, options.lastError ?? null, now, id],
+     WHERE owner_id = $5 AND id = $6`,
+    [
+      status,
+      options.attemptCount ?? null,
+      options.lastError ?? null,
+      now,
+      ownerId,
+      id,
+    ],
   );
 }

@@ -283,12 +283,12 @@ export function createResponseDocStore(
             await crypto.decrypt(op.payload),
           ) as typeof parsed;
         } catch {
-          await updateSyncOperationStatus(sql, op.id, "failed", {
+          await updateSyncOperationStatus(sql, ownerId, op.id, "failed", {
             lastError: "Corrupt queued save payload",
           });
           continue;
         }
-        await updateSyncOperationStatus(sql, op.id, "syncing");
+        await updateSyncOperationStatus(sql, ownerId, op.id, "syncing");
         try {
           if (readRemote && parsed.baseContent !== undefined) {
             const remoteContent =
@@ -319,11 +319,16 @@ export function createResponseDocStore(
                 remoteVersion,
                 fieldPolicy: "human-response-document",
               });
-              await updateSyncOperationStatus(sql, op.id, "conflicted");
+              await updateSyncOperationStatus(
+                sql,
+                ownerId,
+                op.id,
+                "conflicted",
+              );
               continue;
             }
             if (remoteContent === parsed.content) {
-              await updateSyncOperationStatus(sql, op.id, "complete");
+              await updateSyncOperationStatus(sql, ownerId, op.id, "complete");
               await deleteResponseDocDraft(
                 sql,
                 ownerId,
@@ -339,6 +344,7 @@ export function createResponseDocStore(
           const transient = cause instanceof ApiError && cause.isTransient;
           await updateSyncOperationStatus(
             sql,
+            ownerId,
             op.id,
             transient ? "pending" : "failed",
             {
@@ -348,7 +354,7 @@ export function createResponseDocStore(
           );
           continue;
         }
-        await updateSyncOperationStatus(sql, op.id, "complete");
+        await updateSyncOperationStatus(sql, ownerId, op.id, "complete");
         await deleteResponseDocDraft(
           sql,
           ownerId,
@@ -429,7 +435,12 @@ export function createResponseDocStore(
             ? "resolved_remote"
             : "resolved_merged",
       );
-      await updateSyncOperationStatus(sql, row.sync_operation_id, "complete");
+      await updateSyncOperationStatus(
+        sql,
+        ownerId,
+        row.sync_operation_id,
+        "complete",
+      );
       await deleteResponseDocDraft(
         sql,
         ownerId,

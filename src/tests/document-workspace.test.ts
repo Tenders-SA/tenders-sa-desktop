@@ -88,4 +88,47 @@ describe("DocumentWorkspace", () => {
     expect(lastCall?.sql).toContain("local_file_references");
     expect(lastCall?.params).toContain(owner);
   });
+
+  it("downloads when local document metadata cannot be read", async () => {
+    const db = new FakeSqlExecutor();
+    vi.spyOn(db, "select").mockRejectedValueOnce(
+      new Error("database unavailable"),
+    );
+    const files = filePort(null);
+    const download = vi.fn(async () => ({
+      bytes: Uint8Array.from([7, 8, 9]),
+      filename: "Tender.pdf",
+      contentType: "application/pdf",
+    }));
+
+    const result = await new DocumentWorkspace(db, files, owner).open(
+      "tender-1",
+      document,
+      download,
+    );
+
+    expect([...result.bytes]).toEqual([7, 8, 9]);
+    expect(download).toHaveBeenCalledOnce();
+  });
+
+  it("returns downloaded bytes when the local file cannot be written", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [[]];
+    const files = filePort(null);
+    files.write.mockRejectedValueOnce(new Error("disk unavailable"));
+    const download = vi.fn(async () => ({
+      bytes: Uint8Array.from([10, 11, 12]),
+      filename: "Tender.pdf",
+      contentType: "application/pdf",
+    }));
+
+    const result = await new DocumentWorkspace(db, files, owner).open(
+      "tender-1",
+      document,
+      download,
+    );
+
+    expect([...result.bytes]).toEqual([10, 11, 12]);
+    expect(download).toHaveBeenCalledOnce();
+  });
 });

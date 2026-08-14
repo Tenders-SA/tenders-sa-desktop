@@ -1,6 +1,11 @@
 import { AsyncSection } from "../../../components/common/AsyncSection";
-import { useAsync } from "../../../hooks/use-async";
-import type { TendersEndpoint } from "../../../services/api/endpoints/tenders";
+import { WorkspaceDataStatus } from "../../../components/common/WorkspaceDataStatus";
+import { useWorkspaceAsync } from "../../../hooks/use-workspace-async";
+import {
+  tenderDetailSchema,
+  type TendersEndpoint,
+} from "../../../services/api/endpoints/tenders";
+import { workspaceEntityKey } from "../../../services/storage/cache-key";
 import type { DocumentActionPort } from "../../../services/storage/document-actions";
 import type { SaveDownloadPort } from "../../../services/storage/save-download";
 import { TenderAnalysisWorkbench } from "../../tenders/detail/TenderAnalysisWorkbench";
@@ -26,29 +31,40 @@ export function UnderstandStage({
   savePort,
   documentActionPort,
 }: UnderstandStageProps) {
-  const state = useAsync(
-    (signal) => tenders.get(tenderId, signal),
-    [tenders, tenderId],
-  );
+  const state = useWorkspaceAsync({
+    key: workspaceEntityKey("tender-detail", tenderId),
+    schema: tenderDetailSchema,
+    entity: "tender-detail",
+    load: (signal) => tenders.get(tenderId, signal),
+    deps: [tenders, tenderId],
+  });
 
   return (
-    <AsyncSection
-      state={state}
-      subject="this tender's analysis"
-      onRetry={state.reload}
-    >
-      {(tender) => (
-        <div className="min-w-0">
-          <TenderIntelligenceOverview tender={tender} />
-          <TenderAnalysisWorkbench tender={tender} />
-          <TenderDocumentsSection
-            tender={tender}
-            documents={documents}
-            savePort={savePort}
-            documentActionPort={documentActionPort}
-          />
-        </div>
-      )}
-    </AsyncSection>
+    <>
+      <WorkspaceDataStatus
+        stale={state.stale}
+        refreshing={state.refreshing}
+        refreshFailed={state.refreshFailed}
+        subject="saved tender analysis"
+      />
+      <AsyncSection
+        state={state}
+        subject="this tender's analysis"
+        onRetry={state.reload}
+      >
+        {(tender) => (
+          <div className="min-w-0">
+            <TenderIntelligenceOverview tender={tender} />
+            <TenderAnalysisWorkbench tender={tender} />
+            <TenderDocumentsSection
+              tender={tender}
+              documents={documents}
+              savePort={savePort}
+              documentActionPort={documentActionPort}
+            />
+          </div>
+        )}
+      </AsyncSection>
+    </>
   );
 }
