@@ -1,14 +1,15 @@
 import { useEffect, useId, useState } from "react";
 import { ApiError } from "../../services/api/errors";
-import type {
-  TenderListItem,
-  TenderListResult,
-  TendersEndpoint,
+import {
+  daysUntilClosing,
+  tenderListResultSchema,
+  type TenderListItem,
+  type TenderListResult,
+  type TendersEndpoint,
 } from "../../services/api/endpoints/tenders";
 import { ClosingLabel } from "./ClosingLabel";
 import { describeTenderError } from "./tender-errors";
 import { PROVINCES, PUBLICATION_FILTERS } from "./tender-filter-options";
-import { tenderListResultSchema } from "../../services/api/endpoints/tenders";
 import { workspaceQueryKey } from "../../services/storage/cache-key";
 import { useWorkspaceRuntime } from "../../services/storage/workspace-runtime-context";
 import { WorkspaceDataStatus } from "../../components/common/WorkspaceDataStatus";
@@ -30,33 +31,26 @@ const ZAR = new Intl.NumberFormat("en-ZA", {
 });
 
 /**
- * The snippet shown beneath the organisation line, mirroring the parent web
- * listing's `resolveTenderSnippet` precedence (src/lib/seo/tender-card.ts):
- *   aiSummary → AI Summary (+ Key Requirements); else description; else none.
- *
- * `aiSummary`/`aiKeyRequirements` are declared on the list contract but the
- * parent `GET /api/tenders` does not return them yet, so the `ai` branch is
- * dormant and `description` is the live snippet source.
+ * The plain-language description of what is being procured. The title alone
+ * tells a company nothing about whether they qualify, so the description is
+ * the body of the card; when the parent exposes an AI summary it can sit
+ * above this, but the description is the reliable, always-available source.
  */
-type TenderSnippet =
-  | { kind: "ai"; summary: string; keyRequirements: string | null }
-  | { kind: "description"; description: string }
-  | { kind: "none" };
+function descriptionOf(tender: TenderListItem): string | undefined {
+  return tender.description?.trim() || undefined;
+}
 
-function resolveTenderSnippet(tender: TenderListItem): TenderSnippet {
-  const summary = tender.aiSummary?.trim();
-  if (summary) {
-    return {
-      kind: "ai",
-      summary,
-      keyRequirements: tender.aiKeyRequirements?.trim() || null,
-    };
-  }
-  const description = tender.description?.trim();
-  if (description) {
-    return { kind: "description", description };
-  }
-  return { kind: "none" };
+/** Deadline urgency, as words — never colour alone (A11Y-1). */
+function DaysRemaining({ closingDate }: { closingDate: string }) {
+  const days = daysUntilClosing(closingDate);
+  if (days === null) return null;
+  if (days < 0) return <span>Closed</span>;
+  if (days === 0) return <span>Closes today</span>;
+  return (
+    <span>
+      {days} {days === 1 ? "day" : "days"} left
+    </span>
+  );
 }
 
 function TenderRow({
@@ -66,12 +60,17 @@ function TenderRow({
   tender: TenderListItem;
   onOpen?: (id: string) => void;
 }) {
-  const snippet = resolveTenderSnippet(tender);
+  const description = descriptionOf(tender);
   return (
     <li className="group rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/50">
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="mb-2 flex flex-wrap items-center gap-2">
+            {tender.type && (
+              <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                {tender.type}
+              </span>
+            )}
             <span className="rounded bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
               {tender.publicationType?.replace(/_/g, " ") ?? "Tender notice"}
             </span>
@@ -81,6 +80,7 @@ function TenderRow({
               </span>
             )}
           </div>
+
           <h3 className="font-semibold leading-snug text-card-foreground">
             {onOpen ? (
               <button
@@ -94,31 +94,21 @@ function TenderRow({
               tender.title
             )}
           </h3>
-          <p className="mt-2 truncate text-sm text-muted-foreground">
+
+          <p className="mt-1 text-sm font-medium text-foreground">
             {tender.sourceOrganization}
           </p>
-          {snippet.kind === "ai" && (
-            <div className="mt-3 space-y-2">
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {snippet.summary}
-              </p>
-              {snippet.keyRequirements && (
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  <span className="font-semibold text-card-foreground">
-                    Key requirements:{" "}
-                  </span>
-                  {snippet.keyRequirements}
-                </p>
-              )}
-            </div>
-          )}
-          {snippet.kind === "description" && (
-            <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-              {snippet.description}
+
+          {description && (
+            <p className="mt-3 text-sm leading-relaxed text-card-foreground">
+              {description}
             </p>
           )}
+
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span>Ref {tender.referenceNumber}</span>
+            <span className="font-semibold text-muted-foreground">
+              Ref {tender.referenceNumber}
+            </span>
             {tender.industryCategories?.[0] && (
               <span>{tender.industryCategories[0]}</span>
             )}
@@ -130,11 +120,25 @@ function TenderRow({
             )}
           </div>
         </div>
-        <div className="shrink-0 rounded border border-border bg-background/40 p-3 text-right text-sm">
-          <ClosingLabel closingDate={tender.closingDate} />
+
+        <div className="shrink-0 rounded-lg border border-border bg-background/40 p-4 text-right text-sm">
+          <div className="font-semibold text-foreground">
+            <ClosingLabel closingDate={tender.closingDate} />
+          </div>
+          <p className="mt-1 font-medium text-destructive">
+            <DaysRemaining closingDate={tender.closingDate} />
+          </p>
           {typeof tender.estimatedValue === "number" && (
-            <p className="mt-1 text-muted-foreground">
+            <p className="mt-2 border-t border-border pt-2 font-semibold text-foreground">
               {ZAR.format(tender.estimatedValue)}
+            </p>
+          )}
+          {tender.delivery && (
+            <p className="mt-2 max-w-[16rem] text-xs text-muted-foreground">
+              <span className="block font-semibold uppercase tracking-wide">
+                Supply address
+              </span>
+              {tender.delivery}
             </p>
           )}
         </div>

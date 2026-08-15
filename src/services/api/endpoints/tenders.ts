@@ -35,12 +35,6 @@ const tenderListItemSchema = z.object({
   referenceNumber: z.string(),
   sourceOrganization: z.string(),
   description: z.string().nullable().optional(),
-  // AI-enriched summary fields. `GET /api/tenders` does not return these today
-  // (see the parent route's `select`/mapping); they are declared optional so the
-  // listing card's AI Summary slot is forward-compatible the moment the parent
-  // exposes them. `description` remains the live snippet source until then.
-  aiSummary: z.string().nullable().optional(),
-  aiKeyRequirements: z.string().nullable().optional(),
   province: z.string().nullable().optional(),
   closingDate: z.string(),
   estimatedValue: z.number().nullable().optional(),

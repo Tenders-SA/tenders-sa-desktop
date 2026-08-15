@@ -226,7 +226,7 @@ describe("full tender listing (matched view removed)", () => {
     expect(screen.queryByText("All tenders")).toBeNull();
   });
 
-  it("renders each tender's description as the snippet", async () => {
+  it("renders each tender's description as the body of the card", async () => {
     const { endpoint } = listEndpoint({
       ...emptyResult,
       total: 1,
@@ -253,7 +253,39 @@ describe("full tender listing (matched view removed)", () => {
     ).toBeVisible();
   });
 
-  it("renders no snippet when the tender has neither summary nor description", async () => {
+  it("shows the closing date, days remaining, value and supply address prominently", async () => {
+    const { endpoint } = listEndpoint({
+      ...emptyResult,
+      total: 1,
+      pages: 1,
+      tenders: [
+        {
+          id: "tender-1",
+          tender_id: "ext-1",
+          title: "Supply and delivery of safety equipment",
+          referenceNumber: "SAFE-2026",
+          sourceOrganization: "Department of Public Works",
+          description: "Provision of safety equipment.",
+          province: "Gauteng",
+          closingDate: "2099-01-01T10:00:00.000Z",
+          estimatedValue: 500_000,
+          delivery: "123 Industrial Road, Johannesburg",
+          type: "Request for Quotation",
+          publicationType: "TENDER_NOTICE",
+        },
+      ],
+    });
+    render(<TenderList endpoint={endpoint} />);
+    await screen.findByText("Provision of safety equipment.");
+    // Closing date + days remaining, value, and supply address are all visible.
+    expect(screen.getByText(/Closes in/)).toBeVisible();
+    expect(screen.getByText(/days left/)).toBeVisible();
+    expect(screen.getByText(/R\s?500\s?000/)).toBeVisible();
+    expect(screen.getByText("Supply address")).toBeVisible();
+    expect(screen.getByText("123 Industrial Road, Johannesburg")).toBeVisible();
+  });
+
+  it("renders no description paragraph when the tender has no description", async () => {
     const { endpoint } = listEndpoint({
       ...emptyResult,
       total: 1,
@@ -273,7 +305,7 @@ describe("full tender listing (matched view removed)", () => {
     });
     render(<TenderList endpoint={endpoint} />);
     await screen.findByText("Supply and delivery of safety equipment");
-    // The org line is present; the description snippet is not.
+    // The org line is present; no description body is rendered.
     expect(screen.queryByText(/key requirements/i)).toBeNull();
   });
 });
