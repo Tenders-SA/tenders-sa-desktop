@@ -10,16 +10,32 @@ export interface OpportunitiesProps {
 }
 
 /**
- * Opportunities (brief §5) — the shortlist the user has saved.
+ * Opportunities — the shortlist awaiting a bid decision, and the queue into
+ * the assessment itself.
+ *
+ * This screen deliberately does **not** assess anything. Brief §6.3
+ * Opportunity Assessment is already built on the tender detail screen —
+ * summary (`TenderDetail`), AI requirement summary (`TenderAnalysisWorkbench`),
+ * internal readiness (`EligibilityPanel`) and buyer intelligence
+ * (`TenderIntelligenceOverview`) — and matched tenders are already at `/radar`.
+ * Each row therefore links to `/tenders/:id` rather than repeating either.
  *
  * Filtering to still-biddable work is done **server-side** via `activeOnly`
  * and `futureOnly`, not by discarding rows after they arrive. Client-side
  * filtering would make the pagination totals lie: a page of 20 could render
  * as 3 rows with the count still claiming 20.
+ *
+ * `openOnly` defaults to **off** because `activeOnly=true` currently returns
+ * HTTP 500 from the parent: `saved-tenders/route.ts` filters the Prisma enum
+ * `TenderStatus` against non-members. That is a parent defect, diagnosed in
+ * `prompts/saved-tenders-activeonly-500.md`, and cannot be fixed from this
+ * repository. The checkbox is kept so the capability survives and the server
+ * bug stays reachable in one click rather than being hidden. Flip this default
+ * back once that brief ships.
  */
 export function Opportunities({ endpoint }: OpportunitiesProps) {
   const [page, setPage] = useState(1);
-  const [openOnly, setOpenOnly] = useState(true);
+  const [openOnly, setOpenOnly] = useState(false);
 
   const state = useAsync(
     (signal) =>
@@ -39,7 +55,8 @@ export function Opportunities({ endpoint }: OpportunitiesProps) {
         Opportunities
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Tenders you have saved to consider.
+        Tenders you have shortlisted, awaiting a bid decision. Open one to see
+        its requirements, your readiness and the buyer's record.
       </p>
 
       <label className="mt-4 flex items-center gap-2 text-sm text-foreground">

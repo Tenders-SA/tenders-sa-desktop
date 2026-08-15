@@ -650,18 +650,45 @@ describe("Opportunities screen", () => {
   it("invites the user to save something when the shortlist is empty", async () => {
     wrap(<Opportunities endpoint={endpoint([])} />);
     expect(
-      await screen.findByRole("heading", { name: /no saved tenders/i }),
+      await screen.findByRole("heading", { name: /not saved any tenders/i }),
     ).toBeVisible();
   });
 
-  it("filters server-side when the open-only box is used", async () => {
+  /**
+   * The first request must not narrow. `activeOnly=true` currently 500s on the
+   * parent (see `prompts/saved-tenders-activeonly-500.md`), so a narrowing
+   * default makes the screen unopenable. Pinned so the default is not restored
+   * before that parent defect ships.
+   */
+  it("does not narrow the first request", async () => {
     const ep = endpoint([]);
     wrap(<Opportunities endpoint={ep} />);
     await waitFor(() => expect(ep.list).toHaveBeenCalled());
-    // Default is on, so the first call already narrows.
     expect(ep.list).toHaveBeenCalledWith(
-      expect.objectContaining({ activeOnly: true, futureOnly: true }),
+      expect.objectContaining({ activeOnly: false, futureOnly: false }),
       expect.anything(),
+    );
+  });
+
+  /**
+   * The capability is preserved, not deleted: ticking the box must still send
+   * both flags unchanged, so the parent defect stays reproducible in one click
+   * rather than being hidden by the desktop.
+   */
+  it("still filters server-side when the open-only box is ticked", async () => {
+    const ep = endpoint([]);
+    wrap(<Opportunities endpoint={ep} />);
+    await waitFor(() => expect(ep.list).toHaveBeenCalled());
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /only tenders still open/i }),
+    );
+
+    await waitFor(() =>
+      expect(ep.list).toHaveBeenCalledWith(
+        expect.objectContaining({ activeOnly: true, futureOnly: true }),
+        expect.anything(),
+      ),
     );
   });
 });

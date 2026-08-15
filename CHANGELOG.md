@@ -57,6 +57,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The desktop application now carries its own teal app icon across the window,
+  taskbar, shortcuts, installer, and operating-system search results, so it is
+  distinguishable at a glance from the Tenders-SA website while keeping the same
+  recognisable graph mark.
 - Tender Radar now opens the full decision workspace used by the main service,
   with plan-aware match limits, score bands, filters, decision cards, saved
   state, profile guidance, and Professional/Enterprise scenario previews. The
@@ -95,6 +99,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The Opportunities screen now opens and lists your shortlisted tenders
+  instead of reporting that they could not be loaded. It also states plainly
+  that it holds tenders awaiting a bid decision, rather than implying it shows
+  tenders matched to your company — those remain in Tender Radar. Narrowing to
+  tenders still open stays available as a filter.
 - Tender applications can now open from their available workspace summary
   while slower full details continue loading, instead of keeping the entire
   workspace behind a loading screen.

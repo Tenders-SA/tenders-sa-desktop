@@ -15,7 +15,7 @@ export function Sidebar() {
     >
       <div className="flex items-center gap-2 px-2">
         <img
-          src="/tenders-sa-icon.png"
+          src="/app-icon.png"
           alt=""
           aria-hidden="true"
           className="size-8 rounded-lg"
