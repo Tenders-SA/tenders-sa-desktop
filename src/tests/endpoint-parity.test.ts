@@ -42,6 +42,11 @@ const NEGATIVE_ASSERTION_FILES = new Set([
 const CURSOR_PAGINATED_FILES = new Set([
   "services/api/endpoints/procurement-officers.ts",
   "tests/procurement-officers-endpoint.test.ts",
+  // Local persistence of the feed's cursor: sync-state table row type,
+  // repository upsert, and the repository tests.
+  "db/schema/types.ts",
+  "db/repositories/procurement-officers.ts",
+  "tests/procurement-officers-repository.test.ts",
 ]);
 
 const DEVELOPER_API_HOST = "api.tenders-sa.org";
