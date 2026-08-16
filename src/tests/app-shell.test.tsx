@@ -47,6 +47,7 @@ describe("navigation model", () => {
         "Company Document Vault",
         "JV and Partner Network",
         "Supplier Intelligence",
+        "Procurement Officers",
         "Buyer Intelligence",
         "Award Intelligence",
       ],
@@ -71,6 +72,7 @@ describe("navigation model", () => {
       "Company Profile",
       "Company Document Vault",
       "Supplier Intelligence",
+      "Procurement Officers",
       "Notifications",
       "Settings",
     ]);
