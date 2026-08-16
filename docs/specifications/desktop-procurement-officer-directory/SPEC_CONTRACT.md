@@ -1,12 +1,12 @@
 # Desktop — Procurement Officer Directory — SPEC_CONTRACT
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-16
 - **Scope**: Build the Procurement Officer Directory on the desktop: nav item, local
   FTS5 index from the parent sync feed, local-first search, officer detail, actions,
   corrections, and honest feature states (requirements R-P1..R-P18).
-- **Approved by**: _pending — user approval required before any implementation_
-- **Approval date**: _pending_
+- **Approved by**: user (in-session directive, 2026-08-16)
+- **Approval date**: 2026-08-16
 
 ## Contract checklist (mirrors tasks.md)
 

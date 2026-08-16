@@ -58,3 +58,4 @@
 | Date | Status |
 |---|---|
 | 2026-08-16 | Created (PENDING APPROVAL) — desktop sync at `91340b0`; branch `spec/desktop-procurement-officer-directory`. |
+| 2026-08-16 | APPROVED by user (in-session directive). Implementation may start at TASK-1.1. |
