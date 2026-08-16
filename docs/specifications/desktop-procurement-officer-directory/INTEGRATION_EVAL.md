@@ -31,12 +31,20 @@
 
 | Risk | Mitigation |
 |---|---|
-| Bundled SQLite lacks FTS5 | Pre-check in TASK-1.2 (`pragma compile_options`); documented fallback (LIKE + indexes) recorded here before building. |
+| Bundled SQLite lacks FTS5 | **RESOLVED (TASK-1.2 pre-check)**: the bundled SQLite compiles `ENABLE_FTS5` (verified by `db::tests::bundled_sqlite_compiles_fts5_and_indexes_officer_search` — `sqlite_compileoption_used('ENABLE_FTS5')` = 1 and a real MATCH query returns the row). No LIKE fallback needed. |
 | Feed size / slow first sync | Bounded pages (`limit: 200`), cursor resume, background cadence, last-good-state on failure. |
 | Masking semantics drift in the parent | Contracts locked as fixtures in TASK-1.1; schema evolution is caught by the boundary tests before UI code touches values. |
 | Stale assignments presented as current | Detail panel orders by parent `isCurrent` desc and renders the headline from the local assignment rows the feed already curates. |
 | Re-exposing a disputed value after correction | Local `officerSuppressedFields` marker blocks display until a sync without the field supersedes it. |
 | Bulk-export scope creep | Explicit non-goal; no export affordance beyond single-contact copy/mailto; covered by screen tests. |
+
+## Implementation notes (recorded deviations)
+
+- **TASK-1.2**: `procurement_officers_fts` is a **regular (stored) FTS5 table**, not
+  contentless (`content=''`) as design.md sketched — contentless FTS5 cannot DELETE
+  rows, and tombstone removal + per-officer rebuilds need deletion. Same tokenizer
+  (`porter unicode61`), same query surface; the stored `search_text` copy is rebuilt
+  transactionally by the repository on ingest.
 
 ## Boundary statements
 
@@ -59,3 +67,5 @@
 |---|---|
 | 2026-08-16 | Created (PENDING APPROVAL) — desktop sync at `91340b0`; branch `spec/desktop-procurement-officer-directory`. |
 | 2026-08-16 | APPROVED by user (in-session directive). Implementation may start at TASK-1.1. |
+| 2026-08-16 | TASK-1.1 committed (`c4d4185`): endpoint contracts locked with fixtures; parity guard updated for the sync feed's cursor pagination. |
+| 2026-08-16 | TASK-1.2 committed: schema + FTS5 pre-check passed (bundled SQLite compiles FTS5); contentless→regular FTS5 deviation recorded. |
