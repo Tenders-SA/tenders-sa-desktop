@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A "Report incorrect information" flow on officer details: choose the
+  disputed field (email, telephone, mobile, title, organisation or name),
+  explain the problem, and file it with the platform. On success the field
+  stays hidden on your device — marked as pending review — until a later
+  sync no longer carries the disputed value; rejections (404/400) are shown
+  with an explicit message and never mark the field.
 - Clicking a Procurement Officers search result opens a detail panel with the
   officer's current assignment (never a stale one), organisation name and
   physical address, official contact points, and related tenders — with

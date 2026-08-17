@@ -7,6 +7,7 @@ import type {
   OfficerDetailData,
   OfficerDetailView,
 } from "../features/procurement-officers/use-officer-detail";
+import type { OfficerSuppressedMap } from "../features/procurement-officers/use-officer-corrections";
 
 function detailData(overrides: Partial<OfficerDetailData> = {}): OfficerDetailData {
   return {
@@ -74,10 +75,20 @@ function view(overrides: Partial<OfficerDetailView> = {}): OfficerDetailView {
   };
 }
 
-function renderPanel(v: OfficerDetailView, onClose = vi.fn()) {
+function renderPanel(
+  v: OfficerDetailView,
+  onClose = vi.fn(),
+  suppressed: OfficerSuppressedMap = {},
+  onReportCorrection = vi.fn(),
+) {
   return render(
     <MemoryRouter>
-      <OfficerDetailPanel view={v} onClose={onClose} />
+      <OfficerDetailPanel
+        view={v}
+        suppressed={suppressed}
+        onReportCorrection={onReportCorrection}
+        onClose={onClose}
+      />
     </MemoryRouter>,
   );
 }
@@ -227,5 +238,51 @@ describe("OfficerDetailPanel", () => {
     renderPanel(view({ phase: "error" }));
     expect(screen.getByText(/Server refresh failed/)).toBeVisible();
     expect(screen.getByText("Thabo Mokoena")).toBeVisible();
+  });
+
+  it("hides a disputed contact while the value is still carried", () => {
+    renderPanel(view(), vi.fn(), {
+      "officer-1:email": "thabo@dwa.gov.za",
+    });
+    expect(screen.queryByText(/thabo@dwa\.gov\.za/)).not.toBeInTheDocument();
+    expect(screen.getByText(/0123456789/)).toBeVisible();
+  });
+
+  it("hides the name, title and organisation when disputed", () => {
+    renderPanel(
+      view(),
+      vi.fn(),
+      {
+        "officer-1:officer": "Thabo Mokoena",
+        "officer-1:title": "Supply Chain Manager",
+        "officer-1:organisation": "Department of Water Affairs",
+      },
+    );
+    expect(screen.getByText("Name under review")).toBeVisible();
+    expect(screen.queryByText("Thabo Mokoena")).not.toBeInTheDocument();
+    expect(screen.queryByText("Supply Chain Manager")).not.toBeInTheDocument();
+    expect(screen.queryByText("Department of Water Affairs")).not.toBeInTheDocument();
+  });
+
+  it("re-shows a field once the disputed value is no longer carried", () => {
+    renderPanel(view(), vi.fn(), { "officer-1:telephone": "0987654321" });
+    expect(screen.getByText(/0123456789/)).toBeVisible();
+  });
+
+  it("opens the correction dialog for the reported field", async () => {
+    const onReportCorrection = vi.fn();
+    renderPanel(view(), vi.fn(), {}, onReportCorrection);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Report incorrect" }));
+    expect(onReportCorrection).toHaveBeenCalledWith(
+      "officer",
+      "Name",
+      "Thabo Mokoena",
+    );
+
+    const reportButtons = screen.getAllByRole("button", { name: "Report" });
+    await user.click(reportButtons[reportButtons.length - 1]);
+    expect(onReportCorrection).toHaveBeenCalledWith("telephone", "telephone", "0123456789");
   });
 });

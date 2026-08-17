@@ -17,6 +17,14 @@ import { useOfficerSync } from "./use-officer-sync";
 import { OfficerDetailPanel } from "./OfficerDetailPanel";
 import { useOfficerDetail, type OfficerDetailFeed } from "./use-officer-detail";
 import {
+  CorrectionDialog,
+  type CorrectionFieldOption,
+} from "./CorrectionDialog";
+import {
+  useOfficerCorrections,
+  type OfficerCorrectionFeed,
+} from "./use-officer-corrections";
+import {
   OFFICER_PROVINCES,
   useOfficerSearch,
   type OfficerSearchFeed,
@@ -25,7 +33,7 @@ import {
 import { QualityLabel } from "./QualityLabel";
 
 export interface ProcurementOfficerDirectoryProps {
-  feed: OfficerSyncFeed & OfficerSearchFeed & OfficerDetailFeed;
+  feed: OfficerSyncFeed & OfficerSearchFeed & OfficerDetailFeed & OfficerCorrectionFeed;
   executor?: SqlExecutor;
   ownerId?: WorkspaceOwnerId;
 }
@@ -43,6 +51,30 @@ export function ProcurementOfficerDirectory({
   const [refreshing, setRefreshing] = useState(false);
   const [selectedOfficerId, setSelectedOfficerId] = useState<string | null>(null);
   const detail = useOfficerDetail(feed, executor, ownerId, selectedOfficerId);
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionField, setCorrectionField] = useState<CorrectionFieldOption | null>(null);
+
+  const currentValues =
+    selectedOfficerId && detail.data
+      ? {
+          email:
+            detail.data.contactPoints.find((c) => c.type === "email")?.value ?? null,
+          telephone:
+            detail.data.contactPoints.find((c) => c.type === "telephone")?.value ?? null,
+          mobile:
+            detail.data.contactPoints.find((c) => c.type === "mobile")?.value ?? null,
+          title: detail.data.headlineAssignment?.title ?? null,
+          organisation: detail.data.organisationName ?? null,
+          officer: detail.data.canonicalName ?? null,
+        }
+      : null;
+  const corrections = useOfficerCorrections(
+    feed,
+    executor,
+    ownerId,
+    selectedOfficerId,
+    currentValues,
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -217,7 +249,15 @@ export function ProcurementOfficerDirectory({
           </div>
         )
       ) : selectedOfficerId ? (
-        <OfficerDetailPanel view={detail} onClose={() => setSelectedOfficerId(null)} />
+        <OfficerDetailPanel
+          view={detail}
+          suppressed={corrections.suppressed}
+          onReportCorrection={(field, label, value) => {
+            setCorrectionField({ field, label, value });
+            setCorrectionOpen(true);
+          }}
+          onClose={() => setSelectedOfficerId(null)}
+        />
       ) : search.results.length === 0 ? (
         <div className="rounded-md border p-6 text-center text-sm text-foreground/60">
           {search.phase === "searching-local" || search.phase === "refreshing"
@@ -250,6 +290,26 @@ export function ProcurementOfficerDirectory({
           ))}
         </ul>
       )}
+
+      <CorrectionDialog
+        open={correctionOpen}
+        officerName={detail.data?.canonicalName ?? "This officer"}
+        fields={
+          correctionField
+            ? [correctionField]
+            : []
+        }
+        phase={corrections.phase}
+        status={corrections.status}
+        errorMessage={corrections.errorMessage}
+        onSubmit={(field, value, reason) => {
+          void corrections.submitCorrection(field, value, reason);
+        }}
+        onClose={() => {
+          setCorrectionOpen(false);
+          corrections.reset();
+        }}
+      />
     </section>
   );
 }

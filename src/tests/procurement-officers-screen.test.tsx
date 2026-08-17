@@ -10,17 +10,20 @@ import { getOfficerSyncRunner } from "../features/procurement-officers/use-offic
 import { assertWorkspaceOwner } from "../services/storage/workspace-owner";
 import type { OfficerSearchFeed } from "../features/procurement-officers/use-officer-search";
 import type { OfficerDetailFeed } from "../features/procurement-officers/use-officer-detail";
-import type { OfficerSearchResult, OfficerDetail, OfficerTendersResult } from "../services/api/endpoints/procurement-officers";
+import type { OfficerCorrectionFeed } from "../features/procurement-officers/use-officer-corrections";
+import type { OfficerSearchResult, OfficerDetail, OfficerTendersResult, OfficerCorrection } from "../services/api/endpoints/procurement-officers";
 import type { OfficerSyncResult } from "../services/api/endpoints/procurement-officers";
 import type { ProcurementOfficerRow } from "../db/schema/types";
 
 const owner = assertWorkspaceOwner(`v1-${"c".repeat(64)}`);
 
-class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed {
+class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed, OfficerCorrectionFeed {
   pages: Array<OfficerSyncResult | ApiError> = [];
   searchPages: Array<OfficerSearchResult> = [];
   detailPages: Array<OfficerDetail | Error> = [];
   tenderPages: Array<OfficerTendersResult | Error> = [];
+  correctionResults: Array<OfficerCorrection | Error> = [];
+  correctionCalls: Array<{ id: string; field: string; reason: string }> = [];
   calls = 0;
   async sync() {
     this.calls += 1;
@@ -66,6 +69,15 @@ class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed 
     if (next instanceof Error) throw next;
     return next ?? { tenders: [], page: 1, limit: 20, total: 0 };
   }
+  async submitCorrection(
+    id: string,
+    input: { field: string; reason: string },
+  ): Promise<OfficerCorrection> {
+    this.correctionCalls.push({ id, field: input.field, reason: input.reason });
+    const next = this.correctionResults.shift();
+    if (next instanceof Error) throw next;
+    return next ?? { id: "corr-1", status: "pending" };
+  }
 }
 
 function emptyPage(): OfficerSyncResult {
@@ -105,6 +117,7 @@ describe("ProcurementOfficerDirectory shell", () => {
       [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }],
       [], // saved ids
       [], // recent searches
+      [], // corrections: suppressed fields read
       [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }],
     ];
     const feed = new FakeFeed();
@@ -148,6 +161,7 @@ describe("ProcurementOfficerDirectory shell", () => {
       [], // boot runner read
       [], // saved ids
       [], // recent searches
+      [], // corrections: suppressed fields read
       [], // post-boot-sync read: nothing synced yet
       [], // click runner read
       [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }],
@@ -171,6 +185,7 @@ describe("ProcurementOfficerDirectory shell", () => {
       [], // boot runner read
       [], // saved ids
       [], // recent searches
+      [], // corrections: suppressed fields read
       [], // post-boot-sync read
       [localOfficerRow()], // local FTS pass
     ];
@@ -188,12 +203,67 @@ describe("ProcurementOfficerDirectory shell", () => {
     expect(screen.getByText(/Supply Chain Manager/)).toBeVisible();
   });
 
+  it("files a correction that hides the disputed field until resolution", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [
+      [], // boot runner read
+      [], // saved ids
+      [], // recent searches
+      [], // corrections: suppressed fields read
+      [], // post-boot-sync read
+      [localOfficerRow()], // local FTS pass
+      [localOfficerRow()], // detail: officers
+      [{ owner_id: owner, officer_id: "officer-1", id: "cp-1", type: "email", value: "thabo@dwa.gov.za", is_role_based: 0, is_official: 1, verification_status: "verified" }], // detail: contact points
+      [{ owner_id: owner, officer_id: "officer-1", id: "a-1", organisation_id: "org-9", organisation_name: "Department of Water Affairs", title: "Supply Chain Manager", valid_from: "2024-01-01T00:00:00.000Z", valid_to: null, is_current: 1, confidence_score: 0.9 }], // detail: assignments
+      [], // detail: tender links
+      [], // detail: is saved
+      [], // detail: notes
+    ];
+    const feed = new FakeFeed();
+
+    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search officers" }),
+      "Mokoena",
+    );
+    await user.click(await screen.findByRole("button", { name: /Thabo Mokoena/ }));
+
+    const reportButtons = await screen.findAllByRole("button", { name: "Report" });
+    await user.click(reportButtons[reportButtons.length - 1]);
+
+    expect(
+      screen.getByRole("heading", { name: "Report incorrect information" }),
+    ).toBeVisible();
+    await user.type(
+      screen.getByLabelText("Reason"),
+      "This address is out of date",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Report incorrect information" }),
+    );
+
+    expect(feed.correctionCalls).toEqual([
+      { id: "officer-1", field: "email", reason: "This address is out of date" },
+    ]);
+    expect(
+      await screen.findByText(/Correction filed — status: pending/),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Done" }));
+
+    expect(screen.queryByText(/thabo@dwa\.gov\.za/)).not.toBeInTheDocument();
+    expect(screen.getByText("No official contacts recorded.")).toBeVisible();
+  });
+
   it("opens the detail panel from a result row and returns to the list", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [
       [], // boot runner read
       [], // saved ids
       [], // recent searches
+      [], // corrections: suppressed fields read
       [], // post-boot-sync read
       [localOfficerRow()], // local FTS pass
       [localOfficerRow()], // detail: officers
@@ -252,6 +322,7 @@ describe("ProcurementOfficerDirectory shell", () => {
       [], // boot runner read
       [], // saved ids
       [], // recent searches
+      [], // corrections: suppressed fields read
       [], // post-boot-sync read
       [localOfficerRow()], // local FTS pass with the province filter
     ];
@@ -270,7 +341,7 @@ describe("ProcurementOfficerDirectory shell", () => {
 
   it("shows an honest empty state when nothing matches", async () => {
     const db = new FakeSqlExecutor();
-    db.selectResults = [[], [], [], []];
+    db.selectResults = [[], [], [], [], [], []];
     const feed = new FakeFeed();
 
     render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
