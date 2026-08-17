@@ -116,23 +116,16 @@ export function ProcurementOfficerDirectory({
     );
   }
 
-  if (sync.featureState === "entitlement-missing") {
-    return (
-      <section aria-labelledby="procurement-officers-heading">
-        <Heading
-          onRefresh={() => void handleRefresh()}
-          refreshing={refreshing || sync.phase === "syncing"}
-        />
-        <div className="rounded-md border border-orange-300 bg-orange-50 p-4 text-sm">
-          <p className="font-medium">Not included in your plan</p>
-          <p className="mt-1 text-foreground/70">
-            Procurement officer data is not part of your current plan. Your
-            last synced directory remains available in read-only form.
-          </p>
-        </div>
-      </section>
-    );
-  }
+  const entitlementBanner = sync.featureState === "entitlement-missing" && (
+    <div className="mb-4 rounded-md border border-orange-300 bg-orange-50 p-4 text-sm">
+      <p className="font-medium">Not included in your plan</p>
+      <p className="mt-1 text-foreground/70">
+        Procurement officer data is not part of your current plan. Your last
+        synced directory remains available in read-only form — search still
+        works against the server directory.
+      </p>
+    </div>
+  );
 
   return (
     <section aria-labelledby="procurement-officers-heading">
@@ -140,6 +133,8 @@ export function ProcurementOfficerDirectory({
         onRefresh={() => void handleRefresh()}
         refreshing={refreshing || sync.phase === "syncing"}
       />
+
+      {entitlementBanner}
 
       <div className="mb-3 text-sm text-foreground/60">{statusLine}</div>
 
@@ -217,11 +212,20 @@ export function ProcurementOfficerDirectory({
           }
           className="w-32 rounded-md border px-3 py-1.5 text-sm"
         />
+        <button
+          type="button"
+          aria-pressed={search.filters.saved ?? false}
+          onClick={() => updateFilters({ saved: search.filters.saved ? undefined : true })}
+          className="rounded-md border px-3 py-1.5 text-sm"
+        >
+          Saved only
+        </button>
       </div>
 
       {search.phase === "error" && (
         <p className="mb-3 text-sm text-red-600" role="alert">
-          The server refresh failed. Showing locally synced results only.
+          The server refresh failed. Showing locally synced results only
+          {sync.lastSyncAt ? ` (last synced ${formatSyncTime(sync.lastSyncAt)}).` : "."}
         </p>
       )}
 
@@ -262,7 +266,9 @@ export function ProcurementOfficerDirectory({
         <div className="rounded-md border p-6 text-center text-sm text-foreground/60">
           {search.phase === "searching-local" || search.phase === "refreshing"
             ? "Searching…"
-            : "No officers match your search."}
+            : search.filters.saved
+              ? "No saved officers yet — save one from its details."
+              : "No officers match your search."}
         </div>
       ) : (
         <ul className="divide-y rounded-md border">

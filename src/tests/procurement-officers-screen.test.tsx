@@ -19,7 +19,7 @@ const owner = assertWorkspaceOwner(`v1-${"c".repeat(64)}`);
 
 class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed, OfficerCorrectionFeed {
   pages: Array<OfficerSyncResult | ApiError> = [];
-  searchPages: Array<OfficerSearchResult> = [];
+  searchPages: Array<OfficerSearchResult | Error> = [];
   detailPages: Array<OfficerDetail | Error> = [];
   tenderPages: Array<OfficerTendersResult | Error> = [];
   correctionResults: Array<OfficerCorrection | Error> = [];
@@ -35,6 +35,7 @@ class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed,
   }
   async search(): Promise<OfficerSearchResult> {
     const next = this.searchPages.shift();
+    if (next instanceof Error) throw next;
     return next ?? { officers: [], page: 1, limit: 20, total: 0 };
   }
   async get(id: string): Promise<OfficerDetail> {
@@ -153,6 +154,115 @@ describe("ProcurementOfficerDirectory shell", () => {
     render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
 
     expect(await screen.findByText("Not included in your plan")).toBeVisible();
+  });
+
+  it("keeps search working under the entitlement banner (read-only index)", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [
+      [], // boot runner read
+      [], // saved ids
+      [], // recent searches
+      [], // corrections: suppressed fields read
+      [localOfficerRow()], // local FTS pass (no post-boot-sync read under entitlement-missing)
+    ];
+    const feed = new FakeFeed();
+    feed.pages = [new ApiError({ kind: "forbidden", status: 403, message: "Forbidden" })];
+
+    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+
+    expect(await screen.findByText("Not included in your plan")).toBeVisible();
+    expect(screen.getByRole("searchbox", { name: "Search officers" })).toBeVisible();
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search officers" }),
+      "Mokoena",
+    );
+
+    expect(await screen.findByText("Thabo Mokoena")).toBeVisible();
+  });
+
+  it("shows the offline banner with the last sync time when the refresh fails", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [
+      [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }], // boot runner read
+      [], // saved ids
+      [], // recent searches
+      [], // corrections: suppressed fields read
+      [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }], // post-boot-sync read
+      [localOfficerRow()], // local FTS pass
+    ];
+    const feed = new FakeFeed();
+    feed.pages = [emptyPage()];
+    feed.searchPages = [
+      new ApiError({ kind: "offline", status: 0, message: "No network connection is available" }),
+    ];
+
+    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search officers" }),
+      "Mokoena",
+    );
+
+    expect(await screen.findByText(/Showing locally synced results only/)).toBeVisible();
+    expect(screen.getByText(/last synced/)).toBeVisible();
+    expect(screen.getByText("Thabo Mokoena")).toBeVisible();
+  });
+
+  it("filters to saved officers only and shows an honest empty state", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [
+      [], // boot runner read
+      [], // saved ids: nothing saved
+      [], // recent searches
+      [], // corrections: suppressed fields read
+      [], // post-boot-sync read
+      [localOfficerRow()], // local FTS pass
+    ];
+    const feed = new FakeFeed();
+
+    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search officers" }),
+      "Mokoena",
+    );
+    expect(await screen.findByText("Thabo Mokoena")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Saved only" }));
+    expect(
+      await screen.findByText("No saved officers yet — save one from its details."),
+    ).toBeVisible();
+  });
+
+  it("keeps saved rows when the saved-only filter is on", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [
+      [], // boot runner read
+      [{ officer_id: "officer-1" }], // saved ids: officer-1 is saved
+      [], // recent searches
+      [], // corrections: suppressed fields read
+      [], // post-boot-sync read
+      [localOfficerRow()], // local FTS pass
+      [localOfficerRow()], // local FTS pass after the Saved-only filter re-runs the pipeline
+    ];
+    const feed = new FakeFeed();
+
+    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search officers" }),
+      "Mokoena",
+    );
+    expect(await screen.findByText("Thabo Mokoena")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Saved only" }));
+    expect(await screen.findByText("Thabo Mokoena")).toBeVisible();
+    expect(screen.getByText("Saved")).toBeVisible();
   });
 
   it("syncs on demand via the Sync now button", async () => {

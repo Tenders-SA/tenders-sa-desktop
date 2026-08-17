@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- The Procurement Officers directory now shows its feature state honestly: a
+  banner when the officer index is not included in your plan (search still
+  works against the server), an offline notice with the last sync time when a
+  refresh fails, and a "Saved only" toggle that filters results to officers you
+  have saved — with a dedicated empty state.
 - A "Report incorrect information" flow on officer details: choose the
   disputed field (email, telephone, mobile, title, organisation or name),
   explain the problem, and file it with the platform. On success the field

@@ -32,6 +32,8 @@ export interface OfficerFilters {
   status?: string;
   organisation?: string;
   role?: string;
+  /** Local-only post-filter (TASK-1.9, R-P18): keep saved rows only. */
+  saved?: boolean;
 }
 
 export interface OfficerResultRow {
@@ -167,7 +169,7 @@ export function useOfficerSearch(
             (!filters.status || row.status === filters.status),
         );
         setResults(
-          mergeOfficerRows(localRows, serverRows, savedIds, trimmed, filters),
+          applySavedFilter(mergeOfficerRows(localRows, serverRows, savedIds, trimmed, filters), filters),
         );
         setTotal(server.total);
         setPhase("idle");
@@ -183,7 +185,9 @@ export function useOfficerSearch(
         if (err instanceof DOMException && err.name === "AbortError") return;
         if (runIdRef.current !== runId) return;
         if (localAnswerable && localRows.length > 0) {
-          setResults(mergeOfficerRows(localRows, [], savedIds, trimmed, filters));
+          setResults(
+            applySavedFilter(mergeOfficerRows(localRows, [], savedIds, trimmed, filters), filters),
+          );
           setPhase("error");
         } else {
           setPhase("error");
@@ -211,6 +215,15 @@ function hasAnyFilter(filters: OfficerFilters): boolean {
   return Boolean(
     filters.province || filters.kind || filters.status || filters.organisation || filters.role,
   );
+}
+
+/** Local saved-only post-filter: rows are already merged; drop unsaved ones. */
+function applySavedFilter(
+  rows: OfficerResultRow[],
+  filters: OfficerFilters,
+): OfficerResultRow[] {
+  if (!filters.saved) return rows;
+  return rows.filter((row) => row.saved);
 }
 
 function useDebounced(value: string, delayMs: number): string {
