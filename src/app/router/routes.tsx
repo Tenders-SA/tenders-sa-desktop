@@ -25,6 +25,7 @@ import { Calendar } from "../../features/calendar/Calendar";
 import { Tasks } from "../../features/tasks/Tasks";
 import { Settings } from "../../features/settings/Settings";
 import { SupplierIntelligence } from "../../features/intelligence/SupplierIntelligence";
+import { SupplierProfile } from "../../features/intelligence/SupplierProfile";
 import {
   isWorkflowStage,
   type WorkflowStage,
@@ -89,6 +90,33 @@ function TenderListRoute({ clients }: { clients: ApiClients }) {
     <TenderList
       endpoint={clients.tenders}
       onOpenTender={(id) => navigate(`/tenders/${encodeURIComponent(id)}`)}
+    />
+  );
+}
+
+/** Reads `:slug` so the profile screen itself stays router-agnostic. */
+function SupplierProfileRoute({ clients }: { clients: ApiClients }) {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  if (!slug) return <Navigate to="/suppliers" replace />;
+  return (
+    <SupplierProfile
+      endpoint={clients.supplierProfile}
+      slug={slug}
+      onBack={() => navigate("/suppliers")}
+    />
+  );
+}
+
+function SupplierListRoute({ clients }: { clients: ApiClients }) {
+  const navigate = useNavigate();
+  return (
+    <SupplierIntelligence
+      endpoint={clients.supplierIntelligence}
+      forensic={clients.supplierProfile}
+      onOpenSupplier={(slug) =>
+        navigate(`/suppliers/${encodeURIComponent(slug)}`)
+      }
     />
   );
 }
@@ -261,9 +289,15 @@ export function AppRoutes({
           />
           <Route
             path="suppliers"
-            element={
-              <SupplierIntelligence endpoint={clients.supplierIntelligence} />
-            }
+            element={<SupplierListRoute clients={clients} />}
+          />
+          {/*
+            The static segment outranks the dynamic one in React Router's
+            match ranking, so `/suppliers` is unaffected by this.
+          */}
+          <Route
+            path="suppliers/:slug"
+            element={<SupplierProfileRoute clients={clients} />}
           />
           <Route
             path="notifications"

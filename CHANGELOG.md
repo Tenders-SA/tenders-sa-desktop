@@ -8,6 +8,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A Supplier Profile screen, opened by selecting a company on Supplier
+  Intelligence. It gathers what the platform already records about a potential
+  partner into one place: registration details, contact details, operating
+  areas and categories, recent award history, the buyers behind those awards,
+  published risk and restricted-supplier signals, and a summary of how well
+  evidenced the company is. Each panel names where its figures came from, and
+  anything the record does not hold reads "Not recorded" rather than blank or
+  zero. Risk signals are presented as signals to verify, never as findings of
+  wrongdoing. Where a panel needs a plan you do not have, it says so instead of
+  suggesting the company has no data, and one panel failing no longer blanks
+  the rest of the screen.
+- Supplier Intelligence rows now show the website, head-office address and
+  compile date the platform had already gathered, and — on an active
+  subscription — the published risk indicator, B-BBEE level, enterprise type
+  and restricted-supplier counts.
+
 - Previously opened tenders, Radar matches, applications, analysis and tender
   documents now remain available in an account-isolated local workspace. Saved
   results appear immediately while updates run in the background, response
