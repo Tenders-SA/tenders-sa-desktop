@@ -8,6 +8,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Clicking a Procurement Officers search result opens a detail panel with the
+  officer's current assignment (never a stale one), organisation name and
+  physical address, official contact points, and related tenders — with
+  actions to copy an email or telephone number, open the email client, save or
+  unsave the officer, keep private notes, and jump to the tender list. Server
+  contact values that arrive masked are labelled "masked — sync to reveal",
+  and a failed refresh keeps the local record visible with an honest notice.
 - A Procurement Officers directory in the sidebar that keeps a local index of
   published procurement contacts, syncs it in the background, and searches it
   instantly as you type — with province, kind, status, organisation and role

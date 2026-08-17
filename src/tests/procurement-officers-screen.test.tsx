@@ -9,15 +9,18 @@ import { resetOfficerSyncRunnersForTesting } from "../features/procurement-offic
 import { getOfficerSyncRunner } from "../features/procurement-officers/use-officer-sync";
 import { assertWorkspaceOwner } from "../services/storage/workspace-owner";
 import type { OfficerSearchFeed } from "../features/procurement-officers/use-officer-search";
-import type { OfficerSearchResult } from "../services/api/endpoints/procurement-officers";
+import type { OfficerDetailFeed } from "../features/procurement-officers/use-officer-detail";
+import type { OfficerSearchResult, OfficerDetail, OfficerTendersResult } from "../services/api/endpoints/procurement-officers";
 import type { OfficerSyncResult } from "../services/api/endpoints/procurement-officers";
 import type { ProcurementOfficerRow } from "../db/schema/types";
 
 const owner = assertWorkspaceOwner(`v1-${"c".repeat(64)}`);
 
-class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed {
+class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed {
   pages: Array<OfficerSyncResult | ApiError> = [];
   searchPages: Array<OfficerSearchResult> = [];
+  detailPages: Array<OfficerDetail | Error> = [];
+  tenderPages: Array<OfficerTendersResult | Error> = [];
   calls = 0;
   async sync() {
     this.calls += 1;
@@ -30,6 +33,38 @@ class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed {
   async search(): Promise<OfficerSearchResult> {
     const next = this.searchPages.shift();
     return next ?? { officers: [], page: 1, limit: 20, total: 0 };
+  }
+  async get(id: string): Promise<OfficerDetail> {
+    const next = this.detailPages.shift();
+    if (next instanceof Error) throw next;
+    return (
+      next ?? {
+        id,
+        canonicalName: "Thabo Mokoena",
+        firstName: "Thabo",
+        lastName: "Mokoena",
+        currentTitle: "Supply Chain Manager",
+        currentOrganisationId: "org-9",
+        organisationName: "Department of Water Affairs",
+        organisationAddress: "Private Bag X313, Pretoria",
+        province: "Gauteng",
+        kind: "officer",
+        status: "verified",
+        confidenceScore: 0.95,
+        firstSeenAt: "2025-01-01T00:00:00.000Z",
+        lastSeenAt: "2025-06-01T00:00:00.000Z",
+        verifiedAt: "2025-03-01T00:00:00.000Z",
+        tendersCount: 1,
+        contactPoints: [],
+        assignments: [],
+        evidenceSummary: { sourceMethods: [], sourceFieldCount: 0, observedRange: { earliest: null, latest: null } },
+      }
+    );
+  }
+  async getTenders(): Promise<OfficerTendersResult> {
+    const next = this.tenderPages.shift();
+    if (next instanceof Error) throw next;
+    return next ?? { tenders: [], page: 1, limit: 20, total: 0 };
   }
 }
 
@@ -151,6 +186,64 @@ describe("ProcurementOfficerDirectory shell", () => {
 
     expect(await screen.findByText("Thabo Mokoena")).toBeVisible();
     expect(screen.getByText(/Supply Chain Manager/)).toBeVisible();
+  });
+
+  it("opens the detail panel from a result row and returns to the list", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [
+      [], // boot runner read
+      [], // saved ids
+      [], // recent searches
+      [], // post-boot-sync read
+      [localOfficerRow()], // local FTS pass
+      [localOfficerRow()], // detail: officers
+      [], // detail: contact points
+      [{ owner_id: owner, officer_id: "officer-1", id: "a-1", organisation_id: "org-9", organisation_name: "Department of Water Affairs", title: "Supply Chain Manager", valid_from: "2024-01-01T00:00:00.000Z", valid_to: null, is_current: 1, confidence_score: 0.9 }], // detail: assignments
+      [], // detail: tender links
+      [], // detail: is saved
+      [], // detail: notes
+    ];
+    const feed = new FakeFeed();
+    feed.detailPages = [
+      {
+        id: "officer-1",
+        canonicalName: "Thabo Mokoena",
+        firstName: "Thabo",
+        lastName: "Mokoena",
+        currentTitle: "Supply Chain Manager",
+        currentOrganisationId: "org-9",
+        organisationName: "Department of Water Affairs",
+        organisationAddress: "Private Bag X313, Pretoria",
+        province: "Gauteng",
+        kind: "officer",
+        status: "verified",
+        confidenceScore: 0.95,
+        firstSeenAt: "2025-01-01T00:00:00.000Z",
+        lastSeenAt: "2025-06-01T00:00:00.000Z",
+        verifiedAt: "2025-03-01T00:00:00.000Z",
+        tendersCount: 1,
+        contactPoints: [],
+        assignments: [],
+        evidenceSummary: { sourceMethods: [], sourceFieldCount: 0, observedRange: { earliest: null, latest: null } },
+      },
+    ];
+
+    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search officers" }),
+      "Mokoena",
+    );
+    await user.click(await screen.findByRole("button", { name: /Thabo Mokoena/ }));
+
+    expect(await screen.findByText("Private Bag X313, Pretoria")).toBeVisible();
+    expect(screen.getByText(/Current assignment/)).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(
+      await screen.findByRole("button", { name: /Thabo Mokoena/ }),
+    ).toBeVisible();
   });
 
   it("applies a province filter to the local pass", async () => {

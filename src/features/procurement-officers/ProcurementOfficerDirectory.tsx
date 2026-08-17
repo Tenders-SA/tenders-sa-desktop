@@ -1,9 +1,11 @@
 /**
- * Procurement Officer Directory screen (TASK-1.5 shell + TASK-1.6 search).
+ * Procurement Officer Directory screen (TASK-1.5 shell + TASK-1.6 search +
+ * TASK-1.7 detail panel).
  *
  * Renders honest sync state and the local-first search surface: debounced
  * query, province/kind/status selects plus organisation/role (server-only)
- * inputs, result rows with data-quality chips, recent searches when idle.
+ * inputs, result rows with data-quality chips, recent searches when idle,
+ * and an officer detail panel with actions when a row is selected.
  */
 
 import { useState } from "react";
@@ -12,6 +14,8 @@ import { tauriSqlExecutor } from "../../db/tauri-sql-executor";
 import type { OfficerSyncFeed } from "../../services/sync/procurement-officers-sync";
 import type { WorkspaceOwnerId } from "../../services/storage/workspace-owner";
 import { useOfficerSync } from "./use-officer-sync";
+import { OfficerDetailPanel } from "./OfficerDetailPanel";
+import { useOfficerDetail, type OfficerDetailFeed } from "./use-officer-detail";
 import {
   OFFICER_PROVINCES,
   useOfficerSearch,
@@ -21,7 +25,7 @@ import {
 import { QualityLabel } from "./QualityLabel";
 
 export interface ProcurementOfficerDirectoryProps {
-  feed: OfficerSyncFeed & OfficerSearchFeed;
+  feed: OfficerSyncFeed & OfficerSearchFeed & OfficerDetailFeed;
   executor?: SqlExecutor;
   ownerId?: WorkspaceOwnerId;
 }
@@ -37,6 +41,8 @@ export function ProcurementOfficerDirectory({
   const sync = useOfficerSync(feed, executor, ownerId);
   const search = useOfficerSearch(feed, executor, ownerId);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedOfficerId, setSelectedOfficerId] = useState<string | null>(null);
+  const detail = useOfficerDetail(feed, executor, ownerId, selectedOfficerId);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -210,6 +216,8 @@ export function ProcurementOfficerDirectory({
             instantly from the local index and refresh from the server.
           </div>
         )
+      ) : selectedOfficerId ? (
+        <OfficerDetailPanel view={detail} onClose={() => setSelectedOfficerId(null)} />
       ) : search.results.length === 0 ? (
         <div className="rounded-md border p-6 text-center text-sm text-foreground/60">
           {search.phase === "searching-local" || search.phase === "refreshing"
@@ -220,14 +228,18 @@ export function ProcurementOfficerDirectory({
         <ul className="divide-y rounded-md border">
           {search.results.map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-4 p-3">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{row.canonicalName}</p>
-                <p className="truncate text-sm text-foreground/60">
+              <button
+                type="button"
+                onClick={() => setSelectedOfficerId(row.id)}
+                className="min-w-0 flex-1 text-left"
+              >
+                <span className="block truncate font-medium">{row.canonicalName}</span>
+                <span className="block truncate text-sm text-foreground/60">
                   {[row.currentTitle, row.organisationName, row.province]
                     .filter(Boolean)
                     .join(" · ") || "Details pending"}
-                </p>
-              </div>
+                </span>
+              </button>
               <div className="flex shrink-0 items-center gap-2">
                 <QualityLabel status={row.status} lastSeenAt={row.lastSeenAt} />
                 {row.saved && (
