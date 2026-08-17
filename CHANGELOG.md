@@ -8,6 +8,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A Procurement Officers directory in the sidebar that keeps a local index of
+  published procurement contacts, syncs it in the background, and searches it
+  instantly as you type — with province, kind, status, organisation and role
+  filters, data-quality labels (verified / recently observed / historical /
+  unverified), recent search chips, and results that refresh from the server
+  when the query settles.
 - Previously opened tenders, Radar matches, applications, analysis and tender
   documents now remain available in an account-isolated local workspace. Saved
   results appear immediately while updates run in the background, response

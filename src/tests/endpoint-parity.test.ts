@@ -43,10 +43,14 @@ const CURSOR_PAGINATED_FILES = new Set([
   "services/api/endpoints/procurement-officers.ts",
   "tests/procurement-officers-endpoint.test.ts",
   // Local persistence of the feed's cursor: sync-state table row type,
-  // repository upsert, and the repository tests.
+  // repository upsert, the sync runner and its fixtures, and the repository
+  // tests.
   "db/schema/types.ts",
   "db/repositories/procurement-officers.ts",
+  "services/sync/procurement-officers-sync.ts",
   "tests/procurement-officers-repository.test.ts",
+  "tests/procurement-officers-sync.test.ts",
+  "tests/procurement-officers-screen.test.tsx",
 ]);
 
 const DEVELOPER_API_HOST = "api.tenders-sa.org";

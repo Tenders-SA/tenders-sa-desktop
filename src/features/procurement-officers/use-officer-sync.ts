@@ -119,7 +119,11 @@ export function useOfficerSync(
     const refresh = () => run();
     setView((prev) => ({ ...prev, refresh }));
 
-    void run();
+    void run().catch(() => {
+      if (active) {
+        setView((prev) => ({ ...prev, phase: "failed" }));
+      }
+    });
     const interval = window.setInterval(() => void run(), SYNC_CADENCE_MS);
     window.addEventListener("online", refresh);
 

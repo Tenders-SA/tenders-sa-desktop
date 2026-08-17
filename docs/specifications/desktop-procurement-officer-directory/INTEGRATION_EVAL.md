@@ -69,3 +69,7 @@
 | 2026-08-16 | APPROVED by user (in-session directive). Implementation may start at TASK-1.1. |
 | 2026-08-16 | TASK-1.1 committed (`c4d4185`): endpoint contracts locked with fixtures; parity guard updated for the sync feed's cursor pagination. |
 | 2026-08-16 | TASK-1.2 committed: schema + FTS5 pre-check passed (bundled SQLite compiles FTS5); contentless→regular FTS5 deviation recorded. |
+| 2026-08-16 | TASK-1.3 committed (`27c4c94`): local repository with FTS search; parity guard exempts sync-state persistence files. |
+| 2026-08-16 | TASK-1.4 committed (`df4df80`): cursor-resume runner; 404→off / 403→entitlement-missing; in-flight run sharing. |
+| 2026-08-17 | TASK-1.5 committed (`19b704e`): nav item + `/procurement-officers` route; `useOfficerSync` (one runner per account, boot sync, 15-min cadence); shell screen with sync state; reachability/app-shell assertions updated. |
+| 2026-08-17 | TASK-1.6: local-first search surface — `useOfficerSearch` (200 ms debounce, coalesced server refresh, honest filter split: organisation/role suspend the local pass, kind/status post-filter server rows), `mergeOfficerRows` (server wins on status/organisation/tenders count, local freshness), `officer-quality` thresholds + `QualityLabel` chip, recent searches persisted under `officerRecentSearches` (cap 10). Hook (10) + screen (12) tests green; parity guard extended with sync runner + fixture files; full suite 60/60; tsc/eslint clean. |
