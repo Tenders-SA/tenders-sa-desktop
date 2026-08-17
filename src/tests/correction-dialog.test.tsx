@@ -1,14 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CorrectionDialog, type CorrectionFieldOption } from "../features/procurement-officers/CorrectionDialog";
+import {
+  CorrectionDialog,
+  type CorrectionFieldOption,
+} from "../features/procurement-officers/CorrectionDialog";
 
 const fields: CorrectionFieldOption[] = [
   { field: "email", label: "Email", value: "thabo@dwa.gov.za" },
   { field: "title", label: "Current title", value: "Supply Chain Manager" },
 ];
 
-function renderDialog(overrides: Partial<Parameters<typeof CorrectionDialog>[0]> = {}) {
+function renderDialog(
+  overrides: Partial<Parameters<typeof CorrectionDialog>[0]> = {},
+) {
   const props = {
     open: true,
     officerName: "Thabo Mokoena",
@@ -69,7 +74,9 @@ describe("CorrectionDialog", () => {
 
   it("shows the pending-review status after a successful submit", () => {
     renderDialog({ phase: "submitted", status: "pending" });
-    expect(screen.getByText(/Correction filed — status: pending/)).toBeVisible();
+    expect(
+      screen.getByText(/Correction filed — status: pending/),
+    ).toBeVisible();
     expect(screen.getByText(/stays hidden until a later sync/)).toBeVisible();
     expect(screen.queryByLabelText("Reason")).not.toBeInTheDocument();
   });
@@ -85,6 +92,8 @@ describe("CorrectionDialog", () => {
 
   it("renders nothing when closed", () => {
     renderDialog({ open: false });
-    expect(screen.queryByText("Report incorrect information")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Report incorrect information"),
+    ).not.toBeInTheDocument();
   });
 });

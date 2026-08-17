@@ -30,10 +30,7 @@ import type {
   OfficerSyncRow,
 } from "../api/endpoints/procurement-officers";
 
-export type OfficerFeatureState =
-  | "active"
-  | "off"
-  | "entitlement-missing";
+export type OfficerFeatureState = "active" | "off" | "entitlement-missing";
 
 export interface OfficerSyncOutcome {
   featureState: OfficerFeatureState;
@@ -46,7 +43,10 @@ export interface OfficerSyncOutcome {
 
 /** Feed port — `ProcurementOfficersEndpoint` satisfies this structurally. */
 export interface OfficerSyncFeed {
-  sync(query: OfficerSyncQuery, signal?: AbortSignal): Promise<OfficerSyncResult>;
+  sync(
+    query: OfficerSyncQuery,
+    signal?: AbortSignal,
+  ): Promise<OfficerSyncResult>;
 }
 
 const SYNC_PAGE_LIMIT = 200;
@@ -104,12 +104,21 @@ export class OfficerSyncRunner {
             await applyTombstone(this.executor, this.ownerId, row.id);
             tombstones += 1;
           } else {
-            await upsertOfficer(this.executor, this.ownerId, toOfficerIngest(row));
+            await upsertOfficer(
+              this.executor,
+              this.ownerId,
+              toOfficerIngest(row),
+            );
             appliedRows += 1;
           }
         }
 
-        await setSyncState(this.executor, this.ownerId, page.nextCursor, this.now());
+        await setSyncState(
+          this.executor,
+          this.ownerId,
+          page.nextCursor,
+          this.now(),
+        );
         cursor = page.nextCursor ?? undefined;
 
         if (!page.hasMore) {
@@ -132,7 +141,13 @@ export class OfficerSyncRunner {
             pages,
           };
         }
-        return { featureState: "active", appliedRows, tombstones, pages, error: err };
+        return {
+          featureState: "active",
+          appliedRows,
+          tombstones,
+          pages,
+          error: err,
+        };
       }
       throw err;
     }

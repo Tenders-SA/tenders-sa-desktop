@@ -3,7 +3,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FakeSqlExecutor } from "./fakes/sql-executor";
 import { ApiError } from "../services/api/errors";
-import { OfficerSyncRunner, type OfficerSyncFeed } from "../services/sync/procurement-officers-sync";
+import {
+  OfficerSyncRunner,
+  type OfficerSyncFeed,
+} from "../services/sync/procurement-officers-sync";
 import { ProcurementOfficerDirectory } from "../features/procurement-officers/ProcurementOfficerDirectory";
 import { resetOfficerSyncRunnersForTesting } from "../features/procurement-officers/use-officer-sync";
 import { getOfficerSyncRunner } from "../features/procurement-officers/use-officer-sync";
@@ -11,13 +14,24 @@ import { assertWorkspaceOwner } from "../services/storage/workspace-owner";
 import type { OfficerSearchFeed } from "../features/procurement-officers/use-officer-search";
 import type { OfficerDetailFeed } from "../features/procurement-officers/use-officer-detail";
 import type { OfficerCorrectionFeed } from "../features/procurement-officers/use-officer-corrections";
-import type { OfficerSearchResult, OfficerDetail, OfficerTendersResult, OfficerCorrection } from "../services/api/endpoints/procurement-officers";
+import type {
+  OfficerSearchResult,
+  OfficerDetail,
+  OfficerTendersResult,
+  OfficerCorrection,
+} from "../services/api/endpoints/procurement-officers";
 import type { OfficerSyncResult } from "../services/api/endpoints/procurement-officers";
 import type { ProcurementOfficerRow } from "../db/schema/types";
 
 const owner = assertWorkspaceOwner(`v1-${"c".repeat(64)}`);
 
-class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed, OfficerCorrectionFeed {
+class FakeFeed
+  implements
+    OfficerSyncFeed,
+    OfficerSearchFeed,
+    OfficerDetailFeed,
+    OfficerCorrectionFeed
+{
   pages: Array<OfficerSyncResult | ApiError> = [];
   searchPages: Array<OfficerSearchResult | Error> = [];
   detailPages: Array<OfficerDetail | Error> = [];
@@ -30,7 +44,12 @@ class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed,
     const next = this.pages.shift();
     if (next instanceof ApiError) throw next;
     return (
-      next ?? { rows: [], nextCursor: null, hasMore: false, meta: { page: 1, limit: 200, total: 0 } }
+      next ?? {
+        rows: [],
+        nextCursor: null,
+        hasMore: false,
+        meta: { page: 1, limit: 200, total: 0 },
+      }
     );
   }
   async search(): Promise<OfficerSearchResult> {
@@ -61,7 +80,11 @@ class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed,
         tendersCount: 1,
         contactPoints: [],
         assignments: [],
-        evidenceSummary: { sourceMethods: [], sourceFieldCount: 0, observedRange: { earliest: null, latest: null } },
+        evidenceSummary: {
+          sourceMethods: [],
+          sourceFieldCount: 0,
+          observedRange: { earliest: null, latest: null },
+        },
       }
     );
   }
@@ -82,10 +105,17 @@ class FakeFeed implements OfficerSyncFeed, OfficerSearchFeed, OfficerDetailFeed,
 }
 
 function emptyPage(): OfficerSyncResult {
-  return { rows: [], nextCursor: null, hasMore: false, meta: { page: 1, limit: 200, total: 0 } };
+  return {
+    rows: [],
+    nextCursor: null,
+    hasMore: false,
+    meta: { page: 1, limit: 200, total: 0 },
+  };
 }
 
-function localOfficerRow(overrides: Partial<ProcurementOfficerRow> = {}): ProcurementOfficerRow {
+function localOfficerRow(
+  overrides: Partial<ProcurementOfficerRow> = {},
+): ProcurementOfficerRow {
   return {
     owner_id: owner,
     id: "officer-1",
@@ -115,31 +145,51 @@ describe("ProcurementOfficerDirectory shell", () => {
   it("renders with an idle sync state and last sync time", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [
-      [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }],
+      [
+        {
+          owner_id: owner,
+          cursor: null,
+          last_sync_at: "2026-01-01T10:00:00.000Z",
+        },
+      ],
       [], // saved ids
       [], // recent searches
       [], // corrections: suppressed fields read
-      [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }],
+      [
+        {
+          owner_id: owner,
+          cursor: null,
+          last_sync_at: "2026-01-01T10:00:00.000Z",
+        },
+      ],
     ];
     const feed = new FakeFeed();
     feed.pages = [emptyPage()];
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     expect(
       await screen.findByRole("heading", { name: "Procurement Officers" }),
     ).toBeVisible();
     expect(await screen.findByText(/Last synced/)).toBeVisible();
-    expect(screen.getByRole("searchbox", { name: "Search officers" })).toBeVisible();
+    expect(
+      screen.getByRole("searchbox", { name: "Search officers" }),
+    ).toBeVisible();
   });
 
   it("renders the feature-off state when the feed 404s", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [[]];
     const feed = new FakeFeed();
-    feed.pages = [new ApiError({ kind: "not-found", status: 404, message: "Not found" })];
+    feed.pages = [
+      new ApiError({ kind: "not-found", status: 404, message: "Not found" }),
+    ];
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     expect(await screen.findByText("Directory not enabled")).toBeVisible();
     expect(screen.queryByText("Sync now")).not.toBeNull();
@@ -149,9 +199,13 @@ describe("ProcurementOfficerDirectory shell", () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [[]];
     const feed = new FakeFeed();
-    feed.pages = [new ApiError({ kind: "forbidden", status: 403, message: "Forbidden" })];
+    feed.pages = [
+      new ApiError({ kind: "forbidden", status: 403, message: "Forbidden" }),
+    ];
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     expect(await screen.findByText("Not included in your plan")).toBeVisible();
   });
@@ -166,12 +220,18 @@ describe("ProcurementOfficerDirectory shell", () => {
       [localOfficerRow()], // local FTS pass (no post-boot-sync read under entitlement-missing)
     ];
     const feed = new FakeFeed();
-    feed.pages = [new ApiError({ kind: "forbidden", status: 403, message: "Forbidden" })];
+    feed.pages = [
+      new ApiError({ kind: "forbidden", status: 403, message: "Forbidden" }),
+    ];
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     expect(await screen.findByText("Not included in your plan")).toBeVisible();
-    expect(screen.getByRole("searchbox", { name: "Search officers" })).toBeVisible();
+    expect(
+      screen.getByRole("searchbox", { name: "Search officers" }),
+    ).toBeVisible();
 
     const user = userEvent.setup();
     await user.type(
@@ -185,20 +245,38 @@ describe("ProcurementOfficerDirectory shell", () => {
   it("shows the offline banner with the last sync time when the refresh fails", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [
-      [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }], // boot runner read
+      [
+        {
+          owner_id: owner,
+          cursor: null,
+          last_sync_at: "2026-01-01T10:00:00.000Z",
+        },
+      ], // boot runner read
       [], // saved ids
       [], // recent searches
       [], // corrections: suppressed fields read
-      [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }], // post-boot-sync read
+      [
+        {
+          owner_id: owner,
+          cursor: null,
+          last_sync_at: "2026-01-01T10:00:00.000Z",
+        },
+      ], // post-boot-sync read
       [localOfficerRow()], // local FTS pass
     ];
     const feed = new FakeFeed();
     feed.pages = [emptyPage()];
     feed.searchPages = [
-      new ApiError({ kind: "offline", status: 0, message: "No network connection is available" }),
+      new ApiError({
+        kind: "offline",
+        status: 0,
+        message: "No network connection is available",
+      }),
     ];
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     const user = userEvent.setup();
     await user.type(
@@ -206,7 +284,9 @@ describe("ProcurementOfficerDirectory shell", () => {
       "Mokoena",
     );
 
-    expect(await screen.findByText(/Showing locally synced results only/)).toBeVisible();
+    expect(
+      await screen.findByText(/Showing locally synced results only/),
+    ).toBeVisible();
     expect(screen.getByText(/last synced/)).toBeVisible();
     expect(screen.getByText("Thabo Mokoena")).toBeVisible();
   });
@@ -223,7 +303,9 @@ describe("ProcurementOfficerDirectory shell", () => {
     ];
     const feed = new FakeFeed();
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     const user = userEvent.setup();
     await user.type(
@@ -234,7 +316,9 @@ describe("ProcurementOfficerDirectory shell", () => {
 
     await user.click(screen.getByRole("button", { name: "Saved only" }));
     expect(
-      await screen.findByText("No saved officers yet — save one from its details."),
+      await screen.findByText(
+        "No saved officers yet — save one from its details.",
+      ),
     ).toBeVisible();
   });
 
@@ -251,7 +335,9 @@ describe("ProcurementOfficerDirectory shell", () => {
     ];
     const feed = new FakeFeed();
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     const user = userEvent.setup();
     await user.type(
@@ -274,12 +360,20 @@ describe("ProcurementOfficerDirectory shell", () => {
       [], // corrections: suppressed fields read
       [], // post-boot-sync read: nothing synced yet
       [], // click runner read
-      [{ owner_id: owner, cursor: null, last_sync_at: "2026-01-01T10:00:00.000Z" }],
+      [
+        {
+          owner_id: owner,
+          cursor: null,
+          last_sync_at: "2026-01-01T10:00:00.000Z",
+        },
+      ],
     ];
     const feed = new FakeFeed();
     feed.pages = [emptyPage(), emptyPage()];
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
     await screen.findByText(/No sync has run yet/);
 
     const user = userEvent.setup();
@@ -301,7 +395,9 @@ describe("ProcurementOfficerDirectory shell", () => {
     ];
     const feed = new FakeFeed();
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     const user = userEvent.setup();
     await user.type(
@@ -323,24 +419,54 @@ describe("ProcurementOfficerDirectory shell", () => {
       [], // post-boot-sync read
       [localOfficerRow()], // local FTS pass
       [localOfficerRow()], // detail: officers
-      [{ owner_id: owner, officer_id: "officer-1", id: "cp-1", type: "email", value: "thabo@dwa.gov.za", is_role_based: 0, is_official: 1, verification_status: "verified" }], // detail: contact points
-      [{ owner_id: owner, officer_id: "officer-1", id: "a-1", organisation_id: "org-9", organisation_name: "Department of Water Affairs", title: "Supply Chain Manager", valid_from: "2024-01-01T00:00:00.000Z", valid_to: null, is_current: 1, confidence_score: 0.9 }], // detail: assignments
+      [
+        {
+          owner_id: owner,
+          officer_id: "officer-1",
+          id: "cp-1",
+          type: "email",
+          value: "thabo@dwa.gov.za",
+          is_role_based: 0,
+          is_official: 1,
+          verification_status: "verified",
+        },
+      ], // detail: contact points
+      [
+        {
+          owner_id: owner,
+          officer_id: "officer-1",
+          id: "a-1",
+          organisation_id: "org-9",
+          organisation_name: "Department of Water Affairs",
+          title: "Supply Chain Manager",
+          valid_from: "2024-01-01T00:00:00.000Z",
+          valid_to: null,
+          is_current: 1,
+          confidence_score: 0.9,
+        },
+      ], // detail: assignments
       [], // detail: tender links
       [], // detail: is saved
       [], // detail: notes
     ];
     const feed = new FakeFeed();
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     const user = userEvent.setup();
     await user.type(
       screen.getByRole("searchbox", { name: "Search officers" }),
       "Mokoena",
     );
-    await user.click(await screen.findByRole("button", { name: /Thabo Mokoena/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /Thabo Mokoena/ }),
+    );
 
-    const reportButtons = await screen.findAllByRole("button", { name: "Report" });
+    const reportButtons = await screen.findAllByRole("button", {
+      name: "Report",
+    });
     await user.click(reportButtons[reportButtons.length - 1]);
 
     expect(
@@ -355,7 +481,11 @@ describe("ProcurementOfficerDirectory shell", () => {
     );
 
     expect(feed.correctionCalls).toEqual([
-      { id: "officer-1", field: "email", reason: "This address is out of date" },
+      {
+        id: "officer-1",
+        field: "email",
+        reason: "This address is out of date",
+      },
     ]);
     expect(
       await screen.findByText(/Correction filed — status: pending/),
@@ -378,7 +508,20 @@ describe("ProcurementOfficerDirectory shell", () => {
       [localOfficerRow()], // local FTS pass
       [localOfficerRow()], // detail: officers
       [], // detail: contact points
-      [{ owner_id: owner, officer_id: "officer-1", id: "a-1", organisation_id: "org-9", organisation_name: "Department of Water Affairs", title: "Supply Chain Manager", valid_from: "2024-01-01T00:00:00.000Z", valid_to: null, is_current: 1, confidence_score: 0.9 }], // detail: assignments
+      [
+        {
+          owner_id: owner,
+          officer_id: "officer-1",
+          id: "a-1",
+          organisation_id: "org-9",
+          organisation_name: "Department of Water Affairs",
+          title: "Supply Chain Manager",
+          valid_from: "2024-01-01T00:00:00.000Z",
+          valid_to: null,
+          is_current: 1,
+          confidence_score: 0.9,
+        },
+      ], // detail: assignments
       [], // detail: tender links
       [], // detail: is saved
       [], // detail: notes
@@ -404,18 +547,26 @@ describe("ProcurementOfficerDirectory shell", () => {
         tendersCount: 1,
         contactPoints: [],
         assignments: [],
-        evidenceSummary: { sourceMethods: [], sourceFieldCount: 0, observedRange: { earliest: null, latest: null } },
+        evidenceSummary: {
+          sourceMethods: [],
+          sourceFieldCount: 0,
+          observedRange: { earliest: null, latest: null },
+        },
       },
     ];
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     const user = userEvent.setup();
     await user.type(
       screen.getByRole("searchbox", { name: "Search officers" }),
       "Mokoena",
     );
-    await user.click(await screen.findByRole("button", { name: /Thabo Mokoena/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /Thabo Mokoena/ }),
+    );
 
     expect(await screen.findByText("Private Bag X313, Pretoria")).toBeVisible();
     expect(screen.getByText(/Current assignment/)).toBeVisible();
@@ -438,7 +589,9 @@ describe("ProcurementOfficerDirectory shell", () => {
     ];
     const feed = new FakeFeed();
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     const user = userEvent.setup();
     await user.selectOptions(
@@ -454,7 +607,9 @@ describe("ProcurementOfficerDirectory shell", () => {
     db.selectResults = [[], [], [], [], [], []];
     const feed = new FakeFeed();
 
-    render(<ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />);
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
 
     const user = userEvent.setup();
     await user.type(

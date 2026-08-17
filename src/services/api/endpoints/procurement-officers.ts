@@ -234,7 +234,9 @@ const officerCorrectionBodySchema = z.object({
   }),
 });
 
-export type OfficerCorrection = z.infer<typeof officerCorrectionBodySchema>["data"];
+export type OfficerCorrection = z.infer<
+  typeof officerCorrectionBodySchema
+>["data"];
 
 /** The parent route's field allowlist (validation mirror, not a duplicate rule). */
 export const OFFICER_CORRECTION_FIELDS = [

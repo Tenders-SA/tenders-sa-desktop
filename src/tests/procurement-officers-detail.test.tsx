@@ -9,7 +9,9 @@ import type {
 } from "../features/procurement-officers/use-officer-detail";
 import type { OfficerSuppressedMap } from "../features/procurement-officers/use-officer-corrections";
 
-function detailData(overrides: Partial<OfficerDetailData> = {}): OfficerDetailData {
+function detailData(
+  overrides: Partial<OfficerDetailData> = {},
+): OfficerDetailData {
   return {
     id: "officer-1",
     canonicalName: "Thabo Mokoena",
@@ -50,11 +52,34 @@ function detailData(overrides: Partial<OfficerDetailData> = {}): OfficerDetailDa
       confidenceScore: 0.9,
     },
     contactPoints: [
-      { id: "cp-1", type: "email", value: "thabo@dwa.gov.za", isRoleBased: false, isOfficial: true, verificationStatus: "verified", masked: false },
-      { id: "cp-2", type: "telephone", value: "0123456789", isRoleBased: false, isOfficial: true, verificationStatus: "verified", masked: false },
+      {
+        id: "cp-1",
+        type: "email",
+        value: "thabo@dwa.gov.za",
+        isRoleBased: false,
+        isOfficial: true,
+        verificationStatus: "verified",
+        masked: false,
+      },
+      {
+        id: "cp-2",
+        type: "telephone",
+        value: "0123456789",
+        isRoleBased: false,
+        isOfficial: true,
+        verificationStatus: "verified",
+        masked: false,
+      },
     ],
     tenders: [
-      { tenderId: "t-1", title: "Water infrastructure maintenance", referenceNumber: "DWA/2025/01", province: "Gauteng", closingDate: "2025-12-01T12:00:00.000Z", sourceUrl: null },
+      {
+        tenderId: "t-1",
+        title: "Water infrastructure maintenance",
+        referenceNumber: "DWA/2025/01",
+        province: "Gauteng",
+        closingDate: "2025-12-01T12:00:00.000Z",
+        sourceUrl: null,
+      },
     ],
     evidenceSummary: null,
     ...overrides,
@@ -105,7 +130,9 @@ describe("OfficerDetailPanel", () => {
     expect(screen.getByText("Current assignment")).toBeVisible();
     expect(screen.getByText("Supply Chain Manager")).toBeVisible();
     expect(screen.getByText("Current")).toBeVisible();
-    expect(screen.getAllByText("Department of Water Affairs").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Department of Water Affairs").length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText("Private Bag X313, Pretoria")).toBeVisible();
     expect(screen.getByText(/thabo@dwa\.gov\.za/)).toBeVisible();
     expect(screen.getByText("Water infrastructure maintenance")).toBeVisible();
@@ -115,10 +142,26 @@ describe("OfficerDetailPanel", () => {
     const stale = view({
       data: detailData({
         assignments: [
-          { id: "a-old", organisationId: null, organisationName: null, title: "Former role", validFrom: "2022-01-01T00:00:00.000Z", validTo: "2023-01-01T00:00:00.000Z", isCurrent: false, confidenceScore: null },
+          {
+            id: "a-old",
+            organisationId: null,
+            organisationName: null,
+            title: "Former role",
+            validFrom: "2022-01-01T00:00:00.000Z",
+            validTo: "2023-01-01T00:00:00.000Z",
+            isCurrent: false,
+            confidenceScore: null,
+          },
         ],
         headlineAssignment: {
-          id: "a-old", organisationId: null, organisationName: null, title: "Former role", validFrom: "2022-01-01T00:00:00.000Z", validTo: "2023-01-01T00:00:00.000Z", isCurrent: false, confidenceScore: null,
+          id: "a-old",
+          organisationId: null,
+          organisationName: null,
+          title: "Former role",
+          validFrom: "2022-01-01T00:00:00.000Z",
+          validTo: "2023-01-01T00:00:00.000Z",
+          isCurrent: false,
+          confidenceScore: null,
         },
       }),
     });
@@ -133,7 +176,15 @@ describe("OfficerDetailPanel", () => {
       view({
         data: detailData({
           contactPoints: [
-            { id: "cp-s", type: "email", value: "th***@dwa.gov.za", isRoleBased: false, isOfficial: true, verificationStatus: "verified", masked: true },
+            {
+              id: "cp-s",
+              type: "email",
+              value: "th***@dwa.gov.za",
+              isRoleBased: false,
+              isOfficial: true,
+              verificationStatus: "verified",
+              masked: true,
+            },
           ],
         }),
       }),
@@ -175,7 +226,9 @@ describe("OfficerDetailPanel", () => {
 
   it("shows the unsave affordance once saved", () => {
     renderPanel(view({ saved: true }));
-    expect(screen.getByRole("button", { name: "Unsave officer" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Unsave officer" }),
+    ).toBeVisible();
   });
 
   it("persists private notes through the editor", async () => {
@@ -183,7 +236,10 @@ describe("OfficerDetailPanel", () => {
     renderPanel(view({ saveNote }));
     const user = userEvent.setup();
 
-    await user.type(screen.getByRole("textbox", { name: "Private notes" }), "Prefers email");
+    await user.type(
+      screen.getByRole("textbox", { name: "Private notes" }),
+      "Prefers email",
+    );
     await user.click(screen.getByRole("button", { name: "Save note" }));
 
     expect(saveNote).toHaveBeenCalledWith("Prefers email");
@@ -192,15 +248,16 @@ describe("OfficerDetailPanel", () => {
   it("links to the organisation profile only when the workspace company matches", () => {
     const linked = view({ organisationLink: "/company" });
     renderPanel(linked);
-    expect(screen.getByRole("link", { name: "Organisation profile" })).toHaveAttribute(
-      "href",
-      "/company",
-    );
+    expect(
+      screen.getByRole("link", { name: "Organisation profile" }),
+    ).toHaveAttribute("href", "/company");
   });
 
   it("offers no organisation link when the organisation is not the own company", () => {
     renderPanel(view());
-    expect(screen.queryByRole("link", { name: "Organisation profile" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Organisation profile" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows no bulk export affordance anywhere (R-P13)", () => {
@@ -230,7 +287,9 @@ describe("OfficerDetailPanel", () => {
 
   it("links related tenders into the tender detail route", () => {
     renderPanel(view());
-    const tenderLink = screen.getByRole("link", { name: "Water infrastructure maintenance" });
+    const tenderLink = screen.getByRole("link", {
+      name: "Water infrastructure maintenance",
+    });
     expect(tenderLink).toHaveAttribute("href", "/tenders/t-1");
   });
 
@@ -249,19 +308,17 @@ describe("OfficerDetailPanel", () => {
   });
 
   it("hides the name, title and organisation when disputed", () => {
-    renderPanel(
-      view(),
-      vi.fn(),
-      {
-        "officer-1:officer": "Thabo Mokoena",
-        "officer-1:title": "Supply Chain Manager",
-        "officer-1:organisation": "Department of Water Affairs",
-      },
-    );
+    renderPanel(view(), vi.fn(), {
+      "officer-1:officer": "Thabo Mokoena",
+      "officer-1:title": "Supply Chain Manager",
+      "officer-1:organisation": "Department of Water Affairs",
+    });
     expect(screen.getByText("Name under review")).toBeVisible();
     expect(screen.queryByText("Thabo Mokoena")).not.toBeInTheDocument();
     expect(screen.queryByText("Supply Chain Manager")).not.toBeInTheDocument();
-    expect(screen.queryByText("Department of Water Affairs")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Department of Water Affairs"),
+    ).not.toBeInTheDocument();
   });
 
   it("re-shows a field once the disputed value is no longer carried", () => {
@@ -283,6 +340,10 @@ describe("OfficerDetailPanel", () => {
 
     const reportButtons = screen.getAllByRole("button", { name: "Report" });
     await user.click(reportButtons[reportButtons.length - 1]);
-    expect(onReportCorrection).toHaveBeenCalledWith("telephone", "telephone", "0123456789");
+    expect(onReportCorrection).toHaveBeenCalledWith(
+      "telephone",
+      "telephone",
+      "0123456789",
+    );
   });
 });

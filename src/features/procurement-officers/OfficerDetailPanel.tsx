@@ -12,7 +12,10 @@
 import { Link } from "react-router-dom";
 import { OfficerActions } from "./OfficerActions";
 import { QualityLabel } from "./QualityLabel";
-import { isFieldSuppressed, type OfficerSuppressedMap } from "./use-officer-corrections";
+import {
+  isFieldSuppressed,
+  type OfficerSuppressedMap,
+} from "./use-officer-corrections";
 import type { OfficerDetailView } from "./use-officer-detail";
 
 export interface OfficerDetailPanelProps {
@@ -32,9 +35,18 @@ export function OfficerDetailPanel({
 
   if (!data) {
     return (
-      <section aria-label="Officer details" className="rounded-md border p-6 text-center text-sm text-foreground/60">
-        {view.phase === "loading-local" ? "Loading officer details…" : "Officer not found locally."}
-        <button type="button" onClick={onClose} className="mt-3 rounded-md border px-3 py-1.5 text-sm">
+      <section
+        aria-label="Officer details"
+        className="rounded-md border p-6 text-center text-sm text-foreground/60"
+      >
+        {view.phase === "loading-local"
+          ? "Loading officer details…"
+          : "Officer not found locally."}
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-3 rounded-md border px-3 py-1.5 text-sm"
+        >
           Back to results
         </button>
       </section>
@@ -42,7 +54,12 @@ export function OfficerDetailPanel({
   }
 
   const officerId = data.id;
-  const nameSuppressed = isFieldSuppressed(suppressed, officerId, "officer", data.canonicalName);
+  const nameSuppressed = isFieldSuppressed(
+    suppressed,
+    officerId,
+    "officer",
+    data.canonicalName,
+  );
   const contacts = data.contactPoints.filter(
     (c) => !isFieldSuppressed(suppressed, officerId, c.type, c.value),
   );
@@ -51,7 +68,8 @@ export function OfficerDetailPanel({
     contacts.find((c) => c.type === "telephone" || c.type === "mobile") ?? null;
   const headline = data.headlineAssignment;
   const titleSuppressed =
-    headline !== null && isFieldSuppressed(suppressed, officerId, "title", headline.title);
+    headline !== null &&
+    isFieldSuppressed(suppressed, officerId, "title", headline.title);
   const organisationSuppressed = isFieldSuppressed(
     suppressed,
     officerId,
@@ -60,7 +78,9 @@ export function OfficerDetailPanel({
   );
 
   const scrollToTenders = () => {
-    document.getElementById("officer-related-tenders")?.scrollIntoView({ block: "start" });
+    document
+      .getElementById("officer-related-tenders")
+      ?.scrollIntoView({ block: "start" });
   };
 
   const report = (field: string, label: string, value: string | null) => {
@@ -68,14 +88,18 @@ export function OfficerDetailPanel({
   };
 
   return (
-    <section aria-label={`Details for ${data.canonicalName}`} className="rounded-md border">
+    <section
+      aria-label={`Details for ${data.canonicalName}`}
+      className="rounded-md border"
+    >
       <header className="flex items-start justify-between gap-4 border-b p-4">
         <div>
           <h2 className="text-lg font-semibold">
             {nameSuppressed ? "Name under review" : data.canonicalName}
           </h2>
           <p className="text-sm text-foreground/60">
-            {[data.currentTitle, data.province].filter(Boolean).join(" · ") || "Details pending"}
+            {[data.currentTitle, data.province].filter(Boolean).join(" · ") ||
+              "Details pending"}
           </p>
           {view.phase === "error" && (
             <p className="mt-1 text-sm text-amber-700" role="alert">
@@ -92,7 +116,11 @@ export function OfficerDetailPanel({
           >
             Report incorrect
           </button>
-          <button type="button" onClick={onClose} className="rounded-md border px-3 py-1 text-sm">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border px-3 py-1 text-sm"
+          >
             Back
           </button>
         </div>
@@ -125,54 +153,72 @@ export function OfficerDetailPanel({
             </p>
           )}
           {!organisationSuppressed && headline.organisationName && (
-            <p className="text-sm text-foreground/70">{headline.organisationName}</p>
+            <p className="text-sm text-foreground/70">
+              {headline.organisationName}
+            </p>
           )}
           {headline.validFrom && (
             <p className="mt-1 text-xs text-foreground/50">
               Since {formatDate(headline.validFrom)}
-              {headline.validTo ? ` — until ${formatDate(headline.validTo)}` : ""}
+              {headline.validTo
+                ? ` — until ${formatDate(headline.validTo)}`
+                : ""}
             </p>
           )}
         </div>
       )}
 
-      {!organisationSuppressed && (data.organisationName || data.organisationAddress) && (
-        <div className="border-b p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">
-              Organisation
-            </p>
-            {data.organisationName && (
-              <button
-                type="button"
-                onClick={() => report("organisation", "Organisation", data.organisationName)}
-                className="rounded-md border px-2 py-0.5 text-xs"
-              >
-                Report
-              </button>
+      {!organisationSuppressed &&
+        (data.organisationName || data.organisationAddress) && (
+          <div className="border-b p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+                Organisation
+              </p>
+              {data.organisationName && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    report(
+                      "organisation",
+                      "Organisation",
+                      data.organisationName,
+                    )
+                  }
+                  className="rounded-md border px-2 py-0.5 text-xs"
+                >
+                  Report
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-sm font-medium">{data.organisationName}</p>
+            {data.organisationAddress && (
+              <p className="mt-0.5 whitespace-pre-line text-sm text-foreground/70">
+                {data.organisationAddress}
+              </p>
             )}
           </div>
-          <p className="mt-1 text-sm font-medium">{data.organisationName}</p>
-          {data.organisationAddress && (
-            <p className="mt-0.5 whitespace-pre-line text-sm text-foreground/70">
-              {data.organisationAddress}
-            </p>
-          )}
-        </div>
-      )}
+        )}
 
       <div className="border-b p-4">
         <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">
           Official contacts
         </p>
         {contacts.length === 0 ? (
-          <p className="mt-1 text-sm text-foreground/60">No official contacts recorded.</p>
+          <p className="mt-1 text-sm text-foreground/60">
+            No official contacts recorded.
+          </p>
         ) : (
           <ul className="mt-1 space-y-1.5">
             {contacts.map((contact) => (
-              <li key={contact.id} className="flex items-center justify-between gap-3 text-sm">
+              <li
+                key={contact.id}
+                className="flex items-center justify-between gap-3 text-sm"
+              >
                 <span>
-                  <span className="capitalize text-foreground/70">{contact.type}:</span>{" "}
+                  <span className="capitalize text-foreground/70">
+                    {contact.type}:
+                  </span>{" "}
                   {contact.value}
                   {contact.masked && (
                     <span className="ml-1.5 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
@@ -198,7 +244,9 @@ export function OfficerDetailPanel({
                 )}
                 <button
                   type="button"
-                  onClick={() => report(contact.type, contact.type, contact.value)}
+                  onClick={() =>
+                    report(contact.type, contact.type, contact.value)
+                  }
                   className="shrink-0 rounded-md border px-2 py-1 text-xs"
                 >
                   Report
@@ -233,16 +281,26 @@ export function OfficerDetailPanel({
           Related tenders
         </p>
         {data.tenders.length === 0 ? (
-          <p className="mt-1 text-sm text-foreground/60">No related tenders recorded.</p>
+          <p className="mt-1 text-sm text-foreground/60">
+            No related tenders recorded.
+          </p>
         ) : (
           <ul className="mt-1 divide-y">
             {data.tenders.map((tender) => (
               <li key={tender.tenderId} className="py-2">
-                <Link to={`/tenders/${encodeURIComponent(tender.tenderId)}`} className="text-sm font-medium hover:underline">
+                <Link
+                  to={`/tenders/${encodeURIComponent(tender.tenderId)}`}
+                  className="text-sm font-medium hover:underline"
+                >
                   {tender.title ?? `Tender ${tender.tenderId}`}
                 </Link>
                 <p className="text-xs text-foreground/60">
-                  {[tender.referenceNumber, tender.province, tender.closingDate && `Closes ${formatDate(tender.closingDate)}`]
+                  {[
+                    tender.referenceNumber,
+                    tender.province,
+                    tender.closingDate &&
+                      `Closes ${formatDate(tender.closingDate)}`,
+                  ]
                     .filter(Boolean)
                     .join(" · ") || "No further details cached"}
                 </p>

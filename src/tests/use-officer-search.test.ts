@@ -2,13 +2,23 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { FakeSqlExecutor } from "./fakes/sql-executor";
 import { assertWorkspaceOwner } from "../services/storage/workspace-owner";
-import { mergeOfficerRows, useOfficerSearch, type OfficerSearchFeed } from "../features/procurement-officers/use-officer-search";
+import {
+  mergeOfficerRows,
+  useOfficerSearch,
+  type OfficerSearchFeed,
+} from "../features/procurement-officers/use-officer-search";
 import type { ProcurementOfficerRow } from "../db/schema/types";
-import type { OfficerSearchQuery, OfficerSearchResult, OfficerSearchRow } from "../services/api/endpoints/procurement-officers";
+import type {
+  OfficerSearchQuery,
+  OfficerSearchResult,
+  OfficerSearchRow,
+} from "../services/api/endpoints/procurement-officers";
 
 const owner = assertWorkspaceOwner(`v1-${"d".repeat(64)}`);
 
-function localRow(overrides: Partial<ProcurementOfficerRow> = {}): ProcurementOfficerRow {
+function localRow(
+  overrides: Partial<ProcurementOfficerRow> = {},
+): ProcurementOfficerRow {
   return {
     owner_id: owner,
     id: "officer-1",
@@ -30,7 +40,9 @@ function localRow(overrides: Partial<ProcurementOfficerRow> = {}): ProcurementOf
   };
 }
 
-function serverRow(overrides: Partial<OfficerSearchRow> = {}): OfficerSearchRow {
+function serverRow(
+  overrides: Partial<OfficerSearchRow> = {},
+): OfficerSearchRow {
   return {
     id: "officer-1",
     canonicalName: "Thabo Mokoena",
@@ -163,7 +175,7 @@ describe("useOfficerSearch", () => {
     act(() => result.current.setFilters({ kind: "officer" }));
     await advanceDebounce();
 
-const finalCall = feed.calls[feed.calls.length - 1];
+    const finalCall = feed.calls[feed.calls.length - 1];
     expect(finalCall.q).toBe("water");
     expect(result.current.results.map((r) => r.id)).toEqual(["o1"]);
   });
@@ -183,7 +195,9 @@ const finalCall = feed.calls[feed.calls.length - 1];
 
     const finalCall = feed.calls[feed.calls.length - 1];
     expect(finalCall.organisation).toBe("Water");
-    const localSelect = db.calls.filter((c) => c.sql.includes("FROM procurement_officers_fts"));
+    const localSelect = db.calls.filter((c) =>
+      c.sql.includes("FROM procurement_officers_fts"),
+    );
     expect(localSelect).toHaveLength(0);
     expect(result.current.results).toHaveLength(1);
   });
@@ -211,7 +225,9 @@ const finalCall = feed.calls[feed.calls.length - 1];
     await advanceDebounce();
 
     await act(async () => {
-      resolveFirst(searchResult([serverRow({ id: "stale", canonicalName: "Old Result" })]));
+      resolveFirst(
+        searchResult([serverRow({ id: "stale", canonicalName: "Old Result" })]),
+      );
     });
 
     expect(result.current.results.map((r) => r.id)).toEqual(["officer-1"]);
@@ -232,10 +248,15 @@ const finalCall = feed.calls[feed.calls.length - 1];
     act(() => result.current.setQuery("dlamini"));
     await advanceDebounce();
 
-    const persists = db.calls.filter((c) => c.sql.includes("INSERT INTO local_preferences"));
+    const persists = db.calls.filter((c) =>
+      c.sql.includes("INSERT INTO local_preferences"),
+    );
     const persist = persists[persists.length - 1];
     expect(persist?.params[1]).toBe("officerRecentSearches");
-    expect(JSON.parse(persist?.params[2] as string)).toEqual(["dlamini", "moko"]);
+    expect(JSON.parse(persist?.params[2] as string)).toEqual([
+      "dlamini",
+      "moko",
+    ]);
   });
 
   it("shows the error phase when the server refresh fails and local rows exist", async () => {
@@ -263,5 +284,3 @@ describe("mergeOfficerRows guard rails", () => {
     expect(merged[0].saved).toBe(false);
   });
 });
-
-

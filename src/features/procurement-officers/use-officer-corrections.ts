@@ -17,7 +17,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SqlExecutor } from "../../db/executor";
-import { getLocalPreference, setLocalPreference } from "../../db/repositories/local-preferences";
+import {
+  getLocalPreference,
+  setLocalPreference,
+} from "../../db/repositories/local-preferences";
 import { ApiError } from "../../services/api/errors";
 import type { OfficerCorrection } from "../../services/api/endpoints/procurement-officers";
 
@@ -35,17 +38,18 @@ export interface OfficerCorrectionFeed {
 }
 
 export type OfficerCorrectionPhase =
-  | "idle"
-  | "submitting"
-  | "submitted"
-  | "error";
+  "idle" | "submitting" | "submitted" | "error";
 
 export interface OfficerCorrectionState {
   suppressed: OfficerSuppressedMap;
   phase: OfficerCorrectionPhase;
   status: string | null;
   errorMessage: string | null;
-  submitCorrection: (field: string, value: string, reason: string) => Promise<void>;
+  submitCorrection: (
+    field: string,
+    value: string,
+    reason: string,
+  ) => Promise<void>;
   reset: () => void;
 }
 
@@ -53,7 +57,11 @@ export async function readSuppressed(
   executor: SqlExecutor,
   ownerId: string,
 ): Promise<OfficerSuppressedMap> {
-  const raw = await getLocalPreference(executor, ownerId, SUPPRESSED_FIELDS_KEY);
+  const raw = await getLocalPreference(
+    executor,
+    ownerId,
+    SUPPRESSED_FIELDS_KEY,
+  );
   if (!raw) return {};
   try {
     return JSON.parse(raw) as OfficerSuppressedMap;
@@ -67,7 +75,12 @@ export async function writeSuppressed(
   ownerId: string,
   map: OfficerSuppressedMap,
 ): Promise<void> {
-  await setLocalPreference(executor, ownerId, SUPPRESSED_FIELDS_KEY, JSON.stringify(map));
+  await setLocalPreference(
+    executor,
+    ownerId,
+    SUPPRESSED_FIELDS_KEY,
+    JSON.stringify(map),
+  );
 }
 
 /** The disputed value is still being carried → the field stays hidden. */
@@ -147,11 +160,15 @@ export function useOfficerCorrections(
       setPhase("submitting");
       setErrorMessage(null);
       try {
-        const result = await feed.submitCorrection(officerId, { field, reason });
+        const result = await feed.submitCorrection(officerId, {
+          field,
+          reason,
+        });
         const key = `${officerId}:${field}`;
         const next = { ...suppressed, [key]: value };
         setSuppressed(next);
-        if (ownerId) void writeSuppressed(executor, ownerId, next).catch(() => undefined);
+        if (ownerId)
+          void writeSuppressed(executor, ownerId, next).catch(() => undefined);
         setStatus(result.status);
         setPhase("submitted");
       } catch (error) {

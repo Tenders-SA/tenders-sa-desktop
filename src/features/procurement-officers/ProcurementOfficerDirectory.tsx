@@ -33,7 +33,10 @@ import {
 import { QualityLabel } from "./QualityLabel";
 
 export interface ProcurementOfficerDirectoryProps {
-  feed: OfficerSyncFeed & OfficerSearchFeed & OfficerDetailFeed & OfficerCorrectionFeed;
+  feed: OfficerSyncFeed &
+    OfficerSearchFeed &
+    OfficerDetailFeed &
+    OfficerCorrectionFeed;
   executor?: SqlExecutor;
   ownerId?: WorkspaceOwnerId;
 }
@@ -49,20 +52,26 @@ export function ProcurementOfficerDirectory({
   const sync = useOfficerSync(feed, executor, ownerId);
   const search = useOfficerSearch(feed, executor, ownerId);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedOfficerId, setSelectedOfficerId] = useState<string | null>(null);
+  const [selectedOfficerId, setSelectedOfficerId] = useState<string | null>(
+    null,
+  );
   const detail = useOfficerDetail(feed, executor, ownerId, selectedOfficerId);
   const [correctionOpen, setCorrectionOpen] = useState(false);
-  const [correctionField, setCorrectionField] = useState<CorrectionFieldOption | null>(null);
+  const [correctionField, setCorrectionField] =
+    useState<CorrectionFieldOption | null>(null);
 
   const currentValues =
     selectedOfficerId && detail.data
       ? {
           email:
-            detail.data.contactPoints.find((c) => c.type === "email")?.value ?? null,
+            detail.data.contactPoints.find((c) => c.type === "email")?.value ??
+            null,
           telephone:
-            detail.data.contactPoints.find((c) => c.type === "telephone")?.value ?? null,
+            detail.data.contactPoints.find((c) => c.type === "telephone")
+              ?.value ?? null,
           mobile:
-            detail.data.contactPoints.find((c) => c.type === "mobile")?.value ?? null,
+            detail.data.contactPoints.find((c) => c.type === "mobile")?.value ??
+            null,
           title: detail.data.headlineAssignment?.title ?? null,
           organisation: detail.data.organisationName ?? null,
           officer: detail.data.canonicalName ?? null,
@@ -108,8 +117,8 @@ export function ProcurementOfficerDirectory({
         <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm">
           <p className="font-medium">Directory not enabled</p>
           <p className="mt-1 text-foreground/70">
-            The Procurement Officers directory is not enabled for your
-            workspace yet. Check back later.
+            The Procurement Officers directory is not enabled for your workspace
+            yet. Check back later.
           </p>
         </div>
       </section>
@@ -215,7 +224,9 @@ export function ProcurementOfficerDirectory({
         <button
           type="button"
           aria-pressed={search.filters.saved ?? false}
-          onClick={() => updateFilters({ saved: search.filters.saved ? undefined : true })}
+          onClick={() =>
+            updateFilters({ saved: search.filters.saved ? undefined : true })
+          }
           className="rounded-md border px-3 py-1.5 text-sm"
         >
           Saved only
@@ -225,7 +236,9 @@ export function ProcurementOfficerDirectory({
       {search.phase === "error" && (
         <p className="mb-3 text-sm text-red-600" role="alert">
           The server refresh failed. Showing locally synced results only
-          {sync.lastSyncAt ? ` (last synced ${formatSyncTime(sync.lastSyncAt)}).` : "."}
+          {sync.lastSyncAt
+            ? ` (last synced ${formatSyncTime(sync.lastSyncAt)}).`
+            : "."}
         </p>
       )}
 
@@ -273,13 +286,18 @@ export function ProcurementOfficerDirectory({
       ) : (
         <ul className="divide-y rounded-md border">
           {search.results.map((row) => (
-            <li key={row.id} className="flex items-center justify-between gap-4 p-3">
+            <li
+              key={row.id}
+              className="flex items-center justify-between gap-4 p-3"
+            >
               <button
                 type="button"
                 onClick={() => setSelectedOfficerId(row.id)}
                 className="min-w-0 flex-1 text-left"
               >
-                <span className="block truncate font-medium">{row.canonicalName}</span>
+                <span className="block truncate font-medium">
+                  {row.canonicalName}
+                </span>
                 <span className="block truncate text-sm text-foreground/60">
                   {[row.currentTitle, row.organisationName, row.province]
                     .filter(Boolean)
@@ -289,7 +307,9 @@ export function ProcurementOfficerDirectory({
               <div className="flex shrink-0 items-center gap-2">
                 <QualityLabel status={row.status} lastSeenAt={row.lastSeenAt} />
                 {row.saved && (
-                  <span className="text-xs font-medium text-emerald-700">Saved</span>
+                  <span className="text-xs font-medium text-emerald-700">
+                    Saved
+                  </span>
                 )}
               </div>
             </li>
@@ -300,11 +320,7 @@ export function ProcurementOfficerDirectory({
       <CorrectionDialog
         open={correctionOpen}
         officerName={detail.data?.canonicalName ?? "This officer"}
-        fields={
-          correctionField
-            ? [correctionField]
-            : []
-        }
+        fields={correctionField ? [correctionField] : []}
         phase={corrections.phase}
         status={corrections.status}
         errorMessage={corrections.errorMessage}
@@ -330,7 +346,10 @@ function Heading({
   return (
     <header className="mb-4 flex items-center justify-between">
       <div>
-        <h1 id="procurement-officers-heading" className="text-2xl font-semibold">
+        <h1
+          id="procurement-officers-heading"
+          className="text-2xl font-semibold"
+        >
           Procurement Officers
         </h1>
         <p className="mt-1 text-sm text-foreground/60">
@@ -354,7 +373,11 @@ function Heading({
 
 function hasAnyFilter(filters: OfficerFilters): boolean {
   return Boolean(
-    filters.province || filters.kind || filters.status || filters.organisation || filters.role,
+    filters.province ||
+    filters.kind ||
+    filters.status ||
+    filters.organisation ||
+    filters.role,
   );
 }
 

@@ -4,7 +4,8 @@
  * constants, not business rules.
  */
 
-export type OfficerQualityTone = "verified" | "recent" | "historical" | "unverified";
+export type OfficerQualityTone =
+  "verified" | "recent" | "historical" | "unverified";
 
 export interface OfficerQuality {
   label: string;

@@ -16,11 +16,7 @@ import {
 } from "../../services/sync/procurement-officers-sync";
 
 export type OfficerSyncPhase =
-  | "idle"
-  | "syncing"
-  | "off"
-  | "entitlement-missing"
-  | "failed";
+  "idle" | "syncing" | "off" | "entitlement-missing" | "failed";
 
 export interface OfficerSyncView {
   phase: OfficerSyncPhase;
@@ -73,12 +69,13 @@ export function useOfficerSync(
     phase: "idle",
     lastSyncAt: null,
     featureState: "active",
-    refresh: () => Promise.resolve({
-      featureState: "active",
-      appliedRows: 0,
-      tombstones: 0,
-      pages: 0,
-    }),
+    refresh: () =>
+      Promise.resolve({
+        featureState: "active",
+        appliedRows: 0,
+        tombstones: 0,
+        pages: 0,
+      }),
   });
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -90,7 +87,12 @@ export function useOfficerSync(
 
     const run = async (): Promise<OfficerSyncOutcome> => {
       if (!active) {
-        return { featureState: "active", appliedRows: 0, tombstones: 0, pages: 0 };
+        return {
+          featureState: "active",
+          appliedRows: 0,
+          tombstones: 0,
+          pages: 0,
+        };
       }
       setView((prev) => ({ ...prev, phase: "syncing" }));
       const outcome = await runner.sync();
@@ -98,8 +100,8 @@ export function useOfficerSync(
 
       const lastSyncAt =
         outcome.featureState === "active"
-          ? (await getSyncState(executor, ownerId).catch(() => undefined))
-              ?.last_sync_at ?? null
+          ? ((await getSyncState(executor, ownerId).catch(() => undefined))
+              ?.last_sync_at ?? null)
           : viewRef.current.lastSyncAt;
 
       setView({

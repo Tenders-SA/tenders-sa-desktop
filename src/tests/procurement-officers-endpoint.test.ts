@@ -287,7 +287,9 @@ describe("procurement officer sync feed", () => {
   });
 
   it("sends cursor and explicit page bounds (PERF-3)", async () => {
-    const { endpoint, fetchImpl } = makeEndpoint(async () => jsonResponse(syncBody));
+    const { endpoint, fetchImpl } = makeEndpoint(async () =>
+      jsonResponse(syncBody),
+    );
     await endpoint.sync({ cursor: "cursor-2", limit: 200 });
     const [url] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain("cursor=cursor-2");
@@ -308,7 +310,10 @@ describe("procurement officer corrections", () => {
       reason: "email bounces",
     });
     expect(result).toEqual({ id: "corr-1", status: "pending" });
-    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({
       field: "email",

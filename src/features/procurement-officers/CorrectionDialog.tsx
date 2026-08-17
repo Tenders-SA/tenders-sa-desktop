@@ -83,7 +83,10 @@ export function CorrectionDialog({
         <h2 id="correction-title" className="text-lg font-semibold">
           Report incorrect information
         </h2>
-        <p id="correction-description" className="mt-2 text-sm text-muted-foreground">
+        <p
+          id="correction-description"
+          className="mt-2 text-sm text-muted-foreground"
+        >
           {officerName} — the disputed field is hidden on your device until the
           review is resolved.
         </p>
@@ -111,7 +114,10 @@ export function CorrectionDialog({
           </div>
         ) : (
           <>
-            <label className="mt-4 block text-sm font-medium" htmlFor="correction-field">
+            <label
+              className="mt-4 block text-sm font-medium"
+              htmlFor="correction-field"
+            >
               Field
             </label>
             <select
@@ -127,7 +133,10 @@ export function CorrectionDialog({
               ))}
             </select>
 
-            <label className="mt-3 block text-sm font-medium" htmlFor="correction-reason">
+            <label
+              className="mt-3 block text-sm font-medium"
+              htmlFor="correction-reason"
+            >
               Reason
             </label>
             <textarea
@@ -157,14 +166,20 @@ export function CorrectionDialog({
               <button
                 ref={submitRef}
                 type="button"
-                disabled={phase === "submitting" || !selected || reason.trim().length === 0}
+                disabled={
+                  phase === "submitting" ||
+                  !selected ||
+                  reason.trim().length === 0
+                }
                 onClick={() => {
                   if (!selected) return;
                   onSubmit(selected.field, selected.value, reason.trim());
                 }}
                 className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
-                {phase === "submitting" ? "Submitting…" : "Report incorrect information"}
+                {phase === "submitting"
+                  ? "Submitting…"
+                  : "Report incorrect information"}
               </button>
             </div>
           </>

@@ -23,7 +23,9 @@ import type {
 
 const owner = assertWorkspaceOwner(`v1-${"e".repeat(64)}`);
 
-function officerRow(overrides: Partial<ProcurementOfficerRow> = {}): ProcurementOfficerRow {
+function officerRow(
+  overrides: Partial<ProcurementOfficerRow> = {},
+): ProcurementOfficerRow {
   return {
     owner_id: owner,
     id: "officer-1",
@@ -45,7 +47,9 @@ function officerRow(overrides: Partial<ProcurementOfficerRow> = {}): Procurement
   };
 }
 
-function contactRow(overrides: Partial<OfficerContactPointRow> = {}): OfficerContactPointRow {
+function contactRow(
+  overrides: Partial<OfficerContactPointRow> = {},
+): OfficerContactPointRow {
   return {
     owner_id: owner,
     officer_id: "officer-1",
@@ -59,7 +63,9 @@ function contactRow(overrides: Partial<OfficerContactPointRow> = {}): OfficerCon
   };
 }
 
-function assignmentRow(overrides: Partial<OfficerAssignmentRow> = {}): OfficerAssignmentRow {
+function assignmentRow(
+  overrides: Partial<OfficerAssignmentRow> = {},
+): OfficerAssignmentRow {
   return {
     owner_id: owner,
     officer_id: "officer-1",
@@ -75,7 +81,9 @@ function assignmentRow(overrides: Partial<OfficerAssignmentRow> = {}): OfficerAs
   };
 }
 
-function tenderLinkRow(overrides: Partial<OfficerTenderLinkRow> = {}): OfficerTenderLinkRow {
+function tenderLinkRow(
+  overrides: Partial<OfficerTenderLinkRow> = {},
+): OfficerTenderLinkRow {
   return {
     owner_id: owner,
     officer_id: "officer-1",
@@ -105,19 +113,31 @@ function serverDetail(overrides: Partial<OfficerDetail> = {}): OfficerDetail {
     verifiedAt: "2025-03-01T00:00:00.000Z",
     tendersCount: 2,
     contactPoints: [
-      { id: "cp-s1", type: "email", value: "th***@dwa.gov.za", isRoleBased: false, isOfficial: true, verificationStatus: "verified" },
+      {
+        id: "cp-s1",
+        type: "email",
+        value: "th***@dwa.gov.za",
+        isRoleBased: false,
+        isOfficial: true,
+        verificationStatus: "verified",
+      },
     ],
     assignments: [],
     evidenceSummary: {
       sourceMethods: ["tender-signature"],
       sourceFieldCount: 4,
-      observedRange: { earliest: "2025-01-01T00:00:00.000Z", latest: "2025-06-01T00:00:00.000Z" },
+      observedRange: {
+        earliest: "2025-01-01T00:00:00.000Z",
+        latest: "2025-06-01T00:00:00.000Z",
+      },
     },
     ...overrides,
   };
 }
 
-function serverTenderRow(overrides: Partial<OfficerTenderRow> = {}): OfficerTenderRow {
+function serverTenderRow(
+  overrides: Partial<OfficerTenderRow> = {},
+): OfficerTenderRow {
   return {
     id: "t-1",
     tenderId: "t-1",
@@ -143,20 +163,21 @@ class FakeDetailFeed implements OfficerDetailFeed {
   async getTenders(): Promise<OfficerTendersResult> {
     const next = this.tenderPages.shift();
     if (next instanceof Error) throw next;
-    return (
-      next ?? { tenders: [], page: 1, limit: 20, total: 0 }
-    );
+    return next ?? { tenders: [], page: 1, limit: 20, total: 0 };
   }
 }
 
-function seedLocal(db: FakeSqlExecutor, options: {
-  officer?: ProcurementOfficerRow;
-  contacts?: OfficerContactPointRow[];
-  assignments?: OfficerAssignmentRow[];
-  tenders?: OfficerTenderLinkRow[];
-  saved?: Array<{ officer_id: string }>;
-  note?: Array<{ note: string }>;
-}) {
+function seedLocal(
+  db: FakeSqlExecutor,
+  options: {
+    officer?: ProcurementOfficerRow;
+    contacts?: OfficerContactPointRow[];
+    assignments?: OfficerAssignmentRow[];
+    tenders?: OfficerTenderLinkRow[];
+    saved?: Array<{ officer_id: string }>;
+    note?: Array<{ note: string }>;
+  },
+) {
   db.selectResults = [
     options.officer ? [options.officer] : [],
     options.contacts ?? [],
@@ -186,11 +207,17 @@ describe("useOfficerDetail", () => {
       { tenders: [serverTenderRow()], page: 1, limit: 20, total: 1 },
     ];
 
-    const { result } = renderHook(() => useOfficerDetail(feed, db, owner, "officer-1"));
+    const { result } = renderHook(() =>
+      useOfficerDetail(feed, db, owner, "officer-1"),
+    );
 
     await waitFor(() => expect(result.current.phase).toBe("idle"));
-    expect(result.current.data?.organisationAddress).toBe("Private Bag X313, Pretoria");
-    expect(result.current.data?.organisationName).toBe("Department of Water Affairs");
+    expect(result.current.data?.organisationAddress).toBe(
+      "Private Bag X313, Pretoria",
+    );
+    expect(result.current.data?.organisationName).toBe(
+      "Department of Water Affairs",
+    );
     expect(result.current.data?.contactPoints[0]).toMatchObject({
       value: "thabo@dwa.gov.za",
       masked: false,
@@ -207,25 +234,64 @@ describe("useOfficerDetail", () => {
     seedLocal(db, {
       officer: officerRow(),
       assignments: [
-        assignmentRow({ id: "a-stale", title: "Former role", valid_from: "2024-06-01T00:00:00.000Z", is_current: 0 }),
-        assignmentRow({ id: "a-current", title: "Supply Chain Manager", valid_from: "2023-01-01T00:00:00.000Z", is_current: 1 }),
+        assignmentRow({
+          id: "a-stale",
+          title: "Former role",
+          valid_from: "2024-06-01T00:00:00.000Z",
+          is_current: 0,
+        }),
+        assignmentRow({
+          id: "a-current",
+          title: "Supply Chain Manager",
+          valid_from: "2023-01-01T00:00:00.000Z",
+          is_current: 1,
+        }),
       ],
     });
     const feed = new FakeDetailFeed();
-    feed.detailPages = [new ApiError({ kind: "server", status: 500, message: "down" })];
-    feed.tenderPages = [new ApiError({ kind: "server", status: 500, message: "down" })];
+    feed.detailPages = [
+      new ApiError({ kind: "server", status: 500, message: "down" }),
+    ];
+    feed.tenderPages = [
+      new ApiError({ kind: "server", status: 500, message: "down" }),
+    ];
 
-    const { result } = renderHook(() => useOfficerDetail(feed, db, owner, "officer-1"));
+    const { result } = renderHook(() =>
+      useOfficerDetail(feed, db, owner, "officer-1"),
+    );
 
-    await waitFor(() => expect(result.current.data?.headlineAssignment?.id).toBe("a-current"));
+    await waitFor(() =>
+      expect(result.current.data?.headlineAssignment?.id).toBe("a-current"),
+    );
     // Stale roles with a later valid_from must not win the headline slot.
-    expect(result.current.data?.assignments.map((a) => a.id)).toEqual(["a-current", "a-stale"]);
+    expect(result.current.data?.assignments.map((a) => a.id)).toEqual([
+      "a-current",
+      "a-stale",
+    ]);
   });
 
   it("orders non-current assignments by most recent valid_from", () => {
     const ordered = orderAssignments([
-      { id: "old", organisationId: null, organisationName: null, title: null, validFrom: "2020-01-01T00:00:00.000Z", validTo: null, isCurrent: false, confidenceScore: null },
-      { id: "new", organisationId: null, organisationName: null, title: null, validFrom: "2024-01-01T00:00:00.000Z", validTo: null, isCurrent: false, confidenceScore: null },
+      {
+        id: "old",
+        organisationId: null,
+        organisationName: null,
+        title: null,
+        validFrom: "2020-01-01T00:00:00.000Z",
+        validTo: null,
+        isCurrent: false,
+        confidenceScore: null,
+      },
+      {
+        id: "new",
+        organisationId: null,
+        organisationName: null,
+        title: null,
+        validFrom: "2024-01-01T00:00:00.000Z",
+        validTo: null,
+        isCurrent: false,
+        confidenceScore: null,
+      },
     ]);
     expect(ordered.map((a) => a.id)).toEqual(["new", "old"]);
   });
@@ -236,7 +302,9 @@ describe("useOfficerDetail", () => {
     const feed = new FakeDetailFeed();
     feed.detailPages = [serverDetail()];
 
-    const { result } = renderHook(() => useOfficerDetail(feed, db, owner, "officer-1"));
+    const { result } = renderHook(() =>
+      useOfficerDetail(feed, db, owner, "officer-1"),
+    );
 
     await waitFor(() => expect(result.current.phase).toBe("idle"));
     expect(result.current.data?.contactPoints[0]).toMatchObject({
@@ -249,10 +317,16 @@ describe("useOfficerDetail", () => {
     const db = new FakeSqlExecutor();
     seedLocal(db, { officer: officerRow(), assignments: [assignmentRow()] });
     const feed = new FakeDetailFeed();
-    feed.detailPages = [new ApiError({ kind: "server", status: 500, message: "down" })];
-    feed.tenderPages = [new ApiError({ kind: "server", status: 500, message: "down" })];
+    feed.detailPages = [
+      new ApiError({ kind: "server", status: 500, message: "down" }),
+    ];
+    feed.tenderPages = [
+      new ApiError({ kind: "server", status: 500, message: "down" }),
+    ];
 
-    const { result } = renderHook(() => useOfficerDetail(feed, db, owner, "officer-1"));
+    const { result } = renderHook(() =>
+      useOfficerDetail(feed, db, owner, "officer-1"),
+    );
 
     await waitFor(() => expect(result.current.phase).toBe("error"));
     expect(result.current.data?.canonicalName).toBe("Thabo Mokoena");
@@ -263,11 +337,17 @@ describe("useOfficerDetail", () => {
     const db = new FakeSqlExecutor();
     seedLocal(db, { officer: officerRow(), tenders: [tenderLinkRow()] });
     const feed = new FakeDetailFeed();
-    feed.tenderPages = [new ApiError({ kind: "server", status: 500, message: "down" })];
+    feed.tenderPages = [
+      new ApiError({ kind: "server", status: 500, message: "down" }),
+    ];
 
-    const { result } = renderHook(() => useOfficerDetail(feed, db, owner, "officer-1"));
+    const { result } = renderHook(() =>
+      useOfficerDetail(feed, db, owner, "officer-1"),
+    );
 
-    await waitFor(() => expect(result.current.data?.tenders[0]?.tenderId).toBe("t-1"));
+    await waitFor(() =>
+      expect(result.current.data?.tenders[0]?.tenderId).toBe("t-1"),
+    );
     expect(result.current.data?.tenders[0]?.title).toBeNull();
   });
 
@@ -276,21 +356,27 @@ describe("useOfficerDetail", () => {
     seedLocal(db, { officer: officerRow(), saved: [] });
     const feed = new FakeDetailFeed();
 
-    const { result } = renderHook(() => useOfficerDetail(feed, db, owner, "officer-1"));
+    const { result } = renderHook(() =>
+      useOfficerDetail(feed, db, owner, "officer-1"),
+    );
     await waitFor(() => expect(result.current.phase).toBe("idle"));
 
     await act(async () => {
       await result.current.toggleSaved();
     });
     expect(result.current.saved).toBe(true);
-    const insert = db.calls.find((c) => c.sql.includes("INSERT INTO saved_officers"));
+    const insert = db.calls.find((c) =>
+      c.sql.includes("INSERT INTO saved_officers"),
+    );
     expect(insert?.params[1]).toBe("officer-1");
 
     await act(async () => {
       await result.current.toggleSaved();
     });
     expect(result.current.saved).toBe(false);
-    expect(db.calls.some((c) => c.sql.includes("DELETE FROM saved_officers"))).toBe(true);
+    expect(
+      db.calls.some((c) => c.sql.includes("DELETE FROM saved_officers")),
+    ).toBe(true);
   });
 
   it("persists notes via the officer_notes upsert", async () => {
@@ -298,14 +384,18 @@ describe("useOfficerDetail", () => {
     seedLocal(db, { officer: officerRow() });
     const feed = new FakeDetailFeed();
 
-    const { result } = renderHook(() => useOfficerDetail(feed, db, owner, "officer-1"));
+    const { result } = renderHook(() =>
+      useOfficerDetail(feed, db, owner, "officer-1"),
+    );
     await waitFor(() => expect(result.current.phase).toBe("idle"));
 
     await act(async () => {
       await result.current.saveNote("Prefers email, no calls before 9am.");
     });
     expect(result.current.note).toBe("Prefers email, no calls before 9am.");
-    const upsert = db.calls.find((c) => c.sql.includes("INSERT INTO officer_notes"));
+    const upsert = db.calls.find((c) =>
+      c.sql.includes("INSERT INTO officer_notes"),
+    );
     expect(upsert?.params[2]).toBe("Prefers email, no calls before 9am.");
   });
 
@@ -319,13 +409,18 @@ describe("useOfficerDetail", () => {
     seedLocal(db, { officer: officerRow() });
     const feed = new FakeDetailFeed();
 
-    const { result } = renderHook(() => useOfficerDetail(feed, db, owner, "officer-1"));
+    const { result } = renderHook(() =>
+      useOfficerDetail(feed, db, owner, "officer-1"),
+    );
     await waitFor(() => expect(result.current.phase).toBe("idle"));
 
     expect(await result.current.copyValue("thabo@dwa.gov.za")).toBe(true);
     expect(writeText).toHaveBeenCalledWith("thabo@dwa.gov.za");
 
-    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    Object.defineProperty(navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+    });
     expect(await result.current.copyValue("0123456789")).toBe(false);
   });
 
@@ -355,9 +450,18 @@ describe("mergeOfficerDetail guard rails", () => {
       [contactRow()],
       [assignmentRow()],
       [],
-      serverDetail({ contactPoints: [
-        { id: "cp-s1", type: "email", value: "th***@dwa.gov.za", isRoleBased: false, isOfficial: true, verificationStatus: "verified" },
-      ] }),
+      serverDetail({
+        contactPoints: [
+          {
+            id: "cp-s1",
+            type: "email",
+            value: "th***@dwa.gov.za",
+            isRoleBased: false,
+            isOfficial: true,
+            verificationStatus: "verified",
+          },
+        ],
+      }),
       [],
     );
     expect(merged.contactPoints[0].value).toBe("thabo@dwa.gov.za");

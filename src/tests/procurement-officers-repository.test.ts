@@ -61,7 +61,13 @@ function officerIngest(overrides: Partial<OfficerIngest> = {}): OfficerIngest {
         confidenceScore: 0.9,
       },
     ],
-    tenderLinks: [{ tenderId: "t-100", sourceField: "contact_person", observedAt: "2025-05-01" }],
+    tenderLinks: [
+      {
+        tenderId: "t-100",
+        sourceField: "contact_person",
+        observedAt: "2025-05-01",
+      },
+    ],
     ...overrides,
   };
 }
@@ -117,7 +123,9 @@ describe("upsertOfficer", () => {
     expect(ftsInsert.params[0]).toBe(owner);
     expect(ftsInsert.params[1]).toBe("officer-1");
     expect(String(ftsInsert.params[2])).toContain("Thabo Mokoena");
-    expect(String(ftsInsert.params[2])).toContain("Department of Water Affairs");
+    expect(String(ftsInsert.params[2])).toContain(
+      "Department of Water Affairs",
+    );
     expect(String(ftsInsert.params[2])).toContain("thabo.mokoena@dwa.gov.za");
 
     expect(db.calls).toHaveLength(9);
@@ -125,7 +133,11 @@ describe("upsertOfficer", () => {
 
   it("skips empty collections without emitting insert statements", async () => {
     const db = new FakeSqlExecutor();
-    await upsertOfficer(db, owner, officerIngest({ contactPoints: [], assignments: [], tenderLinks: [] }));
+    await upsertOfficer(
+      db,
+      owner,
+      officerIngest({ contactPoints: [], assignments: [], tenderLinks: [] }),
+    );
     expect(db.calls).toHaveLength(6);
     for (const call of db.calls) {
       expect(call.sql).not.toContain("INSERT INTO officer_contact_points");
@@ -199,13 +211,25 @@ describe("searchOfficers", () => {
   it("appends equality filters as bound parameters in order", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [rows];
-    await searchOfficers(db, owner, { q: "Mokoena", province: "Gauteng", kind: "officer", status: "verified" });
+    await searchOfficers(db, owner, {
+      q: "Mokoena",
+      province: "Gauteng",
+      kind: "officer",
+      status: "verified",
+    });
 
     const { sql, params } = db.calls[0];
     expect(sql).toContain("province = $3");
     expect(sql).toContain("kind = $4");
     expect(sql).toContain("status = $5");
-    expect(params).toEqual([owner, "Mokoena", "Gauteng", "officer", "verified", 20]);
+    expect(params).toEqual([
+      owner,
+      "Mokoena",
+      "Gauteng",
+      "officer",
+      "verified",
+      20,
+    ]);
   });
 
   it("clamps the limit to the 1..50 contract window", async () => {
@@ -258,7 +282,9 @@ describe("getOfficer", () => {
   it("orders assignments current-first", async () => {
     const db = new FakeSqlExecutor();
     await getOfficerAssignments(db, owner, "officer-1");
-    expect(db.calls[0].sql).toContain("ORDER BY is_current DESC, valid_from DESC");
+    expect(db.calls[0].sql).toContain(
+      "ORDER BY is_current DESC, valid_from DESC",
+    );
   });
 });
 
@@ -276,11 +302,19 @@ describe("saved officers and notes", () => {
   it("saves without erroring on duplicates and lists newest-first", async () => {
     const db = new FakeSqlExecutor();
     await saveOfficer(db, owner, "officer-1", "2026-01-01T00:00:00.000Z");
-    expect(db.calls[0].sql).toContain("ON CONFLICT(owner_id, officer_id) DO NOTHING");
-    expect(db.calls[0].params).toEqual([owner, "officer-1", "2026-01-01T00:00:00.000Z"]);
+    expect(db.calls[0].sql).toContain(
+      "ON CONFLICT(owner_id, officer_id) DO NOTHING",
+    );
+    expect(db.calls[0].params).toEqual([
+      owner,
+      "officer-1",
+      "2026-01-01T00:00:00.000Z",
+    ]);
 
     const listDb = new FakeSqlExecutor();
-    listDb.selectResults = [[{ officer_id: "officer-1", saved_at: "2026-01-01T00:00:00.000Z" }]];
+    listDb.selectResults = [
+      [{ officer_id: "officer-1", saved_at: "2026-01-01T00:00:00.000Z" }],
+    ];
     expect(await listSavedOfficers(listDb, owner)).toHaveLength(1);
 
     const savedDb = new FakeSqlExecutor();
@@ -297,12 +331,22 @@ describe("saved officers and notes", () => {
 
   it("upserts notes and reads them back or null", async () => {
     const db = new FakeSqlExecutor();
-    await setOfficerNote(db, owner, "officer-1", "Confirmed at CPAR", "2026-01-01T00:00:00.000Z");
-    expect(db.calls[0].sql).toContain("ON CONFLICT(owner_id, officer_id) DO UPDATE SET note = excluded.note");
+    await setOfficerNote(
+      db,
+      owner,
+      "officer-1",
+      "Confirmed at CPAR",
+      "2026-01-01T00:00:00.000Z",
+    );
+    expect(db.calls[0].sql).toContain(
+      "ON CONFLICT(owner_id, officer_id) DO UPDATE SET note = excluded.note",
+    );
 
     const readDb = new FakeSqlExecutor();
     readDb.selectResults = [[{ note: "Confirmed at CPAR" }]];
-    expect(await getOfficerNote(readDb, owner, "officer-1")).toBe("Confirmed at CPAR");
+    expect(await getOfficerNote(readDb, owner, "officer-1")).toBe(
+      "Confirmed at CPAR",
+    );
 
     const missingDb = new FakeSqlExecutor();
     missingDb.selectResults = [[]];
@@ -319,11 +363,21 @@ describe("sync state", () => {
 
     await setSyncState(db, owner, "cursor-2", "2026-01-01T00:00:00.000Z");
     const { sql, params } = db.calls[1];
-    expect(sql).toContain("ON CONFLICT(owner_id) DO UPDATE SET cursor = excluded.cursor");
+    expect(sql).toContain(
+      "ON CONFLICT(owner_id) DO UPDATE SET cursor = excluded.cursor",
+    );
     expect(params).toEqual([owner, "cursor-2", "2026-01-01T00:00:00.000Z"]);
 
     const readDb = new FakeSqlExecutor();
-    readDb.selectResults = [[{ owner_id: owner, cursor: "cursor-2", last_sync_at: "2026-01-01T00:00:00.000Z" }]];
+    readDb.selectResults = [
+      [
+        {
+          owner_id: owner,
+          cursor: "cursor-2",
+          last_sync_at: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    ];
     expect((await getSyncState(readDb, owner))?.cursor).toBe("cursor-2");
   });
 

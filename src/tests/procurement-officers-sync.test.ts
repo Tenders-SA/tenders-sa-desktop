@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { FakeSqlExecutor } from "./fakes/sql-executor";
-import { OfficerSyncRunner, toOfficerIngest, type OfficerSyncFeed } from "../services/sync/procurement-officers-sync";
+import {
+  OfficerSyncRunner,
+  toOfficerIngest,
+  type OfficerSyncFeed,
+} from "../services/sync/procurement-officers-sync";
 import { ApiError } from "../services/api/errors";
-import type { OfficerSyncQuery, OfficerSyncResult, OfficerSyncRow } from "../services/api/endpoints/procurement-officers";
+import type {
+  OfficerSyncQuery,
+  OfficerSyncResult,
+  OfficerSyncRow,
+} from "../services/api/endpoints/procurement-officers";
 
 const owner = `v1-${"b".repeat(64)}`;
 
@@ -49,7 +57,11 @@ function syncRow(overrides: Partial<OfficerSyncRow> = {}): OfficerSyncRow {
   };
 }
 
-function page(rows: OfficerSyncRow[], nextCursor: string | null, hasMore: boolean): OfficerSyncResult {
+function page(
+  rows: OfficerSyncRow[],
+  nextCursor: string | null,
+  hasMore: boolean,
+): OfficerSyncResult {
   return {
     rows,
     nextCursor,
@@ -73,28 +85,65 @@ class FakeFeed implements OfficerSyncFeed {
 }
 
 function rowInsertCalls(db: FakeSqlExecutor): number {
-  return db.calls.filter((c) => /INSERT INTO procurement_officers\s/.test(c.sql)).length;
+  return db.calls.filter((c) =>
+    /INSERT INTO procurement_officers\s/.test(c.sql),
+  ).length;
 }
 
 describe("OfficerSyncRunner", () => {
   it("resumes from the persisted cursor and pages until hasMore is false", async () => {
     const db = new FakeSqlExecutor();
-    db.selectResults = [[{ owner_id: owner, cursor: "cursor-1", last_sync_at: "2025-05-01T00:00:00.000Z" }]];
+    db.selectResults = [
+      [
+        {
+          owner_id: owner,
+          cursor: "cursor-1",
+          last_sync_at: "2025-05-01T00:00:00.000Z",
+        },
+      ],
+    ];
     const feed = new FakeFeed();
     feed.pages = [
       page([syncRow()], "cursor-2", true),
-      page([syncRow({ id: "officer-2", canonicalName: "Nomsa Dlamini" })], null, false),
+      page(
+        [syncRow({ id: "officer-2", canonicalName: "Nomsa Dlamini" })],
+        null,
+        false,
+      ),
     ];
 
-    const runner = new OfficerSyncRunner({ feed, executor: db, ownerId: owner, now: () => "2025-06-01T00:00:00.000Z" });
+    const runner = new OfficerSyncRunner({
+      feed,
+      executor: db,
+      ownerId: owner,
+      now: () => "2025-06-01T00:00:00.000Z",
+    });
     const outcome = await runner.sync();
 
-    expect(outcome).toEqual({ featureState: "active", appliedRows: 2, tombstones: 0, pages: 2 });
-    expect(feed.calls).toEqual([{ cursor: "cursor-1", limit: 200 }, { cursor: "cursor-2", limit: 200 }]);
+    expect(outcome).toEqual({
+      featureState: "active",
+      appliedRows: 2,
+      tombstones: 0,
+      pages: 2,
+    });
+    expect(feed.calls).toEqual([
+      { cursor: "cursor-1", limit: 200 },
+      { cursor: "cursor-2", limit: 200 },
+    ]);
 
-    const stateWrites = db.calls.filter((c) => c.sql.includes("INSERT INTO procurement_officer_sync_state"));
-    expect(stateWrites[0].params).toEqual([owner, "cursor-2", "2025-06-01T00:00:00.000Z"]);
-    expect(stateWrites[1].params).toEqual([owner, null, "2025-06-01T00:00:00.000Z"]);
+    const stateWrites = db.calls.filter((c) =>
+      c.sql.includes("INSERT INTO procurement_officer_sync_state"),
+    );
+    expect(stateWrites[0].params).toEqual([
+      owner,
+      "cursor-2",
+      "2025-06-01T00:00:00.000Z",
+    ]);
+    expect(stateWrites[1].params).toEqual([
+      owner,
+      null,
+      "2025-06-01T00:00:00.000Z",
+    ]);
     expect(rowInsertCalls(db)).toBe(2);
   });
 
@@ -112,13 +161,25 @@ describe("OfficerSyncRunner", () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [[]];
     const feed = new FakeFeed();
-    feed.pages = [page([syncRow({ suppressed: true, contactPoints: [], assignments: [] })], null, false)];
+    feed.pages = [
+      page(
+        [syncRow({ suppressed: true, contactPoints: [], assignments: [] })],
+        null,
+        false,
+      ),
+    ];
 
-    const outcome = await new OfficerSyncRunner({ feed, executor: db, ownerId: owner }).sync();
+    const outcome = await new OfficerSyncRunner({
+      feed,
+      executor: db,
+      ownerId: owner,
+    }).sync();
 
     expect(outcome.tombstones).toBe(1);
     expect(outcome.appliedRows).toBe(0);
-    const officersDeletes = db.calls.filter((c) => c.sql.includes("DELETE FROM procurement_officers WHERE"));
+    const officersDeletes = db.calls.filter((c) =>
+      c.sql.includes("DELETE FROM procurement_officers WHERE"),
+    );
     expect(officersDeletes).toHaveLength(1);
     expect(officersDeletes[0].params).toEqual([owner, "officer-1"]);
     expect(rowInsertCalls(db)).toBe(0);
@@ -128,11 +189,22 @@ describe("OfficerSyncRunner", () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [[]];
     const feed = new FakeFeed();
-    feed.pages = [new ApiError({ kind: "not-found", status: 404, message: "Not found" })];
+    feed.pages = [
+      new ApiError({ kind: "not-found", status: 404, message: "Not found" }),
+    ];
 
-    const outcome = await new OfficerSyncRunner({ feed, executor: db, ownerId: owner }).sync();
+    const outcome = await new OfficerSyncRunner({
+      feed,
+      executor: db,
+      ownerId: owner,
+    }).sync();
 
-    expect(outcome).toEqual({ featureState: "off", appliedRows: 0, tombstones: 0, pages: 0 });
+    expect(outcome).toEqual({
+      featureState: "off",
+      appliedRows: 0,
+      tombstones: 0,
+      pages: 0,
+    });
     expect(db.calls).toHaveLength(1); // only the initial sync-state read
   });
 
@@ -145,12 +217,28 @@ describe("OfficerSyncRunner", () => {
       new ApiError({ kind: "forbidden", status: 403, message: "Forbidden" }),
     ];
 
-    const outcome = await new OfficerSyncRunner({ feed, executor: db, ownerId: owner, now: () => "2025-06-01T00:00:00.000Z" }).sync();
+    const outcome = await new OfficerSyncRunner({
+      feed,
+      executor: db,
+      ownerId: owner,
+      now: () => "2025-06-01T00:00:00.000Z",
+    }).sync();
 
-    expect(outcome).toEqual({ featureState: "entitlement-missing", appliedRows: 1, tombstones: 0, pages: 1 });
-    const stateWrites = db.calls.filter((c) => c.sql.includes("INSERT INTO procurement_officer_sync_state"));
+    expect(outcome).toEqual({
+      featureState: "entitlement-missing",
+      appliedRows: 1,
+      tombstones: 0,
+      pages: 1,
+    });
+    const stateWrites = db.calls.filter((c) =>
+      c.sql.includes("INSERT INTO procurement_officer_sync_state"),
+    );
     expect(stateWrites).toHaveLength(1);
-    expect(stateWrites[0].params).toEqual([owner, "cursor-2", "2025-06-01T00:00:00.000Z"]);
+    expect(stateWrites[0].params).toEqual([
+      owner,
+      "cursor-2",
+      "2025-06-01T00:00:00.000Z",
+    ]);
   });
 
   it("surfaces transient failures with featureState active and the pages already applied", async () => {
@@ -162,7 +250,11 @@ describe("OfficerSyncRunner", () => {
       new ApiError({ kind: "server", status: 503, message: "Unavailable" }),
     ];
 
-    const outcome = await new OfficerSyncRunner({ feed, executor: db, ownerId: owner }).sync();
+    const outcome = await new OfficerSyncRunner({
+      feed,
+      executor: db,
+      ownerId: owner,
+    }).sync();
 
     expect(outcome.featureState).toBe("active");
     expect(outcome.error?.kind).toBe("server");
@@ -185,7 +277,11 @@ describe("OfficerSyncRunner", () => {
       return originalSync(query);
     };
 
-    const runner = new OfficerSyncRunner({ feed, executor: db, ownerId: owner });
+    const runner = new OfficerSyncRunner({
+      feed,
+      executor: db,
+      ownerId: owner,
+    });
     const first = runner.sync();
     const second = runner.sync();
     release();
@@ -201,7 +297,11 @@ describe("OfficerSyncRunner", () => {
     const feed = new FakeFeed();
     feed.pages = [page([syncRow()], null, false)];
 
-    const runner = new OfficerSyncRunner({ feed, executor: db, ownerId: owner });
+    const runner = new OfficerSyncRunner({
+      feed,
+      executor: db,
+      ownerId: owner,
+    });
     const [a, b] = await Promise.all([runner.sync(), runner.sync()]);
     expect(a).toEqual(b);
     expect(feed.calls).toHaveLength(1);

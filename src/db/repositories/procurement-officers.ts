@@ -193,11 +193,7 @@ export async function upsertOfficer(
   await executor.execute(
     `INSERT INTO procurement_officers_fts (owner_id, officer_id, search_text)
      VALUES ($1, $2, $3)`,
-    [
-      ownerId,
-      officer.id,
-      buildSearchText(officer),
-    ],
+    [ownerId, officer.id, buildSearchText(officer)],
   );
 }
 
@@ -270,7 +266,10 @@ export async function searchOfficers(
     );
   }
 
-  const filters: string[] = ["owner_id = $1", "procurement_officers_fts MATCH $2"];
+  const filters: string[] = [
+    "owner_id = $1",
+    "procurement_officers_fts MATCH $2",
+  ];
   const params: unknown[] = [ownerId, q];
   if (query.province) {
     params.push(query.province);
@@ -314,11 +313,14 @@ export async function getOfficer(
   executor: SqlExecutor,
   ownerId: string,
   officerId: string,
-): Promise<{
-  officer: ProcurementOfficerRow;
-  contactPoints: OfficerContactPointRow[];
-  assignments: OfficerAssignmentRow[];
-} | undefined> {
+): Promise<
+  | {
+      officer: ProcurementOfficerRow;
+      contactPoints: OfficerContactPointRow[];
+      assignments: OfficerAssignmentRow[];
+    }
+  | undefined
+> {
   const [officers, contactPoints, assignments] = await Promise.all([
     executor.select<ProcurementOfficerRow[]>(
       "SELECT * FROM procurement_officers WHERE owner_id = $1 AND id = $2",
@@ -453,6 +455,8 @@ export function buildSearchText(officer: OfficerIngest): string {
     ...officer.assignments.map((a) => a.title),
     ...officer.contactPoints.map((c) => c.value),
     ...(officer.tenderLinks ?? []).map((l) => l.tenderId),
-  ].filter((part): part is string => typeof part === "string" && part.length > 0);
+  ].filter(
+    (part): part is string => typeof part === "string" && part.length > 0,
+  );
   return parts.join(" | ");
 }

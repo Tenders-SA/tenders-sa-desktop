@@ -107,7 +107,8 @@ export interface OfficerDetailData {
   } | null;
 }
 
-export type OfficerDetailPhase = "loading-local" | "refreshing" | "idle" | "error";
+export type OfficerDetailPhase =
+  "loading-local" | "refreshing" | "idle" | "error";
 
 export interface OfficerDetailView {
   data: OfficerDetailData | null;
@@ -161,7 +162,16 @@ export function useOfficerDetail(
         setPhase("idle");
         return;
       }
-      setData(mergeOfficerDetail(local.officer, local.contactPoints, local.assignments, localTenders, null, null));
+      setData(
+        mergeOfficerDetail(
+          local.officer,
+          local.contactPoints,
+          local.assignments,
+          localTenders,
+          null,
+          null,
+        ),
+      );
 
       try {
         setPhase("refreshing");
@@ -228,7 +238,9 @@ export function useOfficerDetail(
   }, []);
 
   const organisationLink =
-    data && ownCompanyId && data.organisationId === ownCompanyId ? "/company" : null;
+    data && ownCompanyId && data.organisationId === ownCompanyId
+      ? "/company"
+      : null;
 
   return {
     data,
@@ -246,7 +258,9 @@ export function useOfficerDetail(
  * Local rows are snake_case; the server detail payload is camelCase.
  * Branching on the shape keeps the merge honest about which source won.
  */
-function toAssignmentView(a: OfficerAssignmentRow | OfficerAssignment): OfficerAssignmentView {
+function toAssignmentView(
+  a: OfficerAssignmentRow | OfficerAssignment,
+): OfficerAssignmentView {
   if ("isCurrent" in a) {
     return {
       id: a.id,
@@ -277,7 +291,21 @@ function toAssignmentView(a: OfficerAssignmentRow | OfficerAssignment): OfficerA
  * rich tender rows. Server rows never overwrite unmasked local values.
  */
 export function mergeOfficerDetail(
-  officer: { id: string; canonical_name: string; first_name: string | null; last_name: string | null; current_title: string | null; current_organisation_id: string | null; province: string | null; kind: string; status: string; confidence_score: number | null; first_seen_at: string | null; last_seen_at: string | null; verified_at: string | null },
+  officer: {
+    id: string;
+    canonical_name: string;
+    first_name: string | null;
+    last_name: string | null;
+    current_title: string | null;
+    current_organisation_id: string | null;
+    province: string | null;
+    kind: string;
+    status: string;
+    confidence_score: number | null;
+    first_seen_at: string | null;
+    last_seen_at: string | null;
+    verified_at: string | null;
+  },
   localContacts: OfficerContactPointRow[],
   localAssignments: OfficerAssignmentRow[],
   localTenders: OfficerTenderLinkRow[],
@@ -285,9 +313,10 @@ export function mergeOfficerDetail(
   serverTenders: OfficerTenderRow[] | null,
 ): OfficerDetailData {
   const assignments = orderAssignments(
-    (localAssignments.length > 0 ? localAssignments : server?.assignments ?? []).map(
-      toAssignmentView,
-    ),
+    (localAssignments.length > 0
+      ? localAssignments
+      : (server?.assignments ?? [])
+    ).map(toAssignmentView),
   );
 
   const contacts: OfficerContactView[] =
@@ -346,8 +375,10 @@ export function mergeOfficerDetail(
     lastSeenAt: server?.lastSeenAt ?? officer.last_seen_at,
     verifiedAt: server?.verifiedAt ?? officer.verified_at,
     tendersCount: server?.tendersCount ?? 0,
-    organisationId: server?.currentOrganisationId ?? officer.current_organisation_id,
-    organisationName: server?.organisationName ?? headlineAssignment?.organisationName ?? null,
+    organisationId:
+      server?.currentOrganisationId ?? officer.current_organisation_id,
+    organisationName:
+      server?.organisationName ?? headlineAssignment?.organisationName ?? null,
     organisationAddress: server?.organisationAddress ?? null,
     assignments,
     headlineAssignment,
@@ -366,8 +397,12 @@ export function orderAssignments(
 ): OfficerAssignmentView[] {
   return [...assignments].sort((a, b) => {
     if (a.isCurrent !== b.isCurrent) return a.isCurrent ? -1 : 1;
-    const aFrom = a.validFrom ? Date.parse(a.validFrom) : Number.NEGATIVE_INFINITY;
-    const bFrom = b.validFrom ? Date.parse(b.validFrom) : Number.NEGATIVE_INFINITY;
+    const aFrom = a.validFrom
+      ? Date.parse(a.validFrom)
+      : Number.NEGATIVE_INFINITY;
+    const bFrom = b.validFrom
+      ? Date.parse(b.validFrom)
+      : Number.NEGATIVE_INFINITY;
     if (aFrom !== bFrom) return bFrom - aFrom;
     return a.id.localeCompare(b.id);
   });

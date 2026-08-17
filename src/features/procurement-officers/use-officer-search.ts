@@ -17,13 +17,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { SqlExecutor } from "../../db/executor";
-import { getLocalPreference, setLocalPreference } from "../../db/repositories/local-preferences";
-import { listSavedOfficers, searchOfficers, type OfficerSearchQuery as LocalSearchQuery } from "../../db/repositories/procurement-officers";
+import {
+  getLocalPreference,
+  setLocalPreference,
+} from "../../db/repositories/local-preferences";
+import {
+  listSavedOfficers,
+  searchOfficers,
+  type OfficerSearchQuery as LocalSearchQuery,
+} from "../../db/repositories/procurement-officers";
 import type { ProcurementOfficerRow } from "../../db/schema/types";
-import type { OfficerSearchQuery, OfficerSearchRow, OfficerSearchResult } from "../../services/api/endpoints/procurement-officers";
+import type {
+  OfficerSearchQuery,
+  OfficerSearchRow,
+  OfficerSearchResult,
+} from "../../services/api/endpoints/procurement-officers";
 
 export interface OfficerSearchFeed {
-  search(query: OfficerSearchQuery, signal?: AbortSignal): Promise<OfficerSearchResult>;
+  search(
+    query: OfficerSearchQuery,
+    signal?: AbortSignal,
+  ): Promise<OfficerSearchResult>;
 }
 
 export interface OfficerFilters {
@@ -51,7 +65,8 @@ export interface OfficerResultRow {
   saved: boolean;
 }
 
-export type OfficerSearchPhase = "idle" | "searching-local" | "refreshing" | "error";
+export type OfficerSearchPhase =
+  "idle" | "searching-local" | "refreshing" | "error";
 
 export interface OfficerSearchState {
   query: string;
@@ -155,7 +170,12 @@ export function useOfficerSearch(
             province: filters.province,
             organisation: filters.organisation,
             role: filters.role,
-            verification: filters.status === "unverified" ? "unverified" : filters.status === "verified" ? "verified" : undefined,
+            verification:
+              filters.status === "unverified"
+                ? "unverified"
+                : filters.status === "verified"
+                  ? "verified"
+                  : undefined,
             page: 1,
             limit: 20,
           },
@@ -169,15 +189,26 @@ export function useOfficerSearch(
             (!filters.status || row.status === filters.status),
         );
         setResults(
-          applySavedFilter(mergeOfficerRows(localRows, serverRows, savedIds, trimmed, filters), filters),
+          applySavedFilter(
+            mergeOfficerRows(localRows, serverRows, savedIds, trimmed, filters),
+            filters,
+          ),
         );
         setTotal(server.total);
         setPhase("idle");
 
         if (trimmed) {
           setRecentSearches((prev) => {
-            const next = [trimmed, ...prev.filter((s) => s !== trimmed)].slice(0, RECENT_SEARCHES_LIMIT);
-            void setLocalPreference(executor, ownerId, RECENT_SEARCHES_KEY, JSON.stringify(next)).catch(() => undefined);
+            const next = [trimmed, ...prev.filter((s) => s !== trimmed)].slice(
+              0,
+              RECENT_SEARCHES_LIMIT,
+            );
+            void setLocalPreference(
+              executor,
+              ownerId,
+              RECENT_SEARCHES_KEY,
+              JSON.stringify(next),
+            ).catch(() => undefined);
             return next;
           });
         }
@@ -186,7 +217,10 @@ export function useOfficerSearch(
         if (runIdRef.current !== runId) return;
         if (localAnswerable && localRows.length > 0) {
           setResults(
-            applySavedFilter(mergeOfficerRows(localRows, [], savedIds, trimmed, filters), filters),
+            applySavedFilter(
+              mergeOfficerRows(localRows, [], savedIds, trimmed, filters),
+              filters,
+            ),
           );
           setPhase("error");
         } else {
@@ -213,7 +247,11 @@ export function useOfficerSearch(
 
 function hasAnyFilter(filters: OfficerFilters): boolean {
   return Boolean(
-    filters.province || filters.kind || filters.status || filters.organisation || filters.role,
+    filters.province ||
+    filters.kind ||
+    filters.status ||
+    filters.organisation ||
+    filters.role,
   );
 }
 
@@ -292,7 +330,10 @@ export function mergeOfficerRows(
   });
 }
 
-function rowMatchesFilters(row: ProcurementOfficerRow, filters: OfficerFilters): boolean {
+function rowMatchesFilters(
+  row: ProcurementOfficerRow,
+  filters: OfficerFilters,
+): boolean {
   if (filters.province && row.province !== filters.province) return false;
   if (filters.kind && row.kind !== filters.kind) return false;
   if (filters.status && row.status !== filters.status) return false;

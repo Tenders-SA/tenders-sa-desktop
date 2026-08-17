@@ -28,10 +28,14 @@ class FakeCorrectionFeed implements OfficerCorrectionFeed {
 }
 
 function persistedMap(db: FakeSqlExecutor): Record<string, string> {
-  const insert = db.calls.find((c) => c.sql.includes("INSERT INTO local_preferences"));
+  const insert = db.calls.find((c) =>
+    c.sql.includes("INSERT INTO local_preferences"),
+  );
   if (!insert) return {};
   const stored = insert.params[2];
-  return typeof stored === "string" ? (JSON.parse(stored) as Record<string, string>) : {};
+  return typeof stored === "string"
+    ? (JSON.parse(stored) as Record<string, string>)
+    : {};
 }
 
 afterEach(() => {
@@ -42,7 +46,14 @@ describe("useOfficerCorrections", () => {
   it("loads the suppressed map from preferences", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [
-      [{ owner_id: owner, key: "officerSuppressedFields", value: JSON.stringify({ "officer-1:email": "a@b.co" }), updated_at: "2026-01-01T00:00:00.000Z" }],
+      [
+        {
+          owner_id: owner,
+          key: "officerSuppressedFields",
+          value: JSON.stringify({ "officer-1:email": "a@b.co" }),
+          updated_at: "2026-01-01T00:00:00.000Z",
+        },
+      ],
     ];
     const feed = new FakeCorrectionFeed();
 
@@ -65,7 +76,11 @@ describe("useOfficerCorrections", () => {
     await waitFor(() => expect(result.current.phase).toBe("idle"));
 
     await act(async () => {
-      await result.current.submitCorrection("email", "thabo@dwa.gov.za", "Wrong address");
+      await result.current.submitCorrection(
+        "email",
+        "thabo@dwa.gov.za",
+        "Wrong address",
+      );
     });
 
     expect(feed.correctionCalls).toEqual([
@@ -73,7 +88,9 @@ describe("useOfficerCorrections", () => {
     ]);
     expect(result.current.phase).toBe("submitted");
     expect(result.current.status).toBe("pending");
-    expect(result.current.suppressed["officer-1:email"]).toBe("thabo@dwa.gov.za");
+    expect(result.current.suppressed["officer-1:email"]).toBe(
+      "thabo@dwa.gov.za",
+    );
     expect(persistedMap(db)["officer-1:email"]).toBe("thabo@dwa.gov.za");
   });
 
@@ -81,7 +98,9 @@ describe("useOfficerCorrections", () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [[]];
     const feed = new FakeCorrectionFeed();
-    feed.results = [new ApiError({ kind: "validation", status: 400, message: "Bad field" })];
+    feed.results = [
+      new ApiError({ kind: "validation", status: 400, message: "Bad field" }),
+    ];
 
     const { result } = renderHook(() =>
       useOfficerCorrections(feed, db, owner, "officer-1", null),
@@ -89,7 +108,11 @@ describe("useOfficerCorrections", () => {
     await waitFor(() => expect(result.current.phase).toBe("idle"));
 
     await act(async () => {
-      await result.current.submitCorrection("email", "thabo@dwa.gov.za", "Wrong");
+      await result.current.submitCorrection(
+        "email",
+        "thabo@dwa.gov.za",
+        "Wrong",
+      );
     });
 
     expect(result.current.phase).toBe("error");
@@ -102,7 +125,9 @@ describe("useOfficerCorrections", () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [[]];
     const feed = new FakeCorrectionFeed();
-    feed.results = [new ApiError({ kind: "not-found", status: 404, message: "Not found" })];
+    feed.results = [
+      new ApiError({ kind: "not-found", status: 404, message: "Not found" }),
+    ];
 
     const { result } = renderHook(() =>
       useOfficerCorrections(feed, db, owner, "officer-1", null),
@@ -121,7 +146,14 @@ describe("useOfficerCorrections", () => {
   it("prunes a marker once a later sync no longer carries the disputed value", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [
-      [{ owner_id: owner, key: "officerSuppressedFields", value: JSON.stringify({ "officer-1:email": "thabo@dwa.gov.za" }), updated_at: "2026-01-01T00:00:00.000Z" }],
+      [
+        {
+          owner_id: owner,
+          key: "officerSuppressedFields",
+          value: JSON.stringify({ "officer-1:email": "thabo@dwa.gov.za" }),
+          updated_at: "2026-01-01T00:00:00.000Z",
+        },
+      ],
     ];
     const feed = new FakeCorrectionFeed();
 
@@ -139,7 +171,9 @@ describe("useOfficerCorrections", () => {
       { initialProps: { current: values } },
     );
     await waitFor(() =>
-      expect(result.current.suppressed["officer-1:email"]).toBe("thabo@dwa.gov.za"),
+      expect(result.current.suppressed["officer-1:email"]).toBe(
+        "thabo@dwa.gov.za",
+      ),
     );
 
     rerender({ current: { ...values, email: "new@address.gov.za" } });
@@ -154,9 +188,13 @@ describe("suppression logic", () => {
   it("hides only while the exact disputed value is carried", () => {
     const map = { "officer-1:email": "old@a.co" };
     expect(isFieldSuppressed(map, "officer-1", "email", "old@a.co")).toBe(true);
-    expect(isFieldSuppressed(map, "officer-1", "email", "new@a.co")).toBe(false);
+    expect(isFieldSuppressed(map, "officer-1", "email", "new@a.co")).toBe(
+      false,
+    );
     expect(isFieldSuppressed(map, "officer-1", "email", null)).toBe(false);
-    expect(isFieldSuppressed(map, "officer-2", "email", "old@a.co")).toBe(false);
+    expect(isFieldSuppressed(map, "officer-2", "email", "old@a.co")).toBe(
+      false,
+    );
   });
 
   it("prunes resolved markers and keeps active ones", () => {

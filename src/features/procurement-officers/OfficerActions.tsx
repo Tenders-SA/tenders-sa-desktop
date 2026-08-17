@@ -93,7 +93,10 @@ export function OfficerActions({
         {saved ? "Unsave officer" : "Save officer"}
       </button>
       {organisationLink && (
-        <Link to={organisationLink} className="rounded-md border px-3 py-1.5 text-sm">
+        <Link
+          to={organisationLink}
+          className="rounded-md border px-3 py-1.5 text-sm"
+        >
           Organisation profile
         </Link>
       )}
@@ -123,7 +126,9 @@ export function OfficerActions({
           >
             {savingNote ? "Saving…" : "Save note"}
           </button>
-          {noteSaved && <span className="text-xs text-emerald-700">Note saved</span>}
+          {noteSaved && (
+            <span className="text-xs text-emerald-700">Note saved</span>
+          )}
         </div>
       </div>
     </div>
