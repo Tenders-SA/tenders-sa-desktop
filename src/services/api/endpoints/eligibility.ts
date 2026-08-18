@@ -3,9 +3,18 @@
  *
  * Refs: brief §6.2 (mandatory requirements, missing internal requirements),
  * §4.3, INT-A3
- * Parent route (read from source at `8ff2e4c2`):
- *   GET /api/v1/tenders/[id]/eligibility-check
+ * Parent route:
+ *   POST /api/v1/tenders/[id]/eligibility-check
  *     -> {success, data:{eligible, score, checks[], blockers[], suggestions[], matchScore?}}
+ *
+ * **The verb is POST, and getting it wrong is not a 405 the user ever sees as
+ * one.** The parent route exports `POST` only. A `GET` is answered by Next.js
+ * with a bare 405, `kindForStatus` maps every unlisted 4xx to `validation`,
+ * and `describeApiError` renders `validation` as "Add your company profile to
+ * see the eligibility check". So the wrong method surfaced as a *missing
+ * company profile* on accounts that had one — the request never reached the
+ * profile lookup at all. The route reads no request body; the tender is in
+ * the path. `eligibility-endpoint.test.ts` pins the method for that reason.
  *
  * This is step 5 of the brief's workflow — "identify compliance, experience,
  * capacity and resource gaps" — answered for one tender.
@@ -59,7 +68,7 @@ export class EligibilityEndpoint extends AuthenticatedEndpoint {
     signal?: AbortSignal,
   ): Promise<EligibilityResult> {
     const body = await this.transport.request({
-      method: "GET",
+      method: "POST",
       path: `/api/v1/tenders/${encodeURIComponent(tenderId)}/eligibility-check`,
       schema: eligibilitySchema,
       headers: await this.authHeaders(),
