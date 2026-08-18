@@ -1,12 +1,13 @@
 # Desktop — App Updater — SPEC_CONTRACT
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-18
 - **Scope**: signed automatic updates for the Windows desktop app —
   `tauri-plugin-updater` + `tauri-plugin-process`, GitHub-Releases-hosted
   `latest.json`, check-on-launch/6 h hook, update banner, config
   placeholder retirement, and the signed release workflow.
-- **Approved by**: _user (in-session directive)_
+- **Approved by**: user (in-session directive)
+- **Approval date**: 2026-08-18
 
 ## Contract checklist (mirrors tasks.md)
 

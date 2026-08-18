@@ -1,0 +1,91 @@
+name: Release (signed)
+
+# MANUAL TRIGGER ONLY — the updater does not change the release gate.
+#
+# Releasing remains a deliberate human act (AGENTS.md, docs/release.md):
+# this workflow runs only when a person starts it, records who did, and
+# never runs on push. Unlike windows-package.yml (unsigned test packages),
+# signing here is UNCONDITIONAL: a release whose manifest signatures cannot
+# be verified against the public key in tauri.conf.json would fail on every
+# client at download time, so unsigned is not a release option.
+#
+# The signing private key and password exist ONLY as repository secrets and
+# are referenced by name below (SEC-4). No key material is committed.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version tag to release (e.g. v0.1.1). Must already exist and must not be a prerelease -- GitHub's releases/latest pointer skips prereleases, so a prerelease tag would be invisible to every installed client."
+        required: true
+      apiBaseUrl:
+        description: "API origin to build against. Leave blank for the production default (https://www.tenders-sa.org). Any value here must already appear in src-tauri/capabilities/default.json, or the plugin will deny every request at runtime."
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  # The ONLY elevated scope, and only this workflow: creating the GitHub
+  # Release and uploading its assets (installers, .sig files, latest.json).
+  contents: write
+
+jobs:
+  release:
+    name: Build, sign and publish release
+    runs-on: windows-latest
+    steps:
+      - name: Record who requested this run
+        shell: bash
+        run: echo "Release ${{ inputs.tag }} requested by @${{ github.actor }}"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build, sign and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Referenced by secret name only (SEC-4). Always set on this path:
+          # a release without a signature is a release every client rejects.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Left blank on a normal run: the application defaults to the live
+          # platform, so an artifact built with no configuration is a working
+          # production build rather than a broken one.
+          VITE_API_BASE_URL: ${{ inputs.apiBaseUrl }}
+        with:
+          tagName: ${{ inputs.tag }}
+          releaseName: "Tenders-SA Desktop ${{ inputs.tag }}"
+          releaseBody: |
+            Tenders-SA Desktop ${{ inputs.tag }}.
+
+            Download the NSIS installer (`*-setup.exe`) or MSI (`*.msi`) for
+            Windows x64. Installed clients with the auto-updater enabled are
+            offered this release through `latest.json` on the next check.
+          # Publishes the update manifest (latest.json) as a release asset --
+          # the exact URL configured at tauri.conf.json
+          # `plugins.updater.endpoints`.
+          includeUpdaterJson: true
+          # Load-bearing: GitHub's `releases/latest` pointer ignores
+          # prereleases, so marking this true would make every installed
+          # client check against a manifest that never arrives.
+          prerelease: false
+          # Mirror the bundle targets in tauri.conf.json; both formats are
+          # updateable by the plugin (NSIS setup.exe and MSI .msi.zip).
+          args: --target nsis,msi

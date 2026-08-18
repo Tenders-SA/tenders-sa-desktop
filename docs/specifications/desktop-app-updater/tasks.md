@@ -5,8 +5,20 @@
 
 ## Status (2026-08-18)
 
-- T1–T10: NOT STARTED — `SPEC_CONTRACT.md` is `PENDING APPROVAL`. Do not
-  implement until approved.
+- T1–T8: complete. T9 is the user's. Evidence per task, and the gate
+  results, are recorded in `INTEGRATION_EVAL.md`.
+
+| Task | State |
+|---|---|
+| T1 Signing keypair (user) | done — generated on behalf per user request; key file + secrets + pubkey in place |
+| T2 Dependencies | done — updater 2.10.1 (default rustls-tls + zip), process 2.3.1; JS 2.10.1 / 2.3.1 |
+| T3 Registration + capabilities + config | done — `cargo check` green, `capability-scope.test.ts` 20/20 unedited |
+| T4 Check hook | done — 7 hook tests in `updater.test.tsx` |
+| T5 Banner + mount | done — 4 banner tests; mounted in `App.tsx` inside `AppProviders` |
+| T6 Config retirement | done — `VITE_UPDATE_*` removed everywhere; `vite-env.d.ts` + `config.test.ts` updated; app-boot regression fixed by mocking the new plugin modules |
+| T7 Release workflow | done — `release.yml` parses; secrets by name only; `prerelease: false`; `contents: write` scoped to this file; `windows-package.yml` unmodified |
+| T8 Docs + changelog + gates | done — vitest 1181/1182 (1 pre-existing flaky under load, passes in isolation — see `INTEGRATION_EVAL.md` RSK1), tsc 0, lint 0, prettier clean on touched files (1 pre-existing unrelated failure), rust:check green |
+| T9 Human verification | **outstanding — for the user** |
 
 ## Tasks
 

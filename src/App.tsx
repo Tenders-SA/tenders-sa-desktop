@@ -13,6 +13,7 @@ import {
 } from "./services/storage/workspace-owner";
 import { WorkspaceRuntimeProvider } from "./services/storage/workspace-runtime";
 import { WorkspaceSyncCoordinator } from "./services/sync/WorkspaceSyncCoordinator";
+import { UpdateBanner } from "./features/updates/UpdateBanner";
 
 /**
  * Composition root.
@@ -150,6 +151,7 @@ function AuthenticatedApp({ wiring }: { wiring: AuthWiring }) {
 
   return (
     <AppProviders>
+      <UpdateBanner />
       <WorkspaceRuntimeProvider ownerId={workspaceOwner}>
         <WorkspaceSyncCoordinator
           ownerId={workspaceOwner}

@@ -65,14 +65,6 @@ export function loadConfig(env: RawEnv): AppConfig {
       enabled: parseBoolean(env.VITE_TELEMETRY_ENABLED) ?? false,
       redactionMode: env.VITE_TELEMETRY_REDACTION_MODE || "strict",
     },
-    update: {
-      channel: env.VITE_UPDATE_CHANNEL || "stable",
-      // A placeholder rather than a required value: the updater is not wired
-      // up yet, and an unset public key must not stop the app from starting.
-      // Nothing verifies an update against this, so it is inert -- when the
-      // updater does ship it will need a real key and its own validation.
-      publicKey: env.VITE_UPDATE_PUBLIC_KEY || "updater-not-configured",
-    },
     request: {
       timeoutMs: parseNumber(env.VITE_REQUEST_TIMEOUT_MS) ?? 10_000,
       maxSafeRetries: parseNumber(env.VITE_REQUEST_MAX_SAFE_RETRIES) ?? 2,

@@ -37,13 +37,6 @@ export const appConfigSchema = z
       enabled: z.boolean(),
       redactionMode: z.enum(["strict", "standard"]),
     }),
-    // Updater configuration placeholder (REQ-3, SEC-4): the public key
-    // verifies signed update metadata. Signing secrets are CI-only and
-    // never enter this (or any client-readable) configuration.
-    update: z.object({
-      channel: z.enum(["stable", "beta"]),
-      publicKey: z.string().min(1),
-    }),
     request: z.object({
       timeoutMs: z.number().int().positive(),
       maxSafeRetries: z.number().int().nonnegative(),

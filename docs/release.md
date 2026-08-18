@@ -83,9 +83,52 @@ the agreed Windows 11 reference device is that evidence. Attach:
 Until that evidence exists, TASK-0.13 stays incomplete. That is by
 design, not an oversight.
 
+## Producing a signed release (auto-update)
+
+Signed releases are cut through **Actions → Release (signed)**,
+`workflow_dispatch`-only, exactly like the test package above — the
+updater does not weaken the gate, it removes the manual installer
+hand-off.
+
+Before starting the run:
+
+1. Bump the version in **all three** places so they agree:
+   `src-tauri/tauri.conf.json`, `package.json`, `src-tauri/Cargo.toml`.
+   The updater compares SemVer, so a release whose version is not newer
+   than what clients already run is never offered — silently.
+2. Commit the bump, tag it (`git tag v0.1.1`), push tag and branch.
+3. Run **Release (signed)** with `tag` = that tag. Leave `apiBaseUrl`
+   blank for the production build.
+
+The workflow builds signed (the signing secrets are always set on this
+path), uploads the NSIS installer, the MSI and their signatures, and
+publishes `latest.json` as a release asset — the exact URL the
+application polls. It never marks the release `prerelease`: GitHub's
+`releases/latest` pointer skips prereleases, so a prerelease tag would be
+invisible to every installed client.
+
+Installed clients are offered the release within one launch (or six
+hours) of the release being published.
+
 ## Updater
 
-No updater plugin is wired up yet. `src/app/config/schema.ts` reserves
-`update.channel` and `update.publicKey`; the endpoint and rollout
-policy are a later, separately approved decision. See
-[architecture/security.md](architecture/security.md).
+The updater is wired up (spec:
+`docs/specifications/desktop-app-updater/`):
+
+- **Endpoint**: `https://github.com/Tenders-SA/tenders-sa-desktop/releases/latest/download/latest.json`,
+  a static `latest.json` published by the **Release (signed)** workflow.
+- **Public key**: `src-tauri/tauri.conf.json → plugins.updater.pubkey` —
+  the only place the key lives in the repository. It verifies the
+  signature of every downloaded payload; there is no unverified mode.
+- **Private key + password**: GitHub secrets `TAURI_SIGNING_PRIVATE_KEY`
+  and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, by name only. **If either is
+  lost, no future release can be signed** — the public key in
+  `tauri.conf.json` only accepts signatures from its own pair. Keep a
+  backup of the key file (`~/.tauri/tenders-sa-desktop.key`) and the
+  password in a password manager.
+- Update payloads are the full offline NSIS/MSI packages (~399 MB per
+  `docs/release.md` measurements above); delta updates are a future
+  slice. Nothing downloads until the user clicks **Update & Restart**.
+- A failed check (offline, service down) is silent by design: the app
+  behaves exactly as it did before the updater existed, and is never
+  falsely told it is up to date.
