@@ -1,11 +1,11 @@
 # Desktop — Company Profile Full Record — SPEC_CONTRACT (Slice 11)
 
-- **Status**: `PENDING APPROVAL`
+- **Status**: `APPROVED`
 - **Date**: 2026-08-16
 - **Scope**: Slice 11 — surface the entire company record and add record CRUD
   (R-C1..R-C15).
-- **Approved by**: —
-- **Approval date**: —
+- **Approved by**: user (in-session directive, 2026-08-16)
+- **Approval date**: 2026-08-16
 
 ## Contract checklist (mirrors tasks.md)
 

@@ -167,7 +167,22 @@ the parent contract, not a workaround.
 the list returns `{ experiences }`. `DELETE` returns `{ message }` only, so the
 caller re-reads rather than patching local state from the response.
 
-### 4.6 Refresh after mutation (R-C14)
+### 4.6 Preserving rows the editor cannot present (R-C17)
+
+`equipmentAssets`, `professionalBodies` and personnel `certifications` are
+`Json?` columns, and both write routes replace the **whole** value. Seeding an
+editor from only the rows that matched the documented shape therefore turns
+"open the profile and save it" into a delete of everything else.
+
+`narrowList` already returns `{ matched, unmatched }`. The editors keep
+`unmatched` in draft state — out of the form, since there are no fields to show
+it in — and append it back on save. `ExtendedProfileWrite` and `PersonnelWrite`
+widen their array element types to `T | UnknownJsonRow` so this is expressible
+rather than a cast. The form discloses the count ("2 further entries are in a
+format this screen cannot edit; they will be kept exactly as they are") so the
+user is not misled into thinking the list they see is the whole list.
+
+### 4.7 Refresh after mutation (R-C14)
 
 Every mutation calls the screen's `reload()` for the extended record. That is
 one extra request per save, deliberately: `completenessScore` and
@@ -203,6 +218,20 @@ The CIDB panel is not removed — it moves into "Company profile", fed by
 would be a lie. The new profile editor is a separate component targeting
 `POST /profile/extended`.
 
+**Editing entry points (R-C16).** One route writes four of those panels —
+Company profile, Operational capacity, Equipment and assets, Professional
+bodies — so all four share one editor and **each carries its own "Edit"
+control**. The first cut put the control on "Company profile" alone and
+rendered the editor *inside* that panel; in use that reads as three read-only
+panels, and the form (a two-column grid, a four-column capacity row, and two
+repeatable row lists) was squeezed into a half-width grid column. The editor
+therefore opens **full width in place of the overview**, exactly like
+`CompanyProfileEditor`, and `EditDetail` is repeated as each panel's `aside`.
+
+Record editors (experience, personnel) stay inline in their own panel: they
+edit one row of the list they sit in, so the scope is unambiguous and the form
+is narrow enough for the column.
+
 Record editors are inline forms within their panel rather than modals,
 matching the existing `AdditionalInfoPanel` pattern, and deletes ask for
 confirmation inline — no browser `confirm()`, which is blocked in the Tauri
@@ -215,6 +244,8 @@ webview by policy.
 | `src/services/api/endpoints/company.ts` | full extended schema, corrected record schemas, `saveExtendedProfile`, `setCidbGrading`, experience + personnel create/update/delete, delete `getCidb` |
 | `src/features/company/CompanyProfile.tsx` | single extended read, eight panels, mutation wiring |
 | `src/features/company/company-record-validation.ts` | **new** — shared create/update validation (§4.3) |
+| `src/features/company/company-form-controls.tsx` | **new** — form primitives shared by the three editors |
+| `src/features/company/extended-profile-model.ts` | **new** — pure helpers (`extendedWriteFrom`, `fingerprintExceptCidb`, labels, date formatting); separate from the editor so that file exports components only, per `react-refresh/only-export-components` |
 | `src/features/company/ExperienceEditor.tsx` | **new** |
 | `src/features/company/PersonnelEditor.tsx` | **new** |
 | `src/features/company/ExtendedProfileEditor.tsx` | **new** |

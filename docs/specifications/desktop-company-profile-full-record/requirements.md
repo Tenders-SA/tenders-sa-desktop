@@ -95,6 +95,8 @@ key personnel can each be created, updated and deleted.
 | R-C13 | Adding experience or personnel is gated behind an existing `CompanyProfile` row and routes the user to profile setup first, rather than letting the parent answer 400. | screen test with `profile: null` |
 | R-C14 | Every mutation refreshes the record so completeness and the lists stay truthful; failures surface through `describeApiError` and never show a parent `error` string verbatim. | screen tests for success and failure |
 | R-C15 | `TenderRadar`'s existing consumption of `getExtendedProfile` keeps working unchanged — the six Radar signals and `radar-workspace-model` behaviour are invariant. | existing radar tests stay green without edits to their assertions |
+| R-C16 | **Every panel written by `POST /profile/extended` carries its own edit affordance**, and the editor opens full width rather than inside one panel. One route writes four panels; an affordance on only one of them makes the other three read as read-only, and a multi-section form inside a half-width grid column is unusable. | screen test asserts an edit control on each of the four panels and that the editor opens from any of them |
+| R-C17 | **Rows of a `Json?` column that the editor cannot present as fields survive an edit.** `POST /profile/extended` and `PUT /personnel/[id]` replace the whole column/array, so writing back only the recognised rows would make *opening and saving* the profile delete company data. Unrecognised rows are carried through verbatim and their presence is disclosed in the form. | screen tests assert an unrecognised equipment row and an unrecognised personnel certification survive a save |
 
 ## Known limitations (documented, not fixed here)
 
