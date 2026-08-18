@@ -73,7 +73,6 @@ export interface OfficerSearchState {
   filters: OfficerFilters;
   results: OfficerResultRow[];
   phase: OfficerSearchPhase;
-  total: number;
   recentSearches: string[];
 }
 
@@ -107,11 +106,14 @@ export function useOfficerSearch(
   const [filters, setFilters] = useState<OfficerFilters>({});
   const [results, setResults] = useState<OfficerResultRow[]>([]);
   const [phase, setPhase] = useState<OfficerSearchPhase>("idle");
-  const [total, setTotal] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   const debounced = useDebounced(query, debounceMs);
+  // Filters are debounced too: the organisation/role inputs change on every
+  // keystroke, and each settled change re-runs the pipeline (which includes
+  // a server refresh when a server-only filter is set).
+  const debouncedFilters = useDebounced(filters, debounceMs);
   const runIdRef = useRef(0);
 
   useEffect(() => {
@@ -138,42 +140,54 @@ export function useOfficerSearch(
     const runId = ++runIdRef.current;
     const controller = new AbortController();
 
-    if (!trimmed && !hasAnyFilter(filters)) {
+    // Saved-only is a local post-filter, so an empty query with it set still
+    // runs the local listing pass; everything else idles without a query.
+    if (
+      !trimmed &&
+      !hasAnyFilter(debouncedFilters) &&
+      !debouncedFilters.saved
+    ) {
       setPhase("idle");
       setResults([]);
-      setTotal(0);
       return () => controller.abort();
     }
 
-    const localAnswerable = !filters.organisation && !filters.role;
+    const localAnswerable =
+      !debouncedFilters.organisation && !debouncedFilters.role;
     const localQuery: LocalSearchQuery = {
       q: trimmed,
-      province: filters.province,
-      kind: filters.kind,
-      status: filters.status,
+      province: debouncedFilters.province,
+      kind: debouncedFilters.kind,
+      status: debouncedFilters.status,
       limit: 20,
     };
 
     const run = async () => {
       let localRows: ProcurementOfficerRow[] = [];
-      try {
-        if (localAnswerable) {
-          setPhase("searching-local");
+      if (localAnswerable) {
+        setPhase("searching-local");
+        try {
           localRows = await searchOfficers(executor, ownerId, localQuery);
-          if (runIdRef.current !== runId) return;
+        } catch {
+          // A local-pass failure must not masquerade as a server failure;
+          // proceed with the server refresh and report whatever it says.
+          localRows = [];
         }
+        if (runIdRef.current !== runId) return;
+      }
 
+      try {
         setPhase("refreshing");
         const server = await feed.search(
           {
             q: trimmed,
-            province: filters.province,
-            organisation: filters.organisation,
-            role: filters.role,
+            province: debouncedFilters.province,
+            organisation: debouncedFilters.organisation,
+            role: debouncedFilters.role,
             verification:
-              filters.status === "unverified"
+              debouncedFilters.status === "unverified"
                 ? "unverified"
-                : filters.status === "verified"
+                : debouncedFilters.status === "verified"
                   ? "verified"
                   : undefined,
             page: 1,
@@ -185,16 +199,22 @@ export function useOfficerSearch(
 
         const serverRows = server.officers.filter(
           (row) =>
-            (!filters.kind || row.kind === filters.kind) &&
-            (!filters.status || row.status === filters.status),
+            (!debouncedFilters.kind || row.kind === debouncedFilters.kind) &&
+            (!debouncedFilters.status ||
+              row.status === debouncedFilters.status),
         );
         setResults(
           applySavedFilter(
-            mergeOfficerRows(localRows, serverRows, savedIds, trimmed, filters),
-            filters,
+            mergeOfficerRows(
+              localRows,
+              serverRows,
+              savedIds,
+              trimmed,
+              debouncedFilters,
+            ),
+            debouncedFilters,
           ),
         );
-        setTotal(server.total);
         setPhase("idle");
 
         if (trimmed) {
@@ -218,8 +238,14 @@ export function useOfficerSearch(
         if (localAnswerable && localRows.length > 0) {
           setResults(
             applySavedFilter(
-              mergeOfficerRows(localRows, [], savedIds, trimmed, filters),
-              filters,
+              mergeOfficerRows(
+                localRows,
+                [],
+                savedIds,
+                trimmed,
+                debouncedFilters,
+              ),
+              debouncedFilters,
             ),
           );
           setPhase("error");
@@ -231,21 +257,20 @@ export function useOfficerSearch(
 
     void run();
     return () => controller.abort();
-  }, [debounced, executor, feed, filters, ownerId, savedIds]);
+  }, [debounced, debouncedFilters, executor, feed, ownerId, savedIds]);
 
   return {
     query,
     filters,
     results,
     phase,
-    total,
     recentSearches,
     setQuery,
     setFilters,
   };
 }
 
-function hasAnyFilter(filters: OfficerFilters): boolean {
+export function hasAnyFilter(filters: OfficerFilters): boolean {
   return Boolean(
     filters.province ||
     filters.kind ||
@@ -264,7 +289,7 @@ function applySavedFilter(
   return rows.filter((row) => row.saved);
 }
 
-function useDebounced(value: string, delayMs: number): string {
+function useDebounced<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(value), delayMs);

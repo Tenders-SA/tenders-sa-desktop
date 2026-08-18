@@ -143,6 +143,30 @@ describe("useOfficerCorrections", () => {
     expect(result.current.suppressed["officer-1:title"]).toBeUndefined();
   });
 
+  it("rejects an unlisted field locally without a network call", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [[]];
+    const feed = new FakeCorrectionFeed();
+
+    const { result } = renderHook(() =>
+      useOfficerCorrections(feed, db, owner, "officer-1", null),
+    );
+    await waitFor(() => expect(result.current.phase).toBe("idle"));
+
+    await act(async () => {
+      await result.current.submitCorrection(
+        "not-a-field",
+        "whatever",
+        "Reason",
+      );
+    });
+
+    expect(result.current.phase).toBe("error");
+    expect(result.current.errorMessage).toMatch(/cannot be reported/);
+    expect(feed.correctionCalls).toEqual([]);
+    expect(persistedMap(db)).toEqual({});
+  });
+
   it("prunes a marker once a later sync no longer carries the disputed value", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [

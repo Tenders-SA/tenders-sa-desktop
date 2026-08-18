@@ -240,8 +240,9 @@ export async function searchOfficers(
 ): Promise<ProcurementOfficerRow[]> {
   const limit = Math.min(50, Math.max(1, query.limit ?? 20));
   const q = query.q?.trim();
+  const match = q ? toFtsMatchQuery(q) : null;
 
-  if (!q) {
+  if (!match) {
     const filters: string[] = ["owner_id = $1"];
     const params: unknown[] = [ownerId];
     if (query.province) {
@@ -270,7 +271,7 @@ export async function searchOfficers(
     "owner_id = $1",
     "procurement_officers_fts MATCH $2",
   ];
-  const params: unknown[] = [ownerId, q];
+  const params: unknown[] = [ownerId, match];
   if (query.province) {
     params.push(query.province);
     filters.push(`province = $${params.length}`);
@@ -459,4 +460,27 @@ export function buildSearchText(officer: OfficerIngest): string {
     (part): part is string => typeof part === "string" && part.length > 0,
   );
   return parts.join(" | ");
+}
+
+/**
+ * FTS5 operator characters (quotes, `*`, `-`, `+`, `~`, `^`, `(`, `)`, `:`,
+ * `{`, `}`, `[`, `]`, `!`, `&`, `|`, `,`) are stripped so a raw user query
+ * can never turn the MATCH expression into a syntax error or an operator.
+ * Each surviving token becomes a prefix term (`token*`) for as-you-type
+ * matching; bare `AND`/`OR`/`NOT`/`NEAR` tokens are quoted so they match
+ * as literal terms. Returns null when nothing searchable survives (the
+ * caller falls back to the plain listing).
+ */
+export function toFtsMatchQuery(q: string): string | null {
+  const tokens = q
+    .split(/\s+/)
+    .map((token) => token.replace(/["*^~():{}[\]!&|,+-]/g, ""))
+    .filter((token) => token.length > 0);
+  if (tokens.length === 0) return null;
+  return tokens
+    .map(
+      (token) =>
+        (/^(and|or|not|near)$/i.test(token) ? `"${token}"` : token) + "*",
+    )
+    .join(" ");
 }

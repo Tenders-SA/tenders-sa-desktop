@@ -351,6 +351,34 @@ describe("ProcurementOfficerDirectory shell", () => {
     expect(screen.getByText("Saved")).toBeVisible();
   });
 
+  it("lists saved officers with an empty query when the saved-only filter is on", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [
+      [], // boot runner read
+      [{ officer_id: "officer-1" }], // saved ids: officer-1 is saved
+      [], // recent searches
+      [], // corrections: suppressed fields read
+      [], // post-boot-sync read
+      [localOfficerRow()], // local listing pass (empty query + saved-only)
+    ];
+    const feed = new FakeFeed();
+
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
+
+    expect(
+      screen.getByText(/Search the directory to see procurement contacts/),
+    ).toBeVisible();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Saved only" }));
+
+    expect(await screen.findByText("Thabo Mokoena")).toBeVisible();
+    expect(screen.getByText("Saved")).toBeVisible();
+    expect(feed.calls).toBe(1);
+  });
+
   it("syncs on demand via the Sync now button", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [

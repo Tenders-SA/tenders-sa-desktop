@@ -123,6 +123,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- The Procurement Officers search now smooths typing into both the query box
+  and the organisation/role filter boxes, so a single server refresh happens
+  after you stop typing instead of one per keystroke. Searches containing FTS
+  punctuation (quotes, asterisks, dashes, brackets and similar) no longer
+  fail — they are matched as plain text — and a failed local index lookup no
+  longer reports a server problem. "Saved only" with an empty search box now
+  lists your saved officers instead of the start screen.
 - The Opportunities screen now opens and lists your shortlisted tenders
   instead of reporting that they could not be loaded. It also states plainly
   that it holds tenders awaiting a bid decision, rather than implying it shows

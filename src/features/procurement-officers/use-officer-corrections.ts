@@ -22,7 +22,10 @@ import {
   setLocalPreference,
 } from "../../db/repositories/local-preferences";
 import { ApiError } from "../../services/api/errors";
-import type { OfficerCorrection } from "../../services/api/endpoints/procurement-officers";
+import {
+  OFFICER_CORRECTION_FIELDS,
+  type OfficerCorrection,
+} from "../../services/api/endpoints/procurement-officers";
 
 export const SUPPRESSED_FIELDS_KEY = "officerSuppressedFields";
 
@@ -157,6 +160,16 @@ export function useOfficerCorrections(
   const submitCorrection = useCallback(
     async (field: string, value: string, reason: string) => {
       if (!officerId) return;
+      if (
+        !OFFICER_CORRECTION_FIELDS.includes(
+          field as (typeof OFFICER_CORRECTION_FIELDS)[number],
+        )
+      ) {
+        setPhase("error");
+        setStatus(null);
+        setErrorMessage(`This field cannot be reported (${field}).`);
+        return;
+      }
       setPhase("submitting");
       setErrorMessage(null);
       try {

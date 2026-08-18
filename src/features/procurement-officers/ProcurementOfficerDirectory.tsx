@@ -27,6 +27,7 @@ import {
 import {
   OFFICER_PROVINCES,
   useOfficerSearch,
+  hasAnyFilter,
   type OfficerSearchFeed,
   type OfficerFilters,
 } from "./use-officer-search";
@@ -242,7 +243,9 @@ export function ProcurementOfficerDirectory({
         </p>
       )}
 
-      {!search.query && !hasAnyFilter(search.filters) ? (
+      {!search.query &&
+      !hasAnyFilter(search.filters) &&
+      !search.filters.saved ? (
         search.recentSearches.length > 0 ? (
           <div className="rounded-md border p-4">
             <p className="mb-2 text-sm font-medium">Recent searches</p>
@@ -368,16 +371,6 @@ function Heading({
         </button>
       )}
     </header>
-  );
-}
-
-function hasAnyFilter(filters: OfficerFilters): boolean {
-  return Boolean(
-    filters.province ||
-    filters.kind ||
-    filters.status ||
-    filters.organisation ||
-    filters.role,
   );
 }
 

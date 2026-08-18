@@ -205,7 +205,36 @@ describe("searchOfficers", () => {
     expect(sql).toContain("JOIN procurement_officers");
     expect(sql).toContain("ORDER BY rank");
     expect(sql).toContain("LIMIT $3");
-    expect(params).toEqual([owner, "Mokoena", 20]);
+    expect(params).toEqual([owner, "Mokoena*", 20]);
+  });
+
+  it("sanitises FTS operator characters out of the query and prefix-matches tokens", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [rows];
+    await searchOfficers(db, owner, { q: 'thabo "moko" -vader (x)' });
+
+    const { sql, params } = db.calls[0];
+    expect(sql).toContain("procurement_officers_fts MATCH $2");
+    expect(params[1]).toBe("thabo* moko* vader* x*");
+  });
+
+  it("quotes bare FTS keywords so they match as literal terms", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [rows];
+    await searchOfficers(db, owner, { q: "or near and" });
+
+    expect(db.calls[0].params[1]).toBe('"or"* "near"* "and"*');
+  });
+
+  it("degrades to the plain listing when only operator characters survive", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [rows];
+    const result = await searchOfficers(db, owner, { q: '*** " " -' });
+
+    expect(result).toEqual(rows);
+    const { sql } = db.calls[0];
+    expect(sql).not.toContain("MATCH");
+    expect(sql).toContain("ORDER BY canonical_name ASC");
   });
 
   it("appends equality filters as bound parameters in order", async () => {
@@ -224,7 +253,7 @@ describe("searchOfficers", () => {
     expect(sql).toContain("status = $5");
     expect(params).toEqual([
       owner,
-      "Mokoena",
+      "Mokoena*",
       "Gauteng",
       "officer",
       "verified",

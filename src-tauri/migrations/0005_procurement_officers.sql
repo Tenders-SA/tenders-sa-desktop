@@ -9,7 +9,9 @@
 -- (stored) FTS5 table, not contentless (`content=''`). Contentless FTS5
 -- cannot DELETE rows, and tombstone removal + per-officer index rebuilds
 -- both need deletion. The stored copy is small (a local index) and
--- `search_text` is rebuilt transactionally on ingest.
+-- `search_text` is rebuilt wholesale (delete-then-insert) on ingest;
+-- a partially failed sync self-heals on the next run because the
+-- officer's rows are never patched in place.
 
 CREATE TABLE procurement_officers (
   owner_id TEXT NOT NULL,

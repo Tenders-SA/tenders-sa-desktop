@@ -156,13 +156,12 @@ describe("useOfficerSearch", () => {
     expect(merged.map((r) => r.id)).toEqual(["b", "a"]);
   });
 
-  it("post-filters server rows by kind and status when those filters are set", async () => {
+  it("coalesces query and filter changes into one debounced run", async () => {
     vi.useFakeTimers();
     const db = new FakeSqlExecutor();
     db.selectResults = [[], [], []];
     const feed = new FakeFeed();
     feed.pages = [
-      searchResult([]), // filter-only run before the debounce settles
       searchResult([
         serverRow({ id: "o1", kind: "officer", status: "verified" }),
         serverRow({ id: "o2", kind: "department", status: "verified" }),
@@ -175,6 +174,7 @@ describe("useOfficerSearch", () => {
     act(() => result.current.setFilters({ kind: "officer" }));
     await advanceDebounce();
 
+    expect(feed.calls).toHaveLength(1);
     const finalCall = feed.calls[feed.calls.length - 1];
     expect(finalCall.q).toBe("water");
     expect(result.current.results.map((r) => r.id)).toEqual(["o1"]);
@@ -185,7 +185,7 @@ describe("useOfficerSearch", () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [[], []]; // saved ids + recent pref only, no local pass
     const feed = new FakeFeed();
-    feed.pages = [searchResult([]), searchResult([serverRow()])];
+    feed.pages = [searchResult([serverRow()])];
 
     const { result } = renderHook(() => useOfficerSearch(feed, db, owner));
     await act(async () => {});
@@ -193,6 +193,7 @@ describe("useOfficerSearch", () => {
     act(() => result.current.setFilters({ organisation: "Water" }));
     await advanceDebounce();
 
+    expect(feed.calls).toHaveLength(1);
     const finalCall = feed.calls[feed.calls.length - 1];
     expect(finalCall.organisation).toBe("Water");
     const localSelect = db.calls.filter((c) =>
@@ -200,6 +201,27 @@ describe("useOfficerSearch", () => {
     );
     expect(localSelect).toHaveLength(0);
     expect(result.current.results).toHaveLength(1);
+  });
+
+  it("runs the local listing pass for saved-only with an empty query", async () => {
+    vi.useFakeTimers();
+    const db = new FakeSqlExecutor();
+    db.selectResults = [
+      [{ officer_id: "officer-1", saved_at: "2026-01-01T00:00:00.000Z" }], // saved ids
+      [], // recent searches
+      [localRow()], // local listing pass
+    ];
+    const feed = new FakeFeed();
+
+    const { result } = renderHook(() => useOfficerSearch(feed, db, owner));
+    await act(async () => {});
+    act(() => result.current.setFilters({ saved: true }));
+    await advanceDebounce();
+
+    expect(feed.calls).toHaveLength(1);
+    expect(feed.calls[0].q).toBe("");
+    expect(result.current.results.map((r) => r.id)).toEqual(["officer-1"]);
+    expect(result.current.results[0].saved).toBe(true);
   });
 
   it("discards stale server responses when a newer query wins (coalesced)", async () => {
