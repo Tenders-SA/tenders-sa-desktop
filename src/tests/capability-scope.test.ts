@@ -19,7 +19,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(__dirname, "../..");
@@ -174,6 +174,28 @@ describe("http plugin scope", () => {
     );
     expect(identifiers.some((id) => id.startsWith("shell:"))).toBe(false);
     expect(identifiers.some((id) => id.startsWith("opener:"))).toBe(false);
+  });
+
+  it("renders no screen that offers to open an external URL", () => {
+    // The other half of the rule above. With no `opener:`/`shell:` permission
+    // an anchor with `target="_blank"` does nothing at all in the webview —
+    // a control that looks like it works and does not. URLs are rendered as
+    // text instead, so this is a scope assertion, not a style preference.
+    const features = resolve(root, "src/features");
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = resolve(dir, entry.name);
+        if (entry.isDirectory()) walk(path);
+        else if (/\.tsx?$/.test(entry.name)) {
+          if (readFileSync(path, "utf8").includes('target="_blank"')) {
+            offenders.push(path);
+          }
+        }
+      }
+    };
+    walk(features);
+    expect(offenders).toEqual([]);
   });
 
   it("contains no broad or temporary static path grants", () => {

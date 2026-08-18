@@ -13,7 +13,7 @@ import type {
 import {
   numberOrUndefined,
   personnelCertificationList,
-  type UnknownJsonRow,
+  splitUnmatchedRows,
 } from "../../services/api/endpoints/company";
 import {
   emptyPersonnelDraft,
@@ -36,6 +36,7 @@ function draftFrom(record: CompanyPersonnel | undefined): PersonnelDraft {
   if (!record) return emptyPersonnelDraft();
   const years = numberOrUndefined(record.yearsExperience);
   const certifications = personnelCertificationList(record.certifications);
+  const salvaged = splitUnmatchedRows(certifications.unmatched);
   return {
     fullName: record.fullName ?? "",
     role: record.role ?? "",
@@ -47,8 +48,11 @@ function draftFrom(record: CompanyPersonnel | undefined): PersonnelDraft {
     phone: record.phone ?? "",
     certifications: certifications.matched,
     // `PUT` replaces the whole certifications array, so rows this editor
-    // cannot present must still be written back or they are deleted.
-    preservedCertifications: certifications.unmatched as UnknownJsonRow[],
+    // cannot present must still be written back or they are deleted. Rows
+    // with no usable `name` cannot be sent at all — the parent's schema
+    // rejects them and the save would 400 — so they are counted, not carried.
+    preservedCertifications: salvaged.writable,
+    unwritableCertifications: salvaged.unwritable.length,
   };
 }
 
@@ -176,9 +180,34 @@ export function PersonnelEditor({
         <legend className="text-sm font-medium text-card-foreground">
           Professional certifications
         </legend>
-        {draft.certifications.length === 0 && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            None recorded for this person.
+        {draft.certifications.length === 0 &&
+          draft.preservedCertifications.length === 0 &&
+          draft.unwritableCertifications === 0 && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              None recorded for this person.
+            </p>
+          )}
+        {draft.preservedCertifications.length > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {draft.preservedCertifications.length} further{" "}
+            {draft.preservedCertifications.length === 1
+              ? "entry is"
+              : "entries are"}{" "}
+            in a format this screen cannot edit.{" "}
+            {draft.preservedCertifications.length === 1 ? "It" : "They"} will be
+            kept.
+          </p>
+        )}
+        {draft.unwritableCertifications > 0 && (
+          <p className="mt-2 text-xs text-destructive">
+            {draft.unwritableCertifications}{" "}
+            {draft.unwritableCertifications === 1 ? "entry is" : "entries are"}{" "}
+            stored in a format the save contract does not accept.{" "}
+            {draft.unwritableCertifications === 1 ? "It" : "They"} cannot be
+            written back, so saving will remove{" "}
+            {draft.unwritableCertifications === 1 ? "it" : "them"}. Cancel if
+            you need {draft.unwritableCertifications === 1 ? "it" : "them"}{" "}
+            kept.
           </p>
         )}
         <ul className="mt-3 space-y-3">

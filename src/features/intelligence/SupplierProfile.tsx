@@ -288,6 +288,9 @@ function SupplierProfileBody({
                     {value.pendingForCurrentUser && (
                       <li>Your claim on this profile is pending.</li>
                     )}
+                    {value.hasApprovedClaimForCurrentUser && (
+                      <li>Your claim on this profile has been approved.</li>
+                    )}
                   </ul>
                 ) : null
               }
@@ -587,6 +590,14 @@ function BuyersPanel({
   record: SupplierPublicRecord;
   company: IntelligenceCompany;
 }) {
+  // The timeline is emptied on a register mismatch, so "no buyer detail is
+  // recorded" would be a claim about the company drawn from a record that was
+  // never trusted. The other two panels reading contract C say so; this one
+  // must too.
+  if (!record.matched) {
+    return <RegisterMismatch supplierName={record.supplierName} />;
+  }
+
   const { buyers, unattributed } = summariseBuyers(record.awardTimeline);
   const years = awardsPerYear(record.awardTimeline);
 

@@ -46,8 +46,10 @@ import {
 } from "../features/intelligence/supplier-profile-copy";
 import { SupplierIntelligenceEndpoint } from "../services/api/endpoints/supplier-intelligence";
 import {
+  awardSlugFromName,
   deslugForSearch,
   slugComparableName,
+  slugSearchTerms,
   SupplierProfileEndpoint,
 } from "../services/api/endpoints/supplier-profile";
 
@@ -333,6 +335,68 @@ describe("deslugForSearch", () => {
   });
 });
 
+describe("awardSlugFromName", () => {
+  /**
+   * The two surfaces slug a supplier from different strings: the leaderboard
+   * from `normalizeCompanyName` output, the workbench from the raw
+   * `supplier_name`. Reproducing the leaderboard's spelling is the only way a
+   * workbench row can be matched to a company on the list.
+   */
+  it("spells '&' the way the normalised name does", () => {
+    expect(awardSlugFromName("ABC & Sons")).toBe("abc-and-sons");
+    // Which is exactly what the workbench's raw-name slug does not do.
+    expect(
+      "ABC & Sons"
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, ""),
+    ).toBe("abc-sons");
+  });
+
+  it("treats brackets, slashes and dashes as separators, and drops the rest", () => {
+    expect(awardSlugFromName("Acme Civils (Pty) Ltd")).toBe(
+      "acme-civils-pty-ltd",
+    );
+    expect(awardSlugFromName("Bo/Kaap Works")).toBe("bo-kaap-works");
+    expect(awardSlugFromName("R.M. Trading")).toBe("rm-trading");
+  });
+});
+
+describe("slugSearchTerms", () => {
+  /**
+   * A slug is not a substring of the name it came from: `q` is matched
+   * against the raw `supplier_name` while the slug is built from the
+   * normalised one, so `acme civils pty ltd` finds `ACME CIVILS (PTY) LTD`
+   * nowhere. The fallbacks stop before the first legal-form token.
+   */
+  it("falls back to the words before the first legal-form token", () => {
+    expect(slugSearchTerms("acme-civils-pty-ltd")).toEqual([
+      "acme civils pty ltd",
+      "acme civils",
+      "acme",
+    ]);
+  });
+
+  it("stops before an 'and' that only the slug spells out", () => {
+    expect(slugSearchTerms("abc-and-sons")).toEqual([
+      "abc and sons",
+      "abc",
+      "abc and",
+    ]);
+  });
+
+  it("returns the name itself when nothing in it is slug-only", () => {
+    expect(slugSearchTerms("beta-roadworks")).toEqual([
+      "beta roadworks",
+      "beta",
+    ]);
+  });
+
+  it("returns nothing for an empty slug rather than a blank term", () => {
+    expect(slugSearchTerms("")).toEqual([]);
+  });
+});
+
 describe("supplier profile — identity resolution", () => {
   it("selects the row whose slug matches exactly, not the first row", async () => {
     // The near miss ranks first because it has more award value. Picking it
@@ -366,6 +430,80 @@ describe("supplier profile — identity resolution", () => {
     // The route clamps per_page to 50; asking for less would let a common
     // search term push the requested company off the scanned page.
     expect(url).toContain("per_page=50");
+  });
+
+  /**
+   * A leaderboard that filters the way the parent does.
+   *
+   * `q` is substring-matched against the **raw** `tender_awards.supplier_name`
+   * (`company-intelligence.ts:99`), while the row's `name` and `slug` are
+   * built from the normalised name (`company-intelligence.ts:426-434`). Every
+   * other fixture in this file answers every search with the same rows, which
+   * is why the mismatch between those two strings went unnoticed.
+   */
+  function parentLeaderboard(entries: { raw: string; row: unknown }[]) {
+    return (url: string) => {
+      const q = new URL(url).searchParams.get("q") ?? "";
+      return jsonResponse(
+        leaderboard(
+          entries
+            .filter((entry) =>
+              entry.raw.toLowerCase().includes(q.toLowerCase()),
+            )
+            .map((entry) => entry.row),
+        ),
+      );
+    };
+  }
+
+  it("resolves a (Pty) Ltd company, whose slug matches no substring of its stored name", async () => {
+    // The commonest South African legal form. The stored award row says
+    // "Acme Civils (Pty) Ltd"; the slug says "acme-civils-pty-ltd"; searching
+    // for "acme civils pty ltd" matches nothing at all.
+    const { endpoint, fetchImpl } = harness(
+      parentLeaderboard([
+        {
+          raw: "Acme Civils (Pty) Ltd",
+          row: { ...acme, name: "ACME CIVILS PTY LTD" },
+        },
+      ]),
+    );
+    const identity = await endpoint.resolveSupplier("acme-civils-pty-ltd");
+    expect(identity.name).toBe("ACME CIVILS PTY LTD");
+    // The full deslug is still tried first, so the narrowest search that can
+    // work is the one used when it does work.
+    expect(calls(fetchImpl)).toHaveLength(2);
+    expect(calls(fetchImpl)[0][0]).toContain("q=acme+civils+pty+ltd");
+    expect(calls(fetchImpl)[1][0]).toContain("q=acme+civils");
+  });
+
+  it("resolves a company whose name holds '&', which the slug spells 'and'", async () => {
+    const abc = {
+      ...acme,
+      name: "ABC AND SONS",
+      slug: "abc-and-sons",
+      enrichment: undefined,
+    };
+    const { endpoint } = harness(
+      parentLeaderboard([{ raw: "ABC & Sons", row: abc }]),
+    );
+    const identity = await endpoint.resolveSupplier("abc-and-sons");
+    expect(identity.slug).toBe("abc-and-sons");
+    expect(identity.name).toBe("ABC AND SONS");
+  });
+
+  it("still requires an exact slug match on the broadened search", async () => {
+    // A shorter term returns more companies, so the guard that matters is the
+    // one that was already there: the near miss must not be picked up.
+    const { endpoint } = harness(
+      parentLeaderboard([
+        { raw: "Acme Civils Holdings", row: acmeHoldings },
+        { raw: "Acme Civil Works", row: { ...acme, slug: "acme-civil-works" } },
+      ]),
+    );
+    await expect(
+      endpoint.resolveSupplier("acme-civils-pty-ltd"),
+    ).rejects.toMatchObject({ kind: "not-found" });
   });
 
   it("reads the snake_case meta this route returns, not camelCase (H4)", async () => {
@@ -425,10 +563,18 @@ describe("supplier profile — forensic workbench row (contract B)", () => {
     expect(result.access.capabilities.advancedFilters).toBe(false);
   });
 
-  it("matches on slug rather than on name", async () => {
+  it("does not return another company's row just because it came back", async () => {
+    // The near miss is a real, different supplier: both its own slug and the
+    // leaderboard spelling of its name differ from the one asked for.
     const { endpoint } = harness(() =>
       jsonResponse(
-        forensicSearch([{ ...acmeForensicRow, slug: "acme-civils-holdings" }]),
+        forensicSearch([
+          {
+            ...acmeForensicRow,
+            name: "Acme Civils Holdings",
+            slug: "acme-civils-holdings",
+          },
+        ]),
       ),
     );
     const result = await endpoint.getForensicRow(
@@ -436,6 +582,74 @@ describe("supplier profile — forensic workbench row (contract B)", () => {
       "acme-civils-pty-ltd",
     );
     expect(result.row).toBeNull();
+  });
+
+  it("matches a row whose slug spells '&' differently from the leaderboard's", async () => {
+    // The workbench slugs the raw `supplier_name` (`forensic-search.ts:643`)
+    // and the leaderboard the normalised one, so the same company is
+    // `abc-sons` on one route and `abc-and-sons` on the other. Comparing only
+    // `row.slug` means the forensic panel is empty for every supplier whose
+    // name holds an ampersand.
+    const { endpoint } = harness(() =>
+      jsonResponse(
+        forensicSearch([
+          {
+            ...acmeForensicRow,
+            id: "supplier:abc-sons",
+            name: "ABC & Sons",
+            slug: "abc-sons",
+          },
+        ]),
+      ),
+    );
+    const result = await endpoint.getForensicRow(
+      "ABC AND SONS",
+      "abc-and-sons",
+    );
+    expect(result.row?.slug).toBe("abc-sons");
+    expect(result.row?.beeLevel).toBe("Level 1");
+  });
+
+  it("retries with a shorter term when the canonical name matches nothing", async () => {
+    // This route substring-matches `q` against the raw column too
+    // (`forensic-search.ts:210-217`), so the canonical uppercase name and the
+    // full deslug both miss a stored "Acme Civils (Pty) Ltd".
+    const seen: string[] = [];
+    const { endpoint } = harness((url) => {
+      const q = new URL(url).searchParams.get("q") ?? "";
+      seen.push(q);
+      const hit = "Acme Civils (Pty) Ltd"
+        .toLowerCase()
+        .includes(q.toLowerCase());
+      return jsonResponse(forensicSearch(hit ? [acmeForensicRow] : []));
+    });
+    const result = await endpoint.getForensicRow(
+      "ACME CIVILS PTY LTD",
+      "acme-civils-pty-ltd",
+    );
+    expect(result.row?.slug).toBe("acme-civils-pty-ltd");
+    expect(seen).toEqual([
+      "ACME CIVILS PTY LTD",
+      "acme civils pty ltd",
+      "acme civils",
+    ]);
+  });
+
+  it("does not retry under preview, where a broader term cannot help", async () => {
+    // Preview caps the response at 8 rows on page 1, so a wider search only
+    // costs requests.
+    const seen: string[] = [];
+    const { endpoint } = harness((url) => {
+      seen.push(new URL(url).searchParams.get("q") ?? "");
+      return jsonResponse(forensicSearch([], true, false));
+    });
+    const result = await endpoint.getForensicRow(
+      "ACME CIVILS PTY LTD",
+      "acme-civils-pty-ltd",
+    );
+    expect(result.row).toBeNull();
+    expect(result.preview).toBe(true);
+    expect(seen).toHaveLength(1);
   });
 });
 
@@ -1344,6 +1558,54 @@ describe("supplier profile screen — register mismatch (R-S11)", () => {
     expect(screen.queryByText("2014/123456/07")).toBeNull();
     expect(screen.queryByText("N1 resurfacing, section 12")).toBeNull();
   });
+
+  it("makes no claim about buyers either, since that timeline was emptied too", async () => {
+    // The buyers panel derives from the same emptied timeline. "No buyer or
+    // frequency detail is recorded here" would be a statement about the
+    // company drawn from a record that was never trusted.
+    renderProfile({
+      getPublicRecord: async () => ({
+        matched: false,
+        supplierName: "Beta Roadworks",
+        cipcData: null,
+        forensicRiskScore: null,
+        forensicFlags: [],
+        flagCount: 0,
+        awardTimeline: [],
+        timelineAtCap: false,
+        flagsAtCap: false,
+      }),
+    });
+    await settled();
+    const buyers = screen
+      .getByRole("heading", { name: "Known buyers and award frequency" })
+      .closest("section") as HTMLElement;
+    expect(
+      within(buyers).getByText(VERDICT_DETAIL.registerMismatch),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("No buyer or frequency detail is recorded here."),
+    ).toBeNull();
+  });
+});
+
+describe("supplier profile screen — report access (R-S14)", () => {
+  it("renders an approved claim, which the access panel counted but never showed", async () => {
+    renderProfile({
+      getReportAccess: async () => ({
+        established: true,
+        isPro: false,
+        isPurchased: false,
+        isClaimed: false,
+        pendingForCurrentUser: false,
+        hasApprovedClaimForCurrentUser: true,
+      }),
+    });
+    await settled();
+    expect(
+      screen.getByText("Your claim on this profile has been approved."),
+    ).toBeVisible();
+  });
 });
 
 /* ------------------------------------------------------------------ *
@@ -1420,6 +1682,38 @@ describe("supplier intelligence list — forensic overlay (R-S13)", () => {
     expect(screen.getByText(/B-BBEE Level 1/)).toBeVisible();
     expect(
       screen.getByText(/1 active restricted-supplier record/),
+    ).toBeVisible();
+  });
+
+  it("merges a row whose slug spells '&' differently from the list's", async () => {
+    // Same slug-namespace split as `getForensicRow`: the workbench slugs the
+    // raw supplier name, the leaderboard the normalised one. Keyed on
+    // `row.slug` alone, the overlay silently matches nothing for any company
+    // whose name holds an ampersand — and the list then looks like a company
+    // with no risk data.
+    const endpoint = {
+      search: async () => ({
+        companies: [
+          { ...acme, name: "ABC AND SONS", slug: "abc-and-sons" },
+        ] as never[],
+        total: 1,
+        page: 1,
+        totalPages: 1,
+        hasNext: false,
+      }),
+    } as unknown as ListEndpoint;
+    const forensic = {
+      searchForensicSuppliers: async () => ({
+        rows: [{ ...acmeForensicRow, name: "ABC & Sons", slug: "abc-sons" }],
+        preview: false,
+        access: access(true),
+      }),
+    };
+    render(
+      <SupplierIntelligence endpoint={endpoint} forensic={forensic as never} />,
+    );
+    expect(
+      await screen.findByText(/Published risk indicator 34/),
     ).toBeVisible();
   });
 

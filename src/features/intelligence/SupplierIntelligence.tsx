@@ -6,9 +6,10 @@ import {
   type IntelligenceCompany,
   type SupplierIntelligenceEndpoint,
 } from "../../services/api/endpoints/supplier-intelligence";
-import type {
-  ForensicOverlayPort,
-  ForensicRow,
+import {
+  awardSlugFromName,
+  type ForensicOverlayPort,
+  type ForensicRow,
 } from "../../services/api/endpoints/supplier-profile";
 import { TIER } from "./supplier-profile-copy";
 import { PROVINCES } from "../tenders/tender-filter-options";
@@ -90,13 +91,24 @@ export function SupplierIntelligence({
     (H6), so merging it into a 20-row page would enrich a handful of rows and
     leave the rest bare — which reads as "these companies have no risk data"
     when the real cause is the plan. One honest line replaces it.
+
+    Even unlocked, this overlay covers only the rows the workbench page
+    happens to contain. The two routes filter, sort and group differently and
+    paginate independently, so the same page number is not the same set of
+    companies. A row without an overlay is **not** evidence of a company with
+    a clean record — which is why nothing is rendered in its place.
   */
   const overlayLocked = overlayPage?.preview === true;
-  const overlayBySlug = new Map<string, ForensicRow>(
-    overlayLocked || !overlayPage
-      ? []
-      : overlayPage.rows.map((row) => [row.slug, row]),
-  );
+  const overlayBySlug = new Map<string, ForensicRow>();
+  if (overlayPage && !overlayLocked) {
+    for (const row of overlayPage.rows) {
+      // The workbench slugs the raw supplier name and the leaderboard the
+      // normalised one, so a row is keyed under both spellings or it never
+      // matches a company on this list.
+      overlayBySlug.set(row.slug, row);
+      overlayBySlug.set(awardSlugFromName(row.name), row);
+    }
+  }
 
   return (
     <section aria-labelledby="suppliers-heading" className="max-w-4xl">

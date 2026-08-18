@@ -256,6 +256,39 @@ webview by policy.
 `radar-workspace-model.ts`, `TenderRadar.tsx` and their tests are **not**
 edited (R-C15).
 
+## 6b. Known parent limitation — legacy `Json?` rows cannot round-trip
+
+Recorded, not fixed. Fixing it is parent work and outside the desktop role.
+
+`equipmentAssets`, `professionalBodies` and `keyPersonnel.certifications` are
+untyped `Json?` columns, so rows written by other paths can hold any shape. The
+parent's **write** schemas require a string `name` on every entry and are plain
+`z.object` in strip mode:
+
+| Route | Lines |
+|---|---|
+| `POST /api/v1/company/profile/extended` | `route.ts:36-40`, `:48-52` |
+| `POST /api/v1/company/personnel` | `route.ts:29-33` |
+| `PUT /api/v1/company/personnel/[id]` | `route.ts:38-42` |
+
+Two consequences, both of which the desktop now handles honestly rather than
+working around:
+
+1. **A row with no usable name cannot be written back at all.** Attaching it to
+   the request 400s the *whole* save, so any company holding one legacy row
+   could never save its profile again. The desktop salvages rows that name
+   themselves under `title`/`label`/`item` (`company.ts:salvageNamedRow`),
+   excludes the rest, and the editors state plainly that saving will drop them
+   — instead of the earlier copy promising they would be "kept exactly as they
+   are", which was the opposite of what happened.
+2. **Extra keys on a *matching* row do not survive the round trip.** The
+   desktop's own schemas now `.passthrough()`, so the desktop is no longer what
+   drops them, but the parent strips them server-side on save regardless.
+
+The durable fix is `.passthrough()` on those four array item schemas in the
+parent. Until then, opening and saving a profile is lossy for legacy rows, and
+the desktop's job is to say so before the user presses Save.
+
 ## 7. What this design refuses to do
 
 - No parent-repository change, including the missing `GET /profile/cidb`

@@ -393,9 +393,7 @@ function ProfileOverview({
             </Row>
             <Row label="B-BBEE certificate">
               {company.bbbeeCertificateUrl ? (
-                <ExternalLink href={company.bbbeeCertificateUrl}>
-                  View certificate
-                </ExternalLink>
+                <RecordUrl href={company.bbbeeCertificateUrl} />
               ) : (
                 notRecorded()
               )}
@@ -466,9 +464,7 @@ function ProfileOverview({
           </Row>
           <Row label="Profile document">
             {profile?.profileDocument ? (
-              <ExternalLink href={profile.profileDocument}>
-                Open document
-              </ExternalLink>
+              <RecordUrl href={profile.profileDocument} />
             ) : (
               notRecorded()
             )}
@@ -799,18 +795,14 @@ function ExperienceRow({
         </Row>
         <Row label="Completion certificate">
           {record.completionCertUrl ? (
-            <ExternalLink href={record.completionCertUrl}>
-              View completion certificate
-            </ExternalLink>
+            <RecordUrl href={record.completionCertUrl} />
           ) : (
             notRecorded()
           )}
         </Row>
         <Row label="Reference letter">
           {record.referenceLetterUrl ? (
-            <ExternalLink href={record.referenceLetterUrl}>
-              View letter
-            </ExternalLink>
+            <RecordUrl href={record.referenceLetterUrl} />
           ) : (
             notRecorded()
           )}
@@ -912,11 +904,7 @@ function PersonnelRow({
         <Row label="Email">{record.email ?? notRecorded()}</Row>
         <Row label="Phone">{record.phone ?? notRecorded()}</Row>
         <Row label="CV">
-          {record.cvUrl ? (
-            <ExternalLink href={record.cvUrl}>Open CV</ExternalLink>
-          ) : (
-            notRecorded()
-          )}
+          {record.cvUrl ? <RecordUrl href={record.cvUrl} /> : notRecorded()}
         </Row>
       </dl>
       {record.qualifications && (
@@ -1069,23 +1057,17 @@ function Row({
   );
 }
 
-function ExternalLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer noopener"
-      className="text-primary underline"
-    >
-      {children}
-    </a>
-  );
+/**
+ * A URL the record holds, shown as text.
+ *
+ * Opening an external URL needs a Tauri `opener:`/`shell:` permission that
+ * `src-tauri/capabilities/default.json` deliberately withholds ("No shell,
+ * URL-opening, path-opening, or broad filesystem access is granted"), so an
+ * anchor here is an affordance that does nothing. The Supplier Profile screen
+ * shows URLs the same way, for the same reason.
+ */
+function RecordUrl({ href }: { href: string }) {
+  return <span className="break-all text-sm text-foreground">{href}</span>;
 }
 
 function notRecorded() {

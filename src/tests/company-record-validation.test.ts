@@ -24,9 +24,10 @@ describe("experience draft validation", () => {
     if (!result.ok) expect(result.errors.projectName).toBeDefined();
   });
 
-  it("omits empty optional fields rather than sending null", () => {
-    // `PUT` maps a falsy date to `undefined`, so sending null would imply a
-    // clearing behaviour the parent does not have.
+  it("sends null for an empty nullable field, so clearing it clears it", () => {
+    // `PUT` spreads only the keys present in the body
+    // (`experiences/[id]/route.ts:97-104`), so an omitted key leaves the
+    // stored value in place and the user watches their edit come back.
     const result = validateExperienceDraft({
       ...emptyExperienceDraft(),
       projectName: "Depot upgrade",
@@ -36,9 +37,21 @@ describe("experience draft validation", () => {
       expect(result.value).toEqual({
         projectName: "Depot upgrade",
         currency: "ZAR",
+        clientName: null,
+        clientType: null,
+        contractValue: null,
+        referenceContact: null,
+        referenceEmail: null,
+        description: null,
+        categoryRelevance: [],
+        provinceRelevance: [],
+        completionCertUrl: null,
+        referenceLetterUrl: null,
       });
+      // Dates are the exception: the update route maps a falsy date to
+      // `undefined`, so no value sent from here can clear one.
       expect("startDate" in result.value).toBe(false);
-      expect("referenceEmail" in result.value).toBe(false);
+      expect("completionDate" in result.value).toBe(false);
     }
   });
 
@@ -105,8 +118,20 @@ describe("experience draft validation", () => {
       expect(result.value.projectName).toBe("Depot upgrade");
       expect(result.value.contractValue).toBe(4_500_000);
       expect(result.value.categoryRelevance).toEqual(["construction", "roads"]);
-      expect("referenceLetterUrl" in result.value).toBe(false);
+      expect(result.value.referenceLetterUrl).toBeNull();
     }
+  });
+
+  it("clears an emptied relevance list with [], which the parent honours", () => {
+    // These feed tender matching. Omitting the key would leave the removed
+    // categories in place and keep matching against them.
+    const result = validateExperienceDraft({
+      ...emptyExperienceDraft(),
+      projectName: "Depot",
+      categoryRelevance: "",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.categoryRelevance).toEqual([]);
   });
 });
 
@@ -145,6 +170,20 @@ describe("personnel draft validation", () => {
       expect(result.value.certifications).toEqual([
         { name: "PrEng", issuer: "ECSA" },
       ]);
+    }
+  });
+
+  it("sends null for an emptied certification list, so it can be cleared", () => {
+    const result = validatePersonnelDraft({
+      ...emptyPersonnelDraft(),
+      fullName: "N. Dlamini",
+      role: "PM",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.certifications).toBeNull();
+      expect(result.value.department).toBeNull();
+      expect(result.value.yearsExperience).toBeNull();
     }
   });
 

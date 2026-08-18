@@ -102,6 +102,96 @@ export function deslugForSearch(slug: string): string {
   return slug.replace(/-+/g, " ").trim();
 }
 
+/**
+ * The **leaderboard** slug, reproduced from a raw supplier name.
+ *
+ * The two surfaces slug a supplier from *different strings*. The leaderboard
+ * slugs `supplierNormalizedName` — `normalizeCompanyName` output — after
+ * sanitising it (`company-intelligence.ts:426-434`); the forensic workbench
+ * slugs the raw `tender_awards.supplier_name` it picked for the group
+ * (`forensic-search.ts:378,643`). `normalizeCompanyName` rewrites far more
+ * than `sanitizeCompanyName` does, so `ABC & Sons` slugs to `abc-and-sons` on
+ * one route and `abc-sons` on the other, and a workbench row would never
+ * match its own leaderboard company.
+ *
+ * **A partial reproduction, deliberately.** The separator and punctuation
+ * rules (`company-name.ts:80-88`) are reproduced because they are short and
+ * stable. The trading-as split (R6) and the legal-form synonym table (R7,
+ * `legal-forms.ts`) are **not**: copying that table into the desktop would be
+ * a second copy of a list that changes. So a name carrying `T/A` or an
+ * Afrikaans legal form still produces a slug that will not match, and those
+ * suppliers fall back to the other comparison this module makes rather than
+ * being claimed as matched.
+ */
+export function awardSlugFromName(name: string): string {
+  const normalized = name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[()[\]{}]/g, " ")
+    .replace(/&/g, " and ")
+    .replace(/[/\\_–—-]/g, " ")
+    .replace(/['".,;:]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  return normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+/** True when a workbench row is the supplier this leaderboard slug names. */
+export function isSameSupplier(
+  candidate: { slug: string; name: string },
+  slug: string,
+): boolean {
+  return candidate.slug === slug || awardSlugFromName(candidate.name) === slug;
+}
+
+/**
+ * Tokens a slug carries that the raw stored name may not spell the same way.
+ * `(Pty) Ltd` slugs to `-pty-ltd`; `&` slugs to `-and-`.
+ */
+const SLUG_ONLY_TOKENS = new Set([
+  "and",
+  "pty",
+  "ltd",
+  "limited",
+  "cc",
+  "inc",
+  "npc",
+  "soc",
+  "co",
+  "t",
+  "a",
+  "the",
+]);
+
+/**
+ * Search terms to try, most specific first, when resolving a slug.
+ *
+ * **A slug is not a substring of the name it came from.** Both search routes
+ * filter `q` with a substring match against the *raw* `supplier_name`
+ * (`company-intelligence.ts:99`, `forensic-search.ts:210-217`), while the slug
+ * is built from the normalised name — so the full deslugged string matches
+ * nothing for the commonest South African legal form: `acme-civils-pty-ltd`
+ * searches for `acme civils pty ltd` and the stored value is
+ * `ACME CIVILS (PTY) LTD`.
+ *
+ * Each term is a prefix of the deslugged name, shortened one step at a time
+ * and stopping before the first slug-only token. Longest first, so the
+ * narrowest search that can work is used; a broader term can only lengthen the
+ * scan, never produce a wrong answer, because the caller still requires an
+ * exact slug match on the rows that come back.
+ */
+export function slugSearchTerms(slug: string): string[] {
+  const words = deslugForSearch(slug).split(" ").filter(Boolean);
+  if (words.length === 0) return [];
+  const firstSlugOnly = words.findIndex((word) => SLUG_ONLY_TOKENS.has(word));
+  const safeLength = firstSlugOnly === -1 ? words.length : firstSlugOnly;
+  const lengths = [words.length, safeLength, 2, 1].filter(
+    (length) => length >= 1 && length <= words.length,
+  );
+  return [...new Set(lengths.map((n) => words.slice(0, n).join(" ")))];
+}
+
 /* ------------------------------------------------------------------ *
  * Forensic workbench row (contract B)
  * ------------------------------------------------------------------ */
@@ -330,8 +420,10 @@ const PUBLIC_TIMELINE_CAP = 10;
 
 export interface SupplierPublicRecord {
   /**
-   * False when contract C resolved the slug to a different company (H2).
-   * When false, every field below is empty — see `getPublicRecord`.
+   * False when the name contract C echoed back is not the deslugged slug the
+   * desktop asked for — i.e. slug-generation drift, not a different company:
+   * the route echoes its own input rather than a resolved record. See
+   * `getPublicRecord`. When false, every field below is empty.
    */
   matched: boolean;
   /** What contract C thinks the slug means. Shown only to explain a mismatch. */
@@ -499,38 +591,46 @@ export class SupplierProfileEndpoint extends AuthenticatedEndpoint {
    * it has more award value, and rendering that company's registration
    * details under the requested slug would be a wrong answer wearing a
    * confident face.
+   *
+   * **Several search terms are tried, not one.** `q` is substring-matched
+   * against the *raw* `supplier_name` column while the slug is built from the
+   * normalised name, so the full deslugged slug finds nothing for the
+   * commonest South African legal form — see {@link slugSearchTerms}. The
+   * exact-slug requirement is unchanged, so a broader term costs a request
+   * and cannot return a different company.
    */
   async resolveSupplier(
     slug: string,
     signal?: AbortSignal,
   ): Promise<SupplierIdentity> {
-    const body = await this.transport.request({
-      method: "GET",
-      path: "/api/tools/company-intelligence/search",
-      query: {
-        q: deslugForSearch(slug) || undefined,
-        mode: "company",
-        page: 1,
-        per_page: IDENTITY_SCAN_PER_PAGE,
-      },
-      schema: leaderboardSearchSchema,
-      headers: await this.authHeaders(),
-      signal,
-    });
-
-    const match = body.data.find((row) => row.slug === slug);
-    if (!match) {
-      // `not-found` rather than a thrown string: `describeApiError` renders it
-      // as "This supplier could not be found.", which is true and is not a
-      // crash. A `malformed` here would blame the parent for a slug the user
-      // may simply have mistyped or bookmarked before a rename.
-      throw new ApiError({
-        kind: "not-found",
-        message: "No company matches this slug",
+    const terms = slugSearchTerms(slug);
+    for (const term of terms.length ? terms : [""]) {
+      const body = await this.transport.request({
+        method: "GET",
+        path: "/api/tools/company-intelligence/search",
+        query: {
+          q: term || undefined,
+          mode: "company",
+          page: 1,
+          per_page: IDENTITY_SCAN_PER_PAGE,
+        },
+        schema: leaderboardSearchSchema,
+        headers: await this.authHeaders(),
+        signal,
       });
+
+      const match = body.data.find((row) => row.slug === slug);
+      if (match) return { slug, name: match.name, company: match };
     }
 
-    return { slug, name: match.name, company: match };
+    // `not-found` rather than a thrown string: `describeApiError` renders it
+    // as "This supplier could not be found.", which is true and is not a
+    // crash. A `malformed` here would blame the parent for a slug the user
+    // may simply have mistyped or bookmarked before a rename.
+    throw new ApiError({
+      kind: "not-found",
+      message: "No company matches this slug",
+    });
   }
 
   /**
@@ -542,25 +642,42 @@ export class SupplierProfileEndpoint extends AuthenticatedEndpoint {
    * (`forensic-search.ts:183-199`), so a missing row means "outside the
    * preview" as often as it means "not recorded" — which is why `preview` and
    * `access` come back alongside the row instead of being flattened away.
+   *
+   * The canonical name is tried first, then the same shortened terms
+   * {@link slugSearchTerms} builds, because this route substring-matches `q`
+   * against the raw column too.
    */
   async getForensicRow(
     name: string,
     slug: string,
     signal?: AbortSignal,
   ): Promise<ForensicRowResult> {
-    const page = await this.searchForensicSuppliers(
-      { q: name, perPage: IDENTITY_SCAN_PER_PAGE },
+    const attempts = [...new Set([name, ...slugSearchTerms(slug)])].filter(
+      Boolean,
+    );
+    let page = await this.searchForensicSuppliers(
+      { q: attempts[0], perPage: IDENTITY_SCAN_PER_PAGE },
       signal,
     );
+    // Matched on either slug spelling: the workbench slugs the raw supplier
+    // name and the leaderboard the normalised one (`forensic-search.ts:643`,
+    // `company-intelligence.ts:434`), so the two differ whenever the name
+    // holds `&`, `/`, `T/A` or trailing punctuation.
+    let row =
+      page.rows.find((candidate) => isSameSupplier(candidate, slug)) ?? null;
 
-    return {
-      // Matched on slug, not on name: both surfaces build it with the same
-      // generator (`forensic-search.ts:641`, `company-intelligence.ts:434`),
-      // so it is the one key guaranteed to mean the same thing on both.
-      row: page.rows.find((candidate) => candidate.slug === slug) ?? null,
-      preview: page.preview,
-      access: page.access,
-    };
+    // Under preview the route caps at 8 rows on page 1, so a broader term
+    // cannot surface the row — retrying would only cost requests.
+    for (let i = 1; !row && !page.preview && i < attempts.length; i++) {
+      page = await this.searchForensicSuppliers(
+        { q: attempts[i], perPage: IDENTITY_SCAN_PER_PAGE },
+        signal,
+      );
+      row =
+        page.rows.find((candidate) => isSameSupplier(candidate, slug)) ?? null;
+    }
+
+    return { row, preview: page.preview, access: page.access };
   }
 
   /**
@@ -608,15 +725,29 @@ export class SupplierProfileEndpoint extends AuthenticatedEndpoint {
    * **The route resolves its slug with `slug.replace(/-/g, ' ')`** and then
    * matches the stored supplier name case-insensitively (H2). Slugs are built
    * by deleting `()[]{}` before hyphenating, so `"Acme Civils (Pty) Ltd"`
-   * becomes `acme-civils-pty-ltd` and comes back as `"acme civils pty ltd"` —
+   * becomes `acme-civils-pty-ltd` and is matched as `"acme civils pty ltd"` —
    * a string that matches nothing. Because `(Pty) Ltd` is the commonest South
-   * African legal form, this route silently describes the wrong company, or
-   * no company, for a large share of real suppliers.
+   * African legal form, the award timeline comes back empty for a large share
+   * of real suppliers.
    *
-   * So the response is **verified before it is trusted**, and on a mismatch
-   * every field is emptied here rather than left for each panel to guard. A
-   * panel added later cannot then render another company's registration
-   * number by forgetting to check a flag.
+   * **The route echoes its input.** `supplierName` in the response is
+   * `slug.replace(/-/g, ' ')`, not the row it resolved
+   * (`forensic/supplier/[slug]/route.ts:15,42`), so the comparison below can
+   * only catch slug-generation drift between the desktop and the parent — it
+   * cannot detect that the route described a different company. The CIPC half
+   * is safe regardless: `ensureEnriched` resolves through
+   * `normalizeCompanyName` (`cipc/enrichment.ts:12`), the same key the
+   * leaderboard groups by. The award timeline is the exposed half — it
+   * matches `supplierName` exactly against the raw column, so it comes back
+   * empty for punctuated names. That case is detected downstream, where
+   * `describeEvidence` compares the empty timeline against the leaderboard's
+   * own `totalAwards` and says "Limited public data" rather than inventing a
+   * claim about the company.
+   *
+   * The emptying branch is kept as a cheap guard against that drift, and on a
+   * mismatch every field is emptied here rather than left for each panel to
+   * guard. A panel added later cannot then render another company's
+   * registration number by forgetting to check a flag.
    *
    * No `x-pro-access` header is sent (H3): it is a client-assertable access
    * gate, and asserting it is privilege escalation, not a feature. The

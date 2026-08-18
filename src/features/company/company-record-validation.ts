@@ -15,10 +15,18 @@
  * refuses to update — a record you can make but never edit. So the stricter
  * update rules are applied to **both** paths, here, in one place.
  *
- * Empty means *omit the key*, never `null`. The update route maps a falsy
- * date to `undefined` (`experiences/[id]/route.ts:101-102`), which Prisma
- * ignores, so a stored date cannot be cleared from the desktop at all; the
- * editors say so rather than offering a control that does nothing.
+ * Empty means `null`, so that clearing a field clears it. The update route
+ * spreads only the keys present in the validated body
+ * (`experiences/[id]/route.ts:97-104`), so an omitted key leaves the stored
+ * value in place — a user who emptied a field and saved would watch it come
+ * back. Every field both routes accept as nullable is therefore always
+ * emitted.
+ *
+ * **Dates are the exception**: the update route maps a falsy date to
+ * `undefined` (`experiences/[id]/route.ts:101-102`), which Prisma ignores, so
+ * a stored date cannot be cleared from the desktop at all whatever is sent.
+ * They stay omitted and the editors say so rather than offering a control
+ * that does nothing.
  */
 
 import type {
@@ -67,13 +75,19 @@ export interface PersonnelDraft {
   cvUrl: string;
   email: string;
   phone: string;
-  certifications: PersonnelCertification[];
+  certifications: (PersonnelCertification & UnknownJsonRow)[];
   /**
-   * Certification rows whose shape the editor cannot present as fields. Kept
-   * out of the form but written back, because the parent replaces the whole
-   * array on save.
+   * Certification rows whose shape the editor cannot present as fields but
+   * which carry a usable name. Kept out of the form and written back, because
+   * the parent replaces the whole array on save.
    */
-  preservedCertifications: UnknownJsonRow[];
+  preservedCertifications: ({ name: string } & UnknownJsonRow)[];
+  /**
+   * Rows that cannot be written back at all: the parent's schema requires a
+   * string `name` on every entry, so sending them 400s the save. Counted so
+   * the form can say plainly that saving drops them.
+   */
+  unwritableCertifications: number;
 }
 
 export type PersonnelField = keyof PersonnelDraft;
@@ -109,6 +123,7 @@ export function emptyPersonnelDraft(): PersonnelDraft {
     phone: "",
     certifications: [],
     preservedCertifications: [],
+    unwritableCertifications: 0,
   };
 }
 
@@ -136,15 +151,15 @@ function isUrl(value: string): boolean {
 /**
  * Validates a URL field to the stricter update bar.
  *
- * Returns `undefined` for empty (the key is then omitted) and an error
- * message when present but unparsable.
+ * `value: null` for empty — the key is still sent, so clearing the field
+ * clears the stored value — and an error message when present but unparsable.
  */
 function urlField(
   value: string,
   label: string,
-): { value?: string; error?: string } {
+): { value?: string | null; error?: string } {
   const trimmed = value.trim();
-  if (!trimmed) return {};
+  if (!trimmed) return { value: null };
   if (!isUrl(trimmed)) {
     return {
       error: `${label} must be a full web address, including https://.`,
@@ -156,9 +171,9 @@ function urlField(
 function emailField(
   value: string,
   label: string,
-): { value?: string; error?: string } {
+): { value?: string | null; error?: string } {
   const trimmed = value.trim();
-  if (!trimmed) return {};
+  if (!trimmed) return { value: null };
   if (!EMAIL.test(trimmed)) {
     return { error: `${label} must be a valid email address.` };
   }
@@ -189,20 +204,23 @@ export function validateExperienceDraft(
     errors.projectName = "Project name is required.";
   }
 
-  const clientName = draft.clientName.trim();
-  if (clientName) write.clientName = clientName;
+  // `null` rather than omission for every nullable field: see the module
+  // comment. An omitted key leaves the stored value untouched.
+  write.clientName = draft.clientName.trim() || null;
 
   const clientType = draft.clientType.trim();
-  if (clientType) {
-    if (!(CLIENT_TYPES as readonly string[]).includes(clientType)) {
-      errors.clientType = "Client type must be Government, Private or SOE.";
-    } else {
-      write.clientType = clientType as ClientType;
-    }
+  if (!clientType) {
+    write.clientType = null;
+  } else if (!(CLIENT_TYPES as readonly string[]).includes(clientType)) {
+    errors.clientType = "Client type must be Government, Private or SOE.";
+  } else {
+    write.clientType = clientType as ClientType;
   }
 
   const contractValue = draft.contractValue.trim();
-  if (contractValue) {
+  if (!contractValue) {
+    write.contractValue = null;
+  } else {
     const parsed = Number(contractValue);
     if (!Number.isFinite(parsed) || parsed < 0) {
       errors.contractValue = "Contract value must be a positive amount.";
@@ -230,29 +248,27 @@ export function validateExperienceDraft(
     errors.completionDate = "Completion date cannot be before the start date.";
   }
 
-  const referenceContact = draft.referenceContact.trim();
-  if (referenceContact) write.referenceContact = referenceContact;
+  write.referenceContact = draft.referenceContact.trim() || null;
 
   const referenceEmail = emailField(draft.referenceEmail, "Reference email");
   if (referenceEmail.error) errors.referenceEmail = referenceEmail.error;
-  else if (referenceEmail.value) write.referenceEmail = referenceEmail.value;
+  else write.referenceEmail = referenceEmail.value ?? null;
 
-  const description = draft.description.trim();
-  if (description) write.description = description;
+  write.description = draft.description.trim() || null;
 
-  const categoryRelevance = lines(draft.categoryRelevance);
-  if (categoryRelevance.length) write.categoryRelevance = categoryRelevance;
-
-  const provinceRelevance = lines(draft.provinceRelevance);
-  if (provinceRelevance.length) write.provinceRelevance = provinceRelevance;
+  // `[]` is the clear here: the create route rejects null for these two, and
+  // they feed tender matching, so an emptied list that silently no-oped would
+  // keep matching against categories the user had removed.
+  write.categoryRelevance = lines(draft.categoryRelevance);
+  write.provinceRelevance = lines(draft.provinceRelevance);
 
   const certUrl = urlField(draft.completionCertUrl, "Completion certificate");
   if (certUrl.error) errors.completionCertUrl = certUrl.error;
-  else if (certUrl.value) write.completionCertUrl = certUrl.value;
+  else write.completionCertUrl = certUrl.value ?? null;
 
   const letterUrl = urlField(draft.referenceLetterUrl, "Reference letter");
   if (letterUrl.error) errors.referenceLetterUrl = letterUrl.error;
-  else if (letterUrl.value) write.referenceLetterUrl = letterUrl.value;
+  else write.referenceLetterUrl = letterUrl.value ?? null;
 
   return Object.keys(errors).length
     ? { ok: false, errors }
@@ -271,14 +287,13 @@ export function validatePersonnelDraft(
   if (!write.fullName) errors.fullName = "Full name is required.";
   if (!write.role) errors.role = "Role is required.";
 
-  const department = draft.department.trim();
-  if (department) write.department = department;
-
-  const qualifications = draft.qualifications.trim();
-  if (qualifications) write.qualifications = qualifications;
+  write.department = draft.department.trim() || null;
+  write.qualifications = draft.qualifications.trim() || null;
 
   const yearsExperience = draft.yearsExperience.trim();
-  if (yearsExperience) {
+  if (!yearsExperience) {
+    write.yearsExperience = null;
+  } else {
     const parsed = Number(yearsExperience);
     if (!Number.isInteger(parsed) || parsed < 0) {
       errors.yearsExperience =
@@ -290,22 +305,24 @@ export function validatePersonnelDraft(
 
   const cvUrl = urlField(draft.cvUrl, "CV link");
   if (cvUrl.error) errors.cvUrl = cvUrl.error;
-  else if (cvUrl.value) write.cvUrl = cvUrl.value;
+  else write.cvUrl = cvUrl.value ?? null;
 
   const email = emailField(draft.email, "Email");
   if (email.error) errors.email = email.error;
-  else if (email.value) write.email = email.value;
+  else write.email = email.value ?? null;
 
-  const phone = draft.phone.trim();
-  if (phone) write.phone = phone;
+  write.phone = draft.phone.trim() || null;
 
-  // Unrecognised rows are appended rather than dropped: `PUT` replaces the
-  // whole array, so anything the editor omits is deleted.
+  // Salvaged rows are appended rather than dropped: `PUT` replaces the whole
+  // array, so anything the editor omits is deleted. Rows with no usable
+  // `name` are excluded — the parent's schema requires one and the save would
+  // 400 with them attached; `unwritableCertifications` counts those so the
+  // form can say so.
   const certifications = [
     ...draft.certifications.filter((item) => item.name?.trim()),
     ...draft.preservedCertifications,
   ];
-  if (certifications.length) write.certifications = certifications;
+  write.certifications = certifications.length ? certifications : null;
 
   return Object.keys(errors).length
     ? { ok: false, errors }

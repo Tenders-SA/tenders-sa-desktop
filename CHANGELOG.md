@@ -115,6 +115,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Supplier Profile now opens for companies whose name carries a legal form or
+  an ampersand — `Acme Civils (Pty) Ltd`, `ABC & Sons` and the like. These
+  previously reported "This supplier could not be found", which covered a large
+  share of real South African suppliers.
+- The risk, B-BBEE and restricted-supplier signals on Supplier Profile and on
+  the Supplier Intelligence list now appear for those same companies, instead
+  of leaving the panel empty as though nothing were recorded.
+- The buyers panel on Supplier Profile no longer says "No buyer or frequency
+  detail is recorded here" when the underlying register lookup did not match.
+  It asks for manual verification, as the neighbouring panels already did.
+- An approved claim on a supplier's report is now shown in the access panel; it
+  was counted but never displayed.
+- Company Profile can now be saved by companies whose equipment, professional
+  body or certification lists hold entries written in an older format. Saving
+  previously failed outright for them. Entries that can be recovered are kept;
+  those that cannot are named in the form before you save, rather than being
+  promised as preserved and then lost.
+- Clearing a field on a project or team-member record now clears it. Emptying
+  the client name, contract value, description, reference details or the
+  category and province relevance lists previously left the stored value in
+  place, so the change reappeared on the next open. Dates remain unclearable —
+  the editors already say so.
+- Links to a B-BBEE certificate, profile document, completion certificate,
+  reference letter or CV are now shown as their address rather than as a link
+  that could not open anything in the desktop app.
 - The Opportunities screen now opens and lists your shortlisted tenders
   instead of reporting that they could not be loaded. It also states plainly
   that it holds tenders awaiting a bid decision, rather than implying it shows

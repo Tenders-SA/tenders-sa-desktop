@@ -328,12 +328,59 @@ export interface PersonnelCertification {
  * A row of a `Json?` column written by some other path, whose shape the
  * documented type does not describe.
  *
- * These rows are carried through an edit verbatim. The alternative — writing
- * back only the rows the desktop understood — would make *opening and saving*
- * the profile delete real company data, which is a far worse failure than
- * rendering it plainly.
+ * These rows are rendered plainly rather than dropped. Writing them **back**
+ * is a different matter: every parent write schema for these columns requires
+ * a string `name` on each entry (`profile/extended/route.ts:36,48`,
+ * `personnel/route.ts:29`, `personnel/[id]/route.ts:38`), so a row without one
+ * cannot be sent at all — attaching it 400s the entire save. See
+ * {@link salvageNamedRow}.
  */
 export type UnknownJsonRow = Record<string, unknown>;
+
+/** Keys a legacy row may carry the display name under. */
+const NAME_KEYS = ["name", "title", "label", "item"] as const;
+
+/**
+ * Salvages a row the documented shape did not match into one the parent will
+ * accept.
+ *
+ * The parent's write schemas require a string `name` on every entry of these
+ * `Json?` arrays, so a row without one cannot be written back at all — sending
+ * it 400s the whole save. Rows that merely name the field differently are
+ * recovered here; the rest are genuinely unwritable and must be reported as
+ * such rather than silently attached to a request that will fail.
+ */
+export function salvageNamedRow(
+  value: unknown,
+): ({ name: string } & UnknownJsonRow) | undefined {
+  if (typeof value === "string" && value.trim()) return { name: value.trim() };
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  const row = value as UnknownJsonRow;
+  for (const key of NAME_KEYS) {
+    const candidate = row[key];
+    if (typeof candidate === "string" && candidate.trim()) {
+      return { ...row, name: candidate.trim() };
+    }
+  }
+  return undefined;
+}
+
+/** Splits unmatched rows into the ones a save can carry and the ones it cannot. */
+export function splitUnmatchedRows(rows: unknown[]): {
+  writable: ({ name: string } & UnknownJsonRow)[];
+  unwritable: unknown[];
+} {
+  const writable: ({ name: string } & UnknownJsonRow)[] = [];
+  const unwritable: unknown[] = [];
+  for (const row of rows) {
+    const salvaged = salvageNamedRow(row);
+    if (salvaged) writable.push(salvaged);
+    else unwritable.push(row);
+  }
+  return { writable, unwritable };
+}
 
 /**
  * A **complete** extended profile.
@@ -373,42 +420,56 @@ export type ExtendedProfileWriteResult = z.infer<
 /**
  * A new project-experience record.
  *
- * Optional keys are **omitted** rather than sent as `null`: the update route
- * maps a falsy date to `undefined` (`experiences/[id]/route.ts:101-102`), so
- * sending `null` cannot clear a stored date and only creates the impression
- * that it can.
+ * **`null` is how a field is cleared.** `PUT /experiences/[id]` spreads only
+ * the keys present in the validated body (`experiences/[id]/route.ts:97-104`),
+ * so an omitted key leaves the stored value untouched — a user who empties a
+ * field and saves would see it come back. Every field the update route accepts
+ * as nullable is therefore typed nullable here and always emitted. The create
+ * route accepts `null` for the same fields, so no separate create shape is
+ * needed.
+ *
+ * The two exceptions are called out on the fields themselves.
  */
 export interface ExperienceWrite {
   projectName: string;
-  clientName?: string;
-  clientType?: "Government" | "Private" | "SOE";
-  contractValue?: number;
+  clientName?: string | null;
+  clientType?: "Government" | "Private" | "SOE" | null;
+  contractValue?: number | null;
+  /** Never null — the create route defaults it and the update route is not nullable. */
   currency?: string;
+  /**
+   * Omitted, never null: the update route maps a falsy date to `undefined`
+   * (`experiences/[id]/route.ts:101-102`), so a stored date cannot be cleared
+   * from the desktop at all. The editor says so rather than offering a control
+   * that does nothing.
+   */
   startDate?: string;
   completionDate?: string;
-  referenceContact?: string;
-  referenceEmail?: string;
-  description?: string;
+  referenceContact?: string | null;
+  referenceEmail?: string | null;
+  description?: string | null;
+  /** `[]` clears; the create route rejects null here. */
   categoryRelevance?: string[];
   provinceRelevance?: string[];
-  completionCertUrl?: string;
-  referenceLetterUrl?: string;
+  completionCertUrl?: string | null;
+  referenceLetterUrl?: string | null;
 }
 
 /** `PUT /experiences/[id]` is a genuine patch, unlike the extended route. */
 export type ExperienceUpdate = Partial<ExperienceWrite>;
 
+/** `null` clears; see {@link ExperienceWrite} for why omission does not. */
 export interface PersonnelWrite {
   fullName: string;
   role: string;
-  department?: string;
-  qualifications?: string;
-  /** Unrecognised rows are preserved — see {@link UnknownJsonRow}. */
-  certifications?: (PersonnelCertification | UnknownJsonRow)[];
-  yearsExperience?: number;
-  cvUrl?: string;
-  email?: string;
-  phone?: string;
+  department?: string | null;
+  qualifications?: string | null;
+  /** Rows without a string `name` cannot be sent — see {@link salvageNamedRow}. */
+  certifications?: (PersonnelCertification | UnknownJsonRow)[] | null;
+  yearsExperience?: number | null;
+  cvUrl?: string | null;
+  email?: string | null;
+  phone?: string | null;
 }
 
 /** `PUT /personnel/[id]` is a genuine patch, unlike the extended route. */
@@ -742,24 +803,44 @@ export function narrowList<T>(
   return { matched, unmatched };
 }
 
-const equipmentAssetSchema: z.ZodType<EquipmentAsset> = z.object({
-  name: z.string(),
-  quantity: z.number().optional(),
-  value: z.number().optional(),
-});
+/*
+  `.passthrough()` on all three: a row that *does* match the documented shape
+  can still carry keys written by another path, and stripping them here would
+  drop them on the way back out — the same data loss {@link UnknownJsonRow}
+  exists to prevent, only quieter because the row looked familiar.
 
-const professionalBodySchema: z.ZodType<ProfessionalBody> = z.object({
-  name: z.string(),
-  membershipNumber: z.string().optional(),
-  expiryDate: z.string().optional(),
-});
+  This is a desktop-side guarantee only. The parent's own write schemas are
+  plain `z.object` in strip mode (`profile/extended/route.ts:36,48`,
+  `personnel/route.ts:29`), so the extra keys are dropped server-side on save
+  regardless. Keeping them here means the desktop is not the thing that lost
+  them; it does not mean they survive a round trip.
 
-const personnelCertificationSchema: z.ZodType<PersonnelCertification> =
-  z.object({
+  The `z.ZodType<…>` annotations are gone with it: a passthrough schema infers
+  an index signature that is not assignable to the closed interface.
+*/
+const equipmentAssetSchema = z
+  .object({
+    name: z.string(),
+    quantity: z.number().optional(),
+    value: z.number().optional(),
+  })
+  .passthrough();
+
+const professionalBodySchema = z
+  .object({
+    name: z.string(),
+    membershipNumber: z.string().optional(),
+    expiryDate: z.string().optional(),
+  })
+  .passthrough();
+
+const personnelCertificationSchema = z
+  .object({
     name: z.string(),
     issuer: z.string().optional(),
     expiryDate: z.string().optional(),
-  });
+  })
+  .passthrough();
 
 const operationalCapacitySchema: z.ZodType<OperationalCapacity> = z.object({
   staffCount: z.number().nullable().optional(),

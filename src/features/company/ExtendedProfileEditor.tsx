@@ -16,6 +16,7 @@ import {
   numberOrUndefined,
   operationalCapacityFields,
   professionalBodyList,
+  splitUnmatchedRows,
   type CompanyType,
   type EquipmentAsset,
   type ExtendedCompanyProfile,
@@ -42,21 +43,31 @@ interface Draft {
   vehicleCount: string;
   premisesOwned: string;
   premisesSize: string;
-  equipmentAssets: EquipmentAsset[];
-  professionalBodies: ProfessionalBody[];
+  /** Intersected with {@link UnknownJsonRow}: a matching row may still carry
+   * keys another path wrote, and the editor must not be what drops them. */
+  equipmentAssets: (EquipmentAsset & UnknownJsonRow)[];
+  professionalBodies: (ProfessionalBody & UnknownJsonRow)[];
   /**
-   * Rows whose shape this editor cannot present as fields. Not editable, but
-   * written back verbatim so opening and saving the profile does not delete
-   * them.
+   * Rows whose shape this editor cannot present as fields, but which carry a
+   * usable name and can therefore still be written back. Not editable.
    */
-  preservedEquipment: UnknownJsonRow[];
-  preservedBodies: UnknownJsonRow[];
+  preservedEquipment: ({ name: string } & UnknownJsonRow)[];
+  preservedBodies: ({ name: string } & UnknownJsonRow)[];
+  /**
+   * Rows that cannot be written back at all: the parent's schema requires a
+   * string `name` on every entry, so attaching them 400s the whole save. They
+   * are counted so the form can say plainly that saving drops them.
+   */
+  unwritableEquipment: number;
+  unwritableBodies: number;
 }
 
 function draftFrom(profile: ExtendedCompanyProfile | null): Draft {
   const capacity = operationalCapacityFields(profile?.operationalCapacity);
   const equipment = equipmentAssetList(profile?.equipmentAssets);
   const bodies = professionalBodyList(profile?.professionalBodies);
+  const salvagedEquipment = splitUnmatchedRows(equipment.unmatched);
+  const salvagedBodies = splitUnmatchedRows(bodies.unmatched);
   return {
     companyType: profile?.companyType ?? "",
     cidbGrading: profile?.cidbGrading ?? "",
@@ -70,8 +81,10 @@ function draftFrom(profile: ExtendedCompanyProfile | null): Draft {
     premisesSize: capacity?.premisesSize ?? "",
     equipmentAssets: equipment.matched,
     professionalBodies: bodies.matched,
-    preservedEquipment: equipment.unmatched as UnknownJsonRow[],
-    preservedBodies: bodies.unmatched as UnknownJsonRow[],
+    preservedEquipment: salvagedEquipment.writable,
+    preservedBodies: salvagedBodies.writable,
+    unwritableEquipment: salvagedEquipment.unwritable.length,
+    unwritableBodies: salvagedBodies.unwritable.length,
   };
 }
 
@@ -140,9 +153,10 @@ export function ExtendedProfileEditor({
       capacityEntries.premisesSize = draft.premisesSize.trim();
     }
 
-    // Preserved rows are appended, never dropped: this POST replaces the whole
-    // column, so writing back only what the editor understood would delete the
-    // rest.
+    // Salvaged rows are appended: this POST replaces the whole column, so
+    // writing back only what the editor understood would delete the rest.
+    // Rows with no usable `name` are *not* appended — the parent's schema
+    // rejects them and the whole save would 400. The form says so above.
     const equipmentAssets = [
       ...draft.equipmentAssets.filter((item) => item.name.trim()),
       ...draft.preservedEquipment,
@@ -276,6 +290,7 @@ export function ExtendedProfileEditor({
         addCopy="Add equipment"
         rows={draft.equipmentAssets}
         preserved={draft.preservedEquipment.length}
+        unwritable={draft.unwritableEquipment}
         onChange={(rows) => set("equipmentAssets", rows)}
         blank={{ name: "" }}
         render={(row, update) => (
@@ -319,6 +334,7 @@ export function ExtendedProfileEditor({
         addCopy="Add professional body"
         rows={draft.professionalBodies}
         preserved={draft.preservedBodies.length}
+        unwritable={draft.unwritableBodies}
         onChange={(rows) => set("professionalBodies", rows)}
         blank={{ name: "" }}
         render={(row, update) => (
@@ -367,6 +383,7 @@ function RepeatableRows<T extends { name: string }>({
   rows,
   blank,
   preserved,
+  unwritable,
   onChange,
   render,
 }: {
@@ -377,6 +394,8 @@ function RepeatableRows<T extends { name: string }>({
   blank: T;
   /** Count of unrecognised rows carried through this save untouched. */
   preserved: number;
+  /** Count of rows the save contract cannot carry — see {@link splitUnmatchedRows}. */
+  unwritable: number;
   onChange: (rows: T[]) => void;
   render: (row: T, update: (patch: Partial<T>) => void) => React.ReactNode;
 }) {
@@ -385,7 +404,7 @@ function RepeatableRows<T extends { name: string }>({
       <legend className="text-sm font-medium text-card-foreground">
         {legend}
       </legend>
-      {rows.length === 0 && preserved === 0 && (
+      {rows.length === 0 && preserved === 0 && unwritable === 0 && (
         <p className="mt-2 text-sm text-muted-foreground">{emptyCopy}</p>
       )}
       {preserved > 0 && (
@@ -393,6 +412,15 @@ function RepeatableRows<T extends { name: string }>({
           {preserved} further {preserved === 1 ? "entry is" : "entries are"} in
           a format this screen cannot edit. {preserved === 1 ? "It" : "They"}{" "}
           will be kept exactly as {preserved === 1 ? "it is" : "they are"}.
+        </p>
+      )}
+      {unwritable > 0 && (
+        <p className="mt-2 text-xs text-destructive">
+          {unwritable} {unwritable === 1 ? "entry is" : "entries are"} stored in
+          a format the save contract does not accept.{" "}
+          {unwritable === 1 ? "It" : "They"} cannot be written back, so saving
+          will remove {unwritable === 1 ? "it" : "them"}. Cancel if you need{" "}
+          {unwritable === 1 ? "it" : "them"} kept.
         </p>
       )}
       <ul className="mt-3 space-y-3">

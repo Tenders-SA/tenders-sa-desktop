@@ -2709,8 +2709,11 @@ describe("Company profile screen", () => {
 
     // Company-level fields that were never displayed before.
     expect(screen.getByText("9876543210")).toBeVisible();
+    // The URL is shown as text, not as a link: no Tauri capability grants
+    // URL opening, so an anchor would be an affordance that does nothing.
+    expect(screen.queryByRole("link", { name: /certificate/i })).toBeNull();
     expect(
-      screen.getByRole("link", { name: "View certificate" }),
+      screen.getByText("https://docs.example.org/bbbee.pdf"),
     ).toBeVisible();
 
     // The extended profile, none of which the screen used to reach.
@@ -2738,7 +2741,9 @@ describe("Company profile screen", () => {
     expect(screen.getByText("Government")).toBeVisible();
     expect(screen.getByText("t.mokoena@example.org")).toBeVisible();
     expect(screen.getByText("Full depot rebuild.")).toBeVisible();
-    expect(screen.getByRole("link", { name: "View letter" })).toBeVisible();
+    expect(
+      screen.getByText("https://docs.example.org/letter.pdf"),
+    ).toBeVisible();
   });
 
   it("renders personnel qualifications, which the singular spelling never matched", async () => {
@@ -3011,7 +3016,9 @@ describe("Company profile screen", () => {
 
   it("keeps equipment rows it cannot present as fields when saving", async () => {
     // `POST /profile/extended` replaces the whole column, so writing back only
-    // the rows the editor understood would delete the rest.
+    // the rows the editor understood would delete the rest. A row naming its
+    // label under another key is salvaged into the shape the parent's schema
+    // requires rather than sent as-is, which would 400 the whole save.
     const client = endpoint(fullCompany, {
       profile: {
         ...fullProfile,
@@ -3043,8 +3050,43 @@ describe("Company profile screen", () => {
     ).mock.calls[0];
     expect(sent.equipmentAssets).toEqual([
       { name: "Grader" },
-      { label: "legacy", units: 2 },
+      { label: "legacy", units: 2, name: "legacy" },
     ]);
+  });
+
+  it("says a row it cannot write back will be lost, rather than promising to keep it", async () => {
+    // The parent's write schema requires a string `name` on every entry
+    // (`profile/extended/route.ts:36`), so a row with no usable name cannot be
+    // sent at all — attaching it 400s the save and the profile becomes
+    // permanently un-editable. It is excluded and the loss is stated.
+    const client = endpoint(fullCompany, {
+      profile: {
+        ...fullProfile,
+        equipmentAssets: [{ name: "Grader" }, { units: 2, serial: "A-9" }],
+      },
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Example Civils");
+
+    await userEvent.click(
+      within(panel("Equipment and assets")).getByRole("button", {
+        name: "Edit",
+      }),
+    );
+    expect(screen.getByText(/save contract does not accept/i)).toBeVisible();
+    expect(screen.queryByText(/kept exactly as/i)).toBeNull();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save company profile detail" }),
+    );
+
+    await waitFor(() => expect(client.saveExtendedProfile).toHaveBeenCalled());
+    const [sent] = (
+      client.saveExtendedProfile as unknown as {
+        mock: { calls: [Record<string, unknown>][] };
+      }
+    ).mock.calls[0];
+    expect(sent.equipmentAssets).toEqual([{ name: "Grader" }]);
   });
 
   it("keeps personnel certifications it cannot present as fields", async () => {
@@ -3054,6 +3096,40 @@ describe("Company profile screen", () => {
         {
           ...fullPerson,
           certifications: [{ name: "PrEng", issuer: "ECSA" }, { code: "XYZ" }],
+        },
+      ],
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("N. Dlamini");
+
+    const row = screen.getByText("N. Dlamini").closest("li") as HTMLElement;
+    await userEvent.click(within(row).getByRole("button", { name: "Edit" }));
+    // `{ code: "XYZ" }` names nothing the parent's schema accepts, so it
+    // cannot be written back at all. Sending it would 400 the save and make
+    // this person permanently un-editable; the form says it will be lost
+    // rather than promising to keep it.
+    expect(screen.getByText(/save contract does not accept/i)).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save team member" }),
+    );
+
+    await waitFor(() => expect(client.updatePersonnel).toHaveBeenCalled());
+    const [, sent] = (
+      client.updatePersonnel as unknown as {
+        mock: { calls: [string, Record<string, unknown>][] };
+      }
+    ).mock.calls[0];
+    expect(sent.certifications).toEqual([{ name: "PrEng", issuer: "ECSA" }]);
+  });
+
+  it("salvages a certification row that names itself under another key", async () => {
+    const client = endpoint(fullCompany, {
+      profile: fullProfile,
+      keyPersonnel: [
+        {
+          ...fullPerson,
+          certifications: [{ title: "SACPCMP", body: "SACPCMP" }],
         },
       ],
     });
@@ -3073,8 +3149,7 @@ describe("Company profile screen", () => {
       }
     ).mock.calls[0];
     expect(sent.certifications).toEqual([
-      { name: "PrEng", issuer: "ECSA" },
-      { code: "XYZ" },
+      { title: "SACPCMP", body: "SACPCMP", name: "SACPCMP" },
     ]);
   });
 });

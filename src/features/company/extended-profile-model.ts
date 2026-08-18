@@ -10,10 +10,10 @@ import {
   equipmentAssetList,
   operationalCapacityFields,
   professionalBodyList,
+  splitUnmatchedRows,
   type CompanyType,
   type ExtendedCompanyProfile,
   type ExtendedProfileWrite,
-  type UnknownJsonRow,
 } from "../../services/api/endpoints/company";
 
 export const COMPANY_TYPE_LABELS: Record<string, string> = {
@@ -30,8 +30,13 @@ export const COMPANY_TYPE_LABELS: Record<string, string> = {
 /**
  * Reads a loaded profile into the complete write shape the parent demands.
  *
- * Unrecognised rows are appended back after the recognised ones so that
- * round-tripping a profile through the editor never drops them.
+ * Unrecognised rows are salvaged and appended back after the recognised ones,
+ * exactly as `ExtendedProfileEditor` does, so that round-tripping a profile
+ * through the editor never drops what can be kept. Rows with no usable `name`
+ * are excluded from both, because the parent's schema rejects them
+ * ({@link splitUnmatchedRows}) — and because this shape is compared against
+ * the editor's output by {@link fingerprintExceptCidb}, so the two must build
+ * the same list or a CIDB-only edit would stop taking the narrow route.
  */
 export function extendedWriteFrom(
   profile: ExtendedCompanyProfile | null | undefined,
@@ -46,13 +51,13 @@ export function extendedWriteFrom(
     profileText: profile.profileText ?? null,
     equipmentAssets: [
       ...equipment.matched,
-      ...(equipment.unmatched as UnknownJsonRow[]),
+      ...splitUnmatchedRows(equipment.unmatched).writable,
     ],
     operationalCapacity: capacity ?? null,
     cidbGrading: profile.cidbGrading ?? null,
     professionalBodies: [
       ...bodies.matched,
-      ...(bodies.unmatched as UnknownJsonRow[]),
+      ...splitUnmatchedRows(bodies.unmatched).writable,
     ],
   };
 }
