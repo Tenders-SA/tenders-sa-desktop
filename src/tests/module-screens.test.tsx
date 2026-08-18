@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -2418,19 +2419,153 @@ describe("ResponseBlueprintPanel — export package (Slice 6)", () => {
 });
 
 describe("Company profile screen", () => {
-  function endpoint(profile: unknown): CompanyEndpoint {
+  /**
+   * Spec: desktop-company-profile-full-record (Slice 11)
+   *
+   * The screen now reads the whole record from `/profile/extended`; the bare
+   * `/profile` read survives only for the company timestamps that route does
+   * not serialise. `getCidb` is gone — its route has no GET handler.
+   */
+  function endpoint(
+    company: unknown,
+    extras: {
+      profile?: unknown;
+      experiences?: unknown[];
+      keyPersonnel?: unknown[];
+      completeness?: { score: number; missingFields: string[] };
+      overrides?: Record<string, unknown>;
+    } = {},
+  ): CompanyEndpoint {
+    const record =
+      company === undefined
+        ? undefined
+        : {
+            company,
+            profile: extras.profile ?? null,
+            experiences: extras.experiences ?? [],
+            keyPersonnel: extras.keyPersonnel ?? [],
+            completeness: extras.completeness,
+          };
     return {
-      getProfile: vi.fn(async () => profile),
-      getExperiences: vi.fn(async () => []),
-      getPersonnel: vi.fn(async () => []),
-      getCidb: vi.fn(async () => undefined),
+      getProfile: vi.fn(async () => company),
+      getExtendedRecord: vi.fn(async () => record),
+      getExtendedProfile: vi.fn(async () => undefined),
+      getExperiences: vi.fn(async () => extras.experiences ?? []),
+      getPersonnel: vi.fn(async () => extras.keyPersonnel ?? []),
       updateProfile: vi.fn(async (update) => ({
         company: { id: "c1", ...update },
         profileCompleteness: 82,
         matchingTriggered: true,
       })),
+      saveExtendedProfile: vi.fn(async () => ({
+        message: "Company profile saved successfully",
+        profile: { id: "profile-1" },
+      })),
+      setCidbGrading: vi.fn(async () => {}),
+      createExperience: vi.fn(async () => ({ id: "e-new" })),
+      updateExperience: vi.fn(async () => ({ id: "e1" })),
+      deleteExperience: vi.fn(async () => {}),
+      createPersonnel: vi.fn(async () => ({ id: "p-new" })),
+      updatePersonnel: vi.fn(async () => ({ id: "p1" })),
+      deletePersonnel: vi.fn(async () => {}),
+      ...extras.overrides,
     } as unknown as CompanyEndpoint;
   }
+
+  const fullCompany = {
+    id: "c1",
+    name: "Example Civils",
+    registrationNumber: "2020/123456/07",
+    taxNumber: "9876543210",
+    bbbeeLevel: 2,
+    bbbeeCertificateUrl: "https://docs.example.org/bbbee.pdf",
+    industryCodes: ["4100"],
+    provincesOperating: ["Gauteng"],
+    companySize: "SMALL",
+    annualTurnover: 12_000_000,
+    certifications: ["ISO 9001"],
+    capabilitiesDescription: "Roads and stormwater.",
+  };
+
+  const fullProfile = {
+    id: "profile-1",
+    companyType: "PTY_LTD",
+    profileDocument: "https://docs.example.org/profile.pdf",
+    profileText: "Twenty years of municipal civils.",
+    equipmentAssets: [{ name: "TLB", quantity: 3, value: 900_000 }],
+    operationalCapacity: {
+      staffCount: 48,
+      vehicleCount: 12,
+      premisesOwned: true,
+      premisesSize: "2000m2",
+    },
+    cidbGrading: "6CE",
+    professionalBodies: [{ name: "SAICE", membershipNumber: "SAICE-114" }],
+    completenessScore: 83,
+    missingFields: ["Tax Number"],
+    updatedAt: "2026-08-01T08:00:00.000Z",
+  };
+
+  const fullExperience = {
+    id: "e1",
+    projectName: "Depot upgrade",
+    clientName: "City of Tshwane",
+    clientType: "Government",
+    contractValue: 4_500_000,
+    currency: "ZAR",
+    startDate: "2025-02-01T00:00:00.000Z",
+    completionDate: "2025-11-30T00:00:00.000Z",
+    referenceContact: "T. Mokoena",
+    referenceEmail: "t.mokoena@example.org",
+    description: "Full depot rebuild.",
+    categoryRelevance: ["construction"],
+    provinceRelevance: ["Gauteng"],
+    completionCertUrl: "https://docs.example.org/cert.pdf",
+    referenceLetterUrl: "https://docs.example.org/letter.pdf",
+  };
+
+  const fullPerson = {
+    id: "p1",
+    fullName: "N. Dlamini",
+    role: "Project Manager",
+    department: "Delivery",
+    qualifications: "BSc Civil Engineering",
+    certifications: [{ name: "PrEng", issuer: "ECSA" }],
+    yearsExperience: 14,
+    cvUrl: "https://docs.example.org/cv.pdf",
+    email: "n.dlamini@example.org",
+    phone: "+27 12 000 0000",
+  };
+
+  function fullRecordEndpoint(overrides: Record<string, unknown> = {}) {
+    return endpoint(fullCompany, {
+      profile: fullProfile,
+      experiences: [fullExperience],
+      keyPersonnel: [fullPerson],
+      completeness: { score: 83, missingFields: ["Tax Number"] },
+      overrides,
+    });
+  }
+
+  /** A dashboard panel by its heading, for scoping its own controls. */
+  function panel(title: string) {
+    return screen
+      .getByRole("heading", { name: title, level: 2 })
+      .closest("section") as HTMLElement;
+  }
+
+  /** The "Company profile" panel's own Edit control, not the page header's. */
+  function profilePanel() {
+    return panel("Company profile");
+  }
+
+  /** Every panel written by `POST /profile/extended`. */
+  const DETAIL_PANELS = [
+    "Company profile",
+    "Operational capacity",
+    "Equipment and assets",
+    "Professional bodies",
+  ];
 
   it("explains that matching needs a profile when there is none", async () => {
     wrap(<CompanyProfileScreen endpoint={endpoint(undefined)} />);
@@ -2564,6 +2699,458 @@ describe("Company profile screen", () => {
         }),
       ),
     );
+  });
+
+  // Spec: desktop-company-profile-full-record (Slice 11)
+
+  it("shows the whole company record, not a portion of it", async () => {
+    wrap(<CompanyProfileScreen endpoint={fullRecordEndpoint()} />);
+    await screen.findByText("Example Civils");
+
+    // Company-level fields that were never displayed before.
+    expect(screen.getByText("9876543210")).toBeVisible();
+    // The URL is shown as text, not as a link: no Tauri capability grants
+    // URL opening, so an anchor would be an affordance that does nothing.
+    expect(screen.queryByRole("link", { name: /certificate/i })).toBeNull();
+    expect(
+      screen.getByText("https://docs.example.org/bbbee.pdf"),
+    ).toBeVisible();
+
+    // The extended profile, none of which the screen used to reach.
+    expect(screen.getByText("Private company (Pty) Ltd")).toBeVisible();
+    expect(screen.getByText("6CE")).toBeVisible();
+    expect(screen.getByText("Twenty years of municipal civils.")).toBeVisible();
+    // Matched on the detail rather than the name: the name also appears in a
+    // nested emphasis span, so a bare /TLB/ matches two elements.
+    expect(screen.getByText(/3 units/)).toBeVisible();
+    expect(screen.getByText(/SAICE-114/)).toBeVisible();
+    expect(screen.getByText("48")).toBeVisible();
+    expect(screen.getByText("2000m2")).toBeVisible();
+  });
+
+  it("renders the experience fields the old field names silently dropped", async () => {
+    // `contractValue` and `completionDate` — previously read as `value` and
+    // `endDate`, so the amount never rendered at all.
+    wrap(<CompanyProfileScreen endpoint={fullRecordEndpoint()} />);
+    await screen.findByText("Depot upgrade");
+
+    // `Intl` groups with a narrow no-break space, so match any separator
+    // class rather than pasting the literal character into the source.
+    expect(screen.getByText(/4\D?500\D?000/)).toBeVisible();
+    expect(screen.getByText("City of Tshwane")).toBeVisible();
+    expect(screen.getByText("Government")).toBeVisible();
+    expect(screen.getByText("t.mokoena@example.org")).toBeVisible();
+    expect(screen.getByText("Full depot rebuild.")).toBeVisible();
+    expect(
+      screen.getByText("https://docs.example.org/letter.pdf"),
+    ).toBeVisible();
+  });
+
+  it("renders personnel qualifications, which the singular spelling never matched", async () => {
+    wrap(<CompanyProfileScreen endpoint={fullRecordEndpoint()} />);
+    await screen.findByText("N. Dlamini");
+
+    expect(screen.getByText("BSc Civil Engineering")).toBeVisible();
+    expect(screen.getByText("Delivery")).toBeVisible();
+    expect(screen.getByText("14")).toBeVisible();
+    expect(screen.getByText("n.dlamini@example.org")).toBeVisible();
+    expect(screen.getByText(/PrEng · ECSA/)).toBeVisible();
+  });
+
+  it("shows completeness as a score and a list of what is still missing", async () => {
+    wrap(<CompanyProfileScreen endpoint={fullRecordEndpoint()} />);
+    expect(await screen.findByText("83%")).toBeVisible();
+    expect(screen.getByText("Still missing")).toBeVisible();
+    expect(screen.getByText("Tax Number")).toBeVisible();
+  });
+
+  it("offers profile setup instead of failing writes when there is no profile row", async () => {
+    // The record routes answer 400 without a CompanyProfile row, so the add
+    // affordances are gated rather than letting the parent reject.
+    wrap(<CompanyProfileScreen endpoint={endpoint(fullCompany)} />);
+    await screen.findByText("Example Civils");
+
+    expect(
+      screen.getByRole("button", { name: "Set up company profile" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Add project" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Add team member" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("carries untouched profile fields through a single-field save", async () => {
+    // `POST /profile/extended` replaces all seven fields, so a body that omits
+    // one erases it. Editing the profile text must still send the CIDB grade.
+    const client = fullRecordEndpoint();
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Example Civils");
+
+    await userEvent.click(
+      within(profilePanel()).getByRole("button", { name: "Edit" }),
+    );
+    const text = screen.getByLabelText(/company profile text/i);
+    await userEvent.clear(text);
+    await userEvent.type(text, "Rewritten profile.");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save company profile detail" }),
+    );
+
+    await waitFor(() =>
+      expect(client.saveExtendedProfile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profileText: "Rewritten profile.",
+          cidbGrading: "6CE",
+          companyType: "PTY_LTD",
+          profileDocument: "https://docs.example.org/profile.pdf",
+        }),
+      ),
+    );
+    const [sent] = (
+      client.saveExtendedProfile as unknown as {
+        mock: { calls: [Record<string, unknown>][] };
+      }
+    ).mock.calls[0];
+    expect(sent.equipmentAssets).toEqual([
+      { name: "TLB", quantity: 3, value: 900_000 },
+    ]);
+  });
+
+  it("routes a CIDB-only change through the narrow single-field endpoint", async () => {
+    const client = fullRecordEndpoint();
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Example Civils");
+
+    await userEvent.click(
+      within(profilePanel()).getByRole("button", { name: "Edit" }),
+    );
+    const cidb = screen.getByLabelText(/cidb grading/i);
+    await userEvent.clear(cidb);
+    await userEvent.type(cidb, "7CE");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save company profile detail" }),
+    );
+
+    await waitFor(() =>
+      expect(client.setCidbGrading).toHaveBeenCalledWith("7CE"),
+    );
+    expect(client.saveExtendedProfile).not.toHaveBeenCalled();
+  });
+
+  it("adds a project experience", async () => {
+    const client = fullRecordEndpoint();
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Example Civils");
+
+    await userEvent.click(screen.getByRole("button", { name: "Add project" }));
+    await userEvent.type(
+      screen.getByLabelText(/project name/i),
+      "Water reticulation",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add project" }));
+
+    await waitFor(() =>
+      expect(client.createExperience).toHaveBeenCalledWith(
+        expect.objectContaining({ projectName: "Water reticulation" }),
+      ),
+    );
+    expect(await screen.findByText("Project added.")).toBeVisible();
+  });
+
+  it("refuses to submit an experience the update route would later reject", async () => {
+    // The create route would silently null this email, leaving a record the
+    // parent then refuses to update.
+    const client = fullRecordEndpoint();
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Example Civils");
+
+    await userEvent.click(screen.getByRole("button", { name: "Add project" }));
+    await userEvent.type(screen.getByLabelText(/project name/i), "Depot");
+    await userEvent.type(
+      screen.getByLabelText(/reference email/i),
+      "not-an-email",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Add project" }));
+
+    expect(client.createExperience).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(/must be a valid email address/i),
+    ).toBeVisible();
+  });
+
+  it("edits an existing experience through the update route", async () => {
+    const client = fullRecordEndpoint();
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Depot upgrade");
+
+    const row = screen.getByText("Depot upgrade").closest("li") as HTMLElement;
+    await userEvent.click(within(row).getByRole("button", { name: "Edit" }));
+    const name = screen.getByLabelText(/project name/i);
+    await userEvent.clear(name);
+    await userEvent.type(name, "Depot upgrade phase 2");
+    await userEvent.click(screen.getByRole("button", { name: "Save project" }));
+
+    await waitFor(() =>
+      expect(client.updateExperience).toHaveBeenCalledWith(
+        "e1",
+        expect.objectContaining({ projectName: "Depot upgrade phase 2" }),
+      ),
+    );
+  });
+
+  it("confirms inline before deleting a record", async () => {
+    const client = fullRecordEndpoint();
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Depot upgrade");
+
+    const row = screen.getByText("Depot upgrade").closest("li") as HTMLElement;
+    await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    expect(client.deleteExperience).not.toHaveBeenCalled();
+    expect(screen.getByText("Remove this project?")).toBeVisible();
+
+    await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await waitFor(() =>
+      expect(client.deleteExperience).toHaveBeenCalledWith("e1"),
+    );
+  });
+
+  it("adds a team member", async () => {
+    const client = fullRecordEndpoint();
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Example Civils");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add team member" }),
+    );
+    await userEvent.type(screen.getByLabelText(/full name/i), "S. Naidoo");
+    await userEvent.type(screen.getByLabelText(/^role/i), "Quantity Surveyor");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add team member" }),
+    );
+
+    await waitFor(() =>
+      expect(client.createPersonnel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fullName: "S. Naidoo",
+          role: "Quantity Surveyor",
+        }),
+      ),
+    );
+  });
+
+  it("reports a failed mutation in its own words, never the parent's", async () => {
+    const client = fullRecordEndpoint({
+      deleteExperience: vi.fn(async () => {
+        throw new ApiError({
+          kind: "server",
+          message: "PrismaClientKnownRequestError P2025",
+          status: 500,
+        });
+      }),
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Depot upgrade");
+
+    const row = screen.getByText("Depot upgrade").closest("li") as HTMLElement;
+    await userEvent.click(within(row).getByRole("button", { name: "Remove" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(await screen.findByRole("alert")).toBeVisible();
+    expect(
+      screen.queryByText(/PrismaClientKnownRequestError/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an undocumented JSON shape rather than hiding or crashing on it", async () => {
+    // These are `Json?` columns, so a row written by another path can hold
+    // anything. Dropping it would be a quiet data loss on this screen.
+    const client = endpoint(fullCompany, {
+      profile: {
+        ...fullProfile,
+        equipmentAssets: [{ name: "Grader" }, { label: "legacy", units: 2 }],
+      },
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Example Civils");
+
+    expect(screen.getByText(/Grader/)).toBeVisible();
+    expect(screen.getByText(/Label: legacy/)).toBeVisible();
+  });
+
+  it("offers an edit control on every panel the profile editor writes", async () => {
+    // One route writes all four, so all four must look editable. With the
+    // control on only one of them the other three read as read-only.
+    wrap(<CompanyProfileScreen endpoint={fullRecordEndpoint()} />);
+    await screen.findByText("Example Civils");
+
+    for (const title of DETAIL_PANELS) {
+      expect(
+        within(panel(title)).getByRole("button", { name: "Edit" }),
+      ).toBeVisible();
+    }
+  });
+
+  it("opens the profile editor from any of those panels", async () => {
+    for (const title of ["Operational capacity", "Equipment and assets"]) {
+      const client = fullRecordEndpoint();
+      const view = wrap(<CompanyProfileScreen endpoint={client} />);
+      await screen.findByText("Example Civils");
+
+      await userEvent.click(
+        within(panel(title)).getByRole("button", { name: "Edit" }),
+      );
+      // The one editor, carrying every field the route writes.
+      expect(screen.getByLabelText(/company type/i)).toBeVisible();
+      expect(screen.getByLabelText(/staff/i)).toBeVisible();
+      expect(
+        screen.getByRole("button", { name: "Add equipment" }),
+      ).toBeVisible();
+      expect(
+        screen.getByRole("button", { name: "Add professional body" }),
+      ).toBeVisible();
+      view.unmount();
+    }
+  });
+
+  it("keeps equipment rows it cannot present as fields when saving", async () => {
+    // `POST /profile/extended` replaces the whole column, so writing back only
+    // the rows the editor understood would delete the rest. A row naming its
+    // label under another key is salvaged into the shape the parent's schema
+    // requires rather than sent as-is, which would 400 the whole save.
+    const client = endpoint(fullCompany, {
+      profile: {
+        ...fullProfile,
+        equipmentAssets: [{ name: "Grader" }, { label: "legacy", units: 2 }],
+      },
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Example Civils");
+
+    await userEvent.click(
+      within(panel("Equipment and assets")).getByRole("button", {
+        name: "Edit",
+      }),
+    );
+    expect(screen.getByText(/cannot edit/i)).toBeVisible();
+
+    const text = screen.getByLabelText(/company profile text/i);
+    await userEvent.clear(text);
+    await userEvent.type(text, "Changed.");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save company profile detail" }),
+    );
+
+    await waitFor(() => expect(client.saveExtendedProfile).toHaveBeenCalled());
+    const [sent] = (
+      client.saveExtendedProfile as unknown as {
+        mock: { calls: [Record<string, unknown>][] };
+      }
+    ).mock.calls[0];
+    expect(sent.equipmentAssets).toEqual([
+      { name: "Grader" },
+      { label: "legacy", units: 2, name: "legacy" },
+    ]);
+  });
+
+  it("says a row it cannot write back will be lost, rather than promising to keep it", async () => {
+    // The parent's write schema requires a string `name` on every entry
+    // (`profile/extended/route.ts:36`), so a row with no usable name cannot be
+    // sent at all — attaching it 400s the save and the profile becomes
+    // permanently un-editable. It is excluded and the loss is stated.
+    const client = endpoint(fullCompany, {
+      profile: {
+        ...fullProfile,
+        equipmentAssets: [{ name: "Grader" }, { units: 2, serial: "A-9" }],
+      },
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("Example Civils");
+
+    await userEvent.click(
+      within(panel("Equipment and assets")).getByRole("button", {
+        name: "Edit",
+      }),
+    );
+    expect(screen.getByText(/save contract does not accept/i)).toBeVisible();
+    expect(screen.queryByText(/kept exactly as/i)).toBeNull();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save company profile detail" }),
+    );
+
+    await waitFor(() => expect(client.saveExtendedProfile).toHaveBeenCalled());
+    const [sent] = (
+      client.saveExtendedProfile as unknown as {
+        mock: { calls: [Record<string, unknown>][] };
+      }
+    ).mock.calls[0];
+    expect(sent.equipmentAssets).toEqual([{ name: "Grader" }]);
+  });
+
+  it("keeps personnel certifications it cannot present as fields", async () => {
+    const client = endpoint(fullCompany, {
+      profile: fullProfile,
+      keyPersonnel: [
+        {
+          ...fullPerson,
+          certifications: [{ name: "PrEng", issuer: "ECSA" }, { code: "XYZ" }],
+        },
+      ],
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("N. Dlamini");
+
+    const row = screen.getByText("N. Dlamini").closest("li") as HTMLElement;
+    await userEvent.click(within(row).getByRole("button", { name: "Edit" }));
+    // `{ code: "XYZ" }` names nothing the parent's schema accepts, so it
+    // cannot be written back at all. Sending it would 400 the save and make
+    // this person permanently un-editable; the form says it will be lost
+    // rather than promising to keep it.
+    expect(screen.getByText(/save contract does not accept/i)).toBeVisible();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save team member" }),
+    );
+
+    await waitFor(() => expect(client.updatePersonnel).toHaveBeenCalled());
+    const [, sent] = (
+      client.updatePersonnel as unknown as {
+        mock: { calls: [string, Record<string, unknown>][] };
+      }
+    ).mock.calls[0];
+    expect(sent.certifications).toEqual([{ name: "PrEng", issuer: "ECSA" }]);
+  });
+
+  it("salvages a certification row that names itself under another key", async () => {
+    const client = endpoint(fullCompany, {
+      profile: fullProfile,
+      keyPersonnel: [
+        {
+          ...fullPerson,
+          certifications: [{ title: "SACPCMP", body: "SACPCMP" }],
+        },
+      ],
+    });
+    wrap(<CompanyProfileScreen endpoint={client} />);
+    await screen.findByText("N. Dlamini");
+
+    const row = screen.getByText("N. Dlamini").closest("li") as HTMLElement;
+    await userEvent.click(within(row).getByRole("button", { name: "Edit" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save team member" }),
+    );
+
+    await waitFor(() => expect(client.updatePersonnel).toHaveBeenCalled());
+    const [, sent] = (
+      client.updatePersonnel as unknown as {
+        mock: { calls: [string, Record<string, unknown>][] };
+      }
+    ).mock.calls[0];
+    expect(sent.certifications).toEqual([
+      { title: "SACPCMP", body: "SACPCMP", name: "SACPCMP" },
+    ]);
   });
 });
 

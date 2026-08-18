@@ -8,6 +8,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A Supplier Profile screen, opened by selecting a company on Supplier
+  Intelligence. It gathers what the platform already records about a potential
+  partner into one place: registration details, contact details, operating
+  areas and categories, recent award history, the buyers behind those awards,
+  published risk and restricted-supplier signals, and a summary of how well
+  evidenced the company is. Each panel names where its figures came from, and
+  anything the record does not hold reads "Not recorded" rather than blank or
+  zero. Risk signals are presented as signals to verify, never as findings of
+  wrongdoing. Where a panel needs a plan you do not have, it says so instead of
+  suggesting the company has no data, and one panel failing no longer blanks
+  the rest of the screen.
+- Supplier Intelligence rows now show the website, head-office address and
+  compile date the platform had already gathered, and — on an active
+  subscription — the published risk indicator, B-BBEE level, enterprise type
+  and restricted-supplier counts.
 - The Procurement Officers directory now shows its feature state honestly: a
   banner when the officer index is not included in your plan (search still
   works against the server), an offline notice with the last sync time when a
@@ -123,6 +138,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Supplier Profile now opens for companies whose name carries a legal form or
+  an ampersand — `Acme Civils (Pty) Ltd`, `ABC & Sons` and the like. These
+  previously reported "This supplier could not be found", which covered a large
+  share of real South African suppliers.
+- The risk, B-BBEE and restricted-supplier signals on Supplier Profile and on
+  the Supplier Intelligence list now appear for those same companies, instead
+  of leaving the panel empty as though nothing were recorded.
+- The buyers panel on Supplier Profile no longer says "No buyer or frequency
+  detail is recorded here" when the underlying register lookup did not match.
+  It asks for manual verification, as the neighbouring panels already did.
+- An approved claim on a supplier's report is now shown in the access panel; it
+  was counted but never displayed.
+- Company Profile can now be saved by companies whose equipment, professional
+  body or certification lists hold entries written in an older format. Saving
+  previously failed outright for them. Entries that can be recovered are kept;
+  those that cannot are named in the form before you save, rather than being
+  promised as preserved and then lost.
+- Clearing a field on a project or team-member record now clears it. Emptying
+  the client name, contract value, description, reference details or the
+  category and province relevance lists previously left the stored value in
+  place, so the change reappeared on the next open. Dates remain unclearable —
+  the editors already say so.
+- Links to a B-BBEE certificate, profile document, completion certificate,
+  reference letter or CV are now shown as their address rather than as a link
+  that could not open anything in the desktop app.
 - The Procurement Officers search now smooths typing into both the query box
   and the organisation/role filter boxes, so a single server refresh happens
   after you stop typing instead of one per keystroke. Searches containing FTS

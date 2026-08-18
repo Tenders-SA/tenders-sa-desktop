@@ -31,6 +31,7 @@ import { PreferencesEndpoint } from "../services/api/endpoints/preferences";
 import { RecommendationsEndpoint } from "../services/api/endpoints/recommendations";
 import { SavedTendersEndpoint } from "../services/api/endpoints/saved-tenders";
 import { SupplierIntelligenceEndpoint } from "../services/api/endpoints/supplier-intelligence";
+import { SupplierProfileEndpoint } from "../services/api/endpoints/supplier-profile";
 import { ProcurementOfficersEndpoint } from "../services/api/endpoints/procurement-officers";
 import { GatedAuthService } from "../services/auth/gated-auth-service";
 import { nativeCredentialStore } from "../services/auth/native-credential-store";
@@ -89,6 +90,13 @@ export interface ApiClients {
   planner: PlannerEndpoint;
   preferences: PreferencesEndpoint;
   supplierIntelligence: SupplierIntelligenceEndpoint;
+  /**
+   * The supplier vetting record (Slice 12). Separate from
+   * `supplierIntelligence` because it composes six parent contracts across
+   * three envelopes and two access models, where the list client is one
+   * method over one route.
+   */
+  supplierProfile: SupplierProfileEndpoint;
   procurementOfficers: ProcurementOfficersEndpoint;
 }
 
@@ -177,6 +185,7 @@ export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
     preferences: new PreferencesEndpoint(endpointOptions),
     pulse: new PulseEndpoint(endpointOptions),
     supplierIntelligence: new SupplierIntelligenceEndpoint(endpointOptions),
+    supplierProfile: new SupplierProfileEndpoint(endpointOptions),
     procurementOfficers: new ProcurementOfficersEndpoint(endpointOptions),
   };
 

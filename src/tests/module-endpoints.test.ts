@@ -19,7 +19,13 @@ import {
 import { RecommendationsEndpoint } from "../services/api/endpoints/recommendations";
 import { SavedTendersEndpoint } from "../services/api/endpoints/saved-tenders";
 import { ApplicationsEndpoint } from "../services/api/endpoints/applications";
-import { CompanyEndpoint } from "../services/api/endpoints/company";
+import {
+  CompanyEndpoint,
+  equipmentAssetList,
+  operationalCapacityFields,
+  personnelCertificationList,
+  professionalBodyList,
+} from "../services/api/endpoints/company";
 import { DocumentsEndpoint } from "../services/api/endpoints/documents";
 import { NotificationsEndpoint } from "../services/api/endpoints/notifications";
 import { PlannerEndpoint } from "../services/api/endpoints/planner";
@@ -1453,6 +1459,354 @@ describe("company endpoint", () => {
       const { endpoint } = harness(CompanyEndpoint, () => jsonResponse(body));
       await expect(endpoint.getExperiences()).resolves.toHaveLength(1);
     }
+  });
+
+  // Spec: desktop-company-profile-full-record (Slice 11)
+  // The body below mirrors `/api/v1/company/profile/extended` as the parent
+  // serialises it (route lines 102-134), including the record field names the
+  // desktop previously got wrong.
+  const fullExtendedRecord = {
+    company: {
+      id: "company-1",
+      name: "Example Civils",
+      registrationNumber: "2020/123456/07",
+      taxNumber: "9876543210",
+      bbbeeLevel: 2,
+      bbbeeCertificateUrl: "https://docs.example.org/bbbee.pdf",
+      industryCodes: ["4100"],
+      provincesOperating: ["Gauteng", "Limpopo"],
+      companySize: "SMALL",
+      annualTurnover: 12_000_000,
+      certifications: ["ISO 9001"],
+      capabilitiesDescription: "Roads and stormwater.",
+    },
+    profile: {
+      id: "profile-1",
+      companyType: "PTY_LTD",
+      profileDocument: "https://docs.example.org/profile.pdf",
+      profileText: "Twenty years of municipal civils.",
+      equipmentAssets: [{ name: "TLB", quantity: 3, value: 900_000 }],
+      operationalCapacity: {
+        staffCount: 48,
+        vehicleCount: 12,
+        premisesOwned: true,
+        premisesSize: "2000m²",
+      },
+      cidbGrading: "6CE",
+      professionalBodies: [
+        {
+          name: "SAICE",
+          membershipNumber: "SAICE-114",
+          expiryDate: "2027-01-31",
+        },
+      ],
+      completenessScore: 83,
+      missingFields: ["Tax Number"],
+      createdAt: "2026-01-05T08:00:00.000Z",
+      updatedAt: "2026-08-01T08:00:00.000Z",
+    },
+    experiences: [
+      {
+        id: "e1",
+        projectName: "Depot upgrade",
+        clientName: "City of Tshwane",
+        clientType: "Government",
+        contractValue: 4_500_000,
+        currency: "ZAR",
+        startDate: "2025-02-01T00:00:00.000Z",
+        completionDate: "2025-11-30T00:00:00.000Z",
+        referenceContact: "T. Mokoena",
+        referenceEmail: "t.mokoena@example.org",
+        description: "Full depot rebuild.",
+        categoryRelevance: ["construction"],
+        provinceRelevance: ["Gauteng"],
+        completionCertUrl: "https://docs.example.org/cert.pdf",
+        referenceLetterUrl: "https://docs.example.org/letter.pdf",
+      },
+    ],
+    keyPersonnel: [
+      {
+        id: "p1",
+        fullName: "N. Dlamini",
+        role: "Project Manager",
+        department: "Delivery",
+        qualifications: "BSc Civil Engineering",
+        certifications: [{ name: "PrEng", issuer: "ECSA" }],
+        yearsExperience: 14,
+        cvUrl: "https://docs.example.org/cv.pdf",
+        email: "n.dlamini@example.org",
+        phone: "+27 12 000 0000",
+      },
+    ],
+    completeness: { score: 83, missingFields: ["Tax Number"] },
+  };
+
+  it("keeps every field the extended route serialises", async () => {
+    // The whole point of the slice: the previous schema was a non-passthrough
+    // object that kept 8 of ~25 fields and dropped the rest silently, because
+    // zod strips unknown keys without erroring.
+    const { endpoint } = harness(CompanyEndpoint, () =>
+      jsonResponse(fullExtendedRecord),
+    );
+    const record = await endpoint.getExtendedRecord();
+
+    expect(record?.company).toMatchObject({
+      taxNumber: "9876543210",
+      bbbeeCertificateUrl: "https://docs.example.org/bbbee.pdf",
+      companySize: "SMALL",
+      capabilitiesDescription: "Roads and stormwater.",
+      provincesOperating: ["Gauteng", "Limpopo"],
+    });
+    expect(record?.profile).toMatchObject({
+      companyType: "PTY_LTD",
+      cidbGrading: "6CE",
+      profileText: "Twenty years of municipal civils.",
+      profileDocument: "https://docs.example.org/profile.pdf",
+      completenessScore: 83,
+    });
+    expect(record?.profile?.equipmentAssets).toEqual([
+      { name: "TLB", quantity: 3, value: 900_000 },
+    ]);
+    expect(record?.profile?.operationalCapacity).toMatchObject({
+      staffCount: 48,
+      premisesOwned: true,
+    });
+    expect(record?.profile?.professionalBodies).toHaveLength(1);
+    expect(record?.completeness).toEqual({
+      score: 83,
+      missingFields: ["Tax Number"],
+    });
+  });
+
+  it("reads the experience field names the parent actually sends", async () => {
+    // Previously `value` and `endDate`, which the parent has never sent — so
+    // the contract value simply never rendered and nothing ever threw.
+    const { endpoint } = harness(CompanyEndpoint, () =>
+      jsonResponse(fullExtendedRecord),
+    );
+    const record = await endpoint.getExtendedRecord();
+    const experience = record?.experiences[0];
+
+    expect(experience?.contractValue).toBe(4_500_000);
+    expect(experience?.completionDate).toBe("2025-11-30T00:00:00.000Z");
+    expect(experience?.clientType).toBe("Government");
+    expect(experience?.currency).toBe("ZAR");
+    expect(experience?.referenceEmail).toBe("t.mokoena@example.org");
+    expect(experience?.categoryRelevance).toEqual(["construction"]);
+    expect(experience?.completionCertUrl).toBe(
+      "https://docs.example.org/cert.pdf",
+    );
+  });
+
+  it("reads personnel qualifications, which the parent spells plural", async () => {
+    const { endpoint } = harness(CompanyEndpoint, () =>
+      jsonResponse(fullExtendedRecord),
+    );
+    const record = await endpoint.getExtendedRecord();
+    const person = record?.keyPersonnel[0];
+
+    expect(person?.qualifications).toBe("BSc Civil Engineering");
+    expect(person?.department).toBe("Delivery");
+    expect(person?.yearsExperience).toBe(14);
+    expect(person?.email).toBe("n.dlamini@example.org");
+    expect(personnelCertificationList(person?.certifications).matched).toEqual([
+      { name: "PrEng", issuer: "ECSA" },
+    ]);
+  });
+
+  it("separates 'no company' from 'company without a profile'", async () => {
+    // 404 is an account-setup problem; `profile: null` is actionable here and
+    // is also why the record routes would answer 400.
+    const missing = harness(CompanyEndpoint, () =>
+      jsonResponse({ error: "Company not found" }, 404),
+    ).endpoint;
+    await expect(missing.getExtendedRecord()).resolves.toBeUndefined();
+
+    const noProfile = harness(CompanyEndpoint, () =>
+      jsonResponse({
+        company: { id: "c1", name: "Fresh", industryCodes: [] },
+        profile: null,
+        experiences: [],
+        keyPersonnel: [],
+      }),
+    ).endpoint;
+    const record = await noProfile.getExtendedRecord();
+    expect(record).toBeDefined();
+    expect(record?.profile).toBeNull();
+  });
+
+  it("tolerates Json columns holding an undocumented shape", async () => {
+    // equipmentAssets/professionalBodies/operationalCapacity are `Json?`, so a
+    // row written by another path can hold anything. It must neither throw nor
+    // vanish.
+    const { endpoint } = harness(CompanyEndpoint, () =>
+      jsonResponse({
+        company: { id: "c1", name: "Odd", industryCodes: [] },
+        profile: {
+          companyType: "OTHER",
+          equipmentAssets: [{ name: "Grader" }, { label: "no name" }],
+          operationalCapacity: "not an object",
+          professionalBodies: { name: "Not an array" },
+        },
+        experiences: [],
+        keyPersonnel: [],
+      }),
+    );
+    const record = await endpoint.getExtendedRecord();
+
+    const equipment = equipmentAssetList(record?.profile?.equipmentAssets);
+    expect(equipment.matched).toEqual([{ name: "Grader" }]);
+    expect(equipment.unmatched).toEqual([{ label: "no name" }]);
+
+    expect(
+      operationalCapacityFields(record?.profile?.operationalCapacity),
+    ).toBeUndefined();
+
+    const bodies = professionalBodyList(record?.profile?.professionalBodies);
+    expect(bodies.matched).toEqual([]);
+    expect(bodies.unmatched).toEqual([{ name: "Not an array" }]);
+  });
+
+  it("never calls the cidb route for reads — it has no GET handler", async () => {
+    // The parent's cidb route exports only POST, so the old `getCidb()` GET was
+    // a 405 mapped to `validation`, which the 404 guard did not swallow: the
+    // panel showed an error on every load.
+    const { endpoint, fetchImpl } = harness(CompanyEndpoint, () =>
+      jsonResponse(fullExtendedRecord),
+    );
+    await endpoint.getExtendedRecord();
+
+    const paths = fetchImpl.mock.calls.map((call) =>
+      String((call as unknown as [string])[0]),
+    );
+    expect(paths.some((path) => path.includes("/profile/cidb"))).toBe(false);
+    expect("getCidb" in endpoint).toBe(false);
+  });
+
+  it("writes the cidb grading through its own single-field route", async () => {
+    const { endpoint, fetchImpl } = harness(CompanyEndpoint, () =>
+      jsonResponse({ success: true, cidbGrading: "7CE" }),
+    );
+    await endpoint.setCidbGrading("7CE");
+
+    const [url, init] = lastCall(fetchImpl);
+    expect(String(url)).toContain("/api/v1/company/profile/cidb");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ cidbGrading: "7CE" });
+  });
+
+  it("sends a complete profile body — the extended POST is a full replace", async () => {
+    // The route writes all seven fields unconditionally, so anything omitted
+    // is nulled. A single-field edit must still carry the rest.
+    const { endpoint, fetchImpl } = harness(CompanyEndpoint, () =>
+      jsonResponse({
+        message: "Company profile saved successfully",
+        profile: {
+          id: "profile-1",
+          companyType: "PTY_LTD",
+          completenessScore: 90,
+          missingFields: [],
+        },
+      }),
+    );
+    await endpoint.saveExtendedProfile({
+      companyType: "PTY_LTD",
+      profileDocument: "https://docs.example.org/profile.pdf",
+      profileText: "Twenty years of municipal civils.",
+      equipmentAssets: [{ name: "TLB", quantity: 3 }],
+      operationalCapacity: { staffCount: 48 },
+      cidbGrading: "7CE",
+      professionalBodies: [{ name: "SAICE" }],
+    });
+
+    const [url, init] = lastCall(fetchImpl);
+    expect(String(url)).toContain("/api/v1/company/profile/extended");
+    expect(init.method).toBe("POST");
+    const body = JSON.parse(String(init.body));
+    // Every field the route writes is present, not just the changed one.
+    expect(Object.keys(body).sort()).toEqual([
+      "cidbGrading",
+      "companyType",
+      "equipmentAssets",
+      "operationalCapacity",
+      "professionalBodies",
+      "profileDocument",
+      "profileText",
+    ]);
+    expect(body.profileText).toBe("Twenty years of municipal civils.");
+  });
+
+  it("creates, updates and deletes a project experience", async () => {
+    const created = harness(CompanyEndpoint, () =>
+      jsonResponse(
+        {
+          message: "Experience added successfully",
+          experience: { id: "e9", projectName: "New depot" },
+        },
+        201,
+      ),
+    );
+    await expect(
+      created.endpoint.createExperience({ projectName: "New depot" }),
+    ).resolves.toMatchObject({ id: "e9" });
+    expect(lastCall(created.fetchImpl)[1].method).toBe("POST");
+
+    const updated = harness(CompanyEndpoint, () =>
+      jsonResponse({
+        message: "Experience updated successfully",
+        experience: { id: "e9", projectName: "Renamed depot" },
+      }),
+    );
+    await updated.endpoint.updateExperience("e9", {
+      projectName: "Renamed depot",
+    });
+    const [updateUrl, updateInit] = lastCall(updated.fetchImpl);
+    expect(String(updateUrl)).toContain("/api/v1/company/experiences/e9");
+    expect(updateInit.method).toBe("PUT");
+
+    const removed = harness(CompanyEndpoint, () =>
+      jsonResponse({ message: "Experience deleted successfully" }),
+    );
+    await removed.endpoint.deleteExperience("e9");
+    const [deleteUrl, deleteInit] = lastCall(removed.fetchImpl);
+    expect(String(deleteUrl)).toContain("/api/v1/company/experiences/e9");
+    expect(deleteInit.method).toBe("DELETE");
+  });
+
+  it("creates, updates and deletes personnel, reading the singular key", async () => {
+    // The list route answers `{ personnel }` but the write routes answer
+    // `{ person }` — reading the wrong one yields undefined, not an error.
+    const created = harness(CompanyEndpoint, () =>
+      jsonResponse(
+        {
+          message: "Personnel added successfully",
+          person: { id: "p9", fullName: "S. Naidoo", role: "QS" },
+        },
+        201,
+      ),
+    );
+    await expect(
+      created.endpoint.createPersonnel({ fullName: "S. Naidoo", role: "QS" }),
+    ).resolves.toMatchObject({ id: "p9", fullName: "S. Naidoo" });
+
+    const updated = harness(CompanyEndpoint, () =>
+      jsonResponse({
+        message: "Personnel updated successfully",
+        person: { id: "p9", fullName: "S. Naidoo", role: "Senior QS" },
+      }),
+    );
+    await expect(
+      updated.endpoint.updatePersonnel("p9", { role: "Senior QS" }),
+    ).resolves.toMatchObject({ role: "Senior QS" });
+    expect(lastCall(updated.fetchImpl)[1].method).toBe("PUT");
+
+    const removed = harness(CompanyEndpoint, () =>
+      jsonResponse({ message: "Personnel deleted successfully" }),
+    );
+    await removed.endpoint.deletePersonnel("p9");
+    const [deleteUrl, deleteInit] = lastCall(removed.fetchImpl);
+    expect(String(deleteUrl)).toContain("/api/v1/company/personnel/p9");
+    expect(deleteInit.method).toBe("DELETE");
   });
 });
 

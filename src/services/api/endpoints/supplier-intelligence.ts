@@ -26,7 +26,13 @@
 import { z } from "zod";
 import { AuthenticatedEndpoint } from "./base";
 
-const companySchema = z
+/**
+ * Exported so `supplier-profile.ts` can parse the very same contract rather
+ * than declaring a second copy of it. A duplicated schema is how two clients
+ * for one route drift apart silently, and this row is the identity key the
+ * profile screen resolves every other contract from.
+ */
+export const intelligenceCompanySchema = z
   .object({
     rank: z.number(),
     name: z.string(),
@@ -55,10 +61,10 @@ const companySchema = z
   })
   .passthrough();
 
-export type IntelligenceCompany = z.infer<typeof companySchema>;
+export type IntelligenceCompany = z.infer<typeof intelligenceCompanySchema>;
 
 const searchSchema = z.object({
-  data: z.array(companySchema),
+  data: z.array(intelligenceCompanySchema),
   meta: z.object({
     total: z.number(),
     page: z.number(),
