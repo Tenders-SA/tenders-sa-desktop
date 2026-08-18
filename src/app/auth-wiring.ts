@@ -32,6 +32,7 @@ import { RecommendationsEndpoint } from "../services/api/endpoints/recommendatio
 import { SavedTendersEndpoint } from "../services/api/endpoints/saved-tenders";
 import { SupplierIntelligenceEndpoint } from "../services/api/endpoints/supplier-intelligence";
 import { SupplierProfileEndpoint } from "../services/api/endpoints/supplier-profile";
+import { ProcurementOfficersEndpoint } from "../services/api/endpoints/procurement-officers";
 import { GatedAuthService } from "../services/auth/gated-auth-service";
 import { nativeCredentialStore } from "../services/auth/native-credential-store";
 import { ParentAuthAdapter } from "../services/auth/parent-auth-adapter";
@@ -96,6 +97,7 @@ export interface ApiClients {
    * method over one route.
    */
   supplierProfile: SupplierProfileEndpoint;
+  procurementOfficers: ProcurementOfficersEndpoint;
 }
 
 export interface AuthWiring extends ApiClients {
@@ -184,6 +186,7 @@ export function createAuthWiring(options: AuthWiringOptions): AuthWiring {
     pulse: new PulseEndpoint(endpointOptions),
     supplierIntelligence: new SupplierIntelligenceEndpoint(endpointOptions),
     supplierProfile: new SupplierProfileEndpoint(endpointOptions),
+    procurementOfficers: new ProcurementOfficersEndpoint(endpointOptions),
   };
 
   return {

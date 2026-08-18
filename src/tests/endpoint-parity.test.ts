@@ -31,6 +31,28 @@ const NEGATIVE_ASSERTION_FILES = new Set([
   "tests/capability-scope.test.ts",
 ]);
 
+/**
+ * Files that legitimately speak cursor pagination. The parent's
+ * procurement-officers sync feed (`GET /api/v1/procurement-officers/sync`)
+ * is the first main-application route to implement it (`cursor` query
+ * parameter, `nextCursor` in the response) — read from the parent source on
+ * `spec/procurement-officer-directory-main`. Every other route must keep
+ * the page/limit or limit/offset conventions.
+ */
+const CURSOR_PAGINATED_FILES = new Set([
+  "services/api/endpoints/procurement-officers.ts",
+  "tests/procurement-officers-endpoint.test.ts",
+  // Local persistence of the feed's cursor: sync-state table row type,
+  // repository upsert, the sync runner and its fixtures, and the repository
+  // tests.
+  "db/schema/types.ts",
+  "db/repositories/procurement-officers.ts",
+  "services/sync/procurement-officers-sync.ts",
+  "tests/procurement-officers-repository.test.ts",
+  "tests/procurement-officers-sync.test.ts",
+  "tests/procurement-officers-screen.test.tsx",
+]);
+
 const DEVELOPER_API_HOST = "api.tenders-sa.org";
 
 function sourceFiles(dir: string, acc: string[] = []): string[] {
@@ -107,11 +129,14 @@ describe("endpoint parity — the desktop uses the main application API", () => 
     expect(offenders).toEqual([]);
   });
 
-  it("uses no ?cursor pagination, which no main-application route implements", () => {
+  it("uses no ?cursor pagination outside the procurement-officers sync feed", () => {
     // Main-application routes paginate with page/limit or limit/offset
-    // (endpoint-inventory.md §4). A `cursor` parameter is a tell that a
-    // fixture or adapter was written against the Developer API.
+    // (endpoint-inventory.md §4) — EXCEPT the procurement-officers sync
+    // feed, which is cursor-paginated by design (see CURSOR_PAGINATED_FILES).
+    // A `cursor` parameter anywhere else is a tell that a fixture or
+    // adapter was written against the Developer API.
     const offenders = scanned
+      .filter((f) => !CURSOR_PAGINATED_FILES.has(f.path))
       .filter(
         (f) => /cursor["']?\s*:/.test(f.code) || f.code.includes("cursor="),
       )

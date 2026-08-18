@@ -26,6 +26,8 @@ import { Tasks } from "../../features/tasks/Tasks";
 import { Settings } from "../../features/settings/Settings";
 import { SupplierIntelligence } from "../../features/intelligence/SupplierIntelligence";
 import { SupplierProfile } from "../../features/intelligence/SupplierProfile";
+import { ProcurementOfficerDirectory } from "../../features/procurement-officers/ProcurementOfficerDirectory";
+import { tauriSqlExecutor } from "../../db/tauri-sql-executor";
 import {
   isWorkflowStage,
   type WorkflowStage,
@@ -298,6 +300,16 @@ export function AppRoutes({
           <Route
             path="suppliers/:slug"
             element={<SupplierProfileRoute clients={clients} />}
+          />
+          <Route
+            path="procurement-officers"
+            element={
+              <ProcurementOfficerDirectory
+                feed={clients.procurementOfficers}
+                executor={tauriSqlExecutor}
+                ownerId={workspaceOwner}
+              />
+            }
           />
           <Route
             path="notifications"

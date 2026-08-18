@@ -38,6 +38,7 @@ import {
   Search,
   Settings,
   Trophy,
+  UserSearch,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -110,6 +111,12 @@ export const NAVIGATION_GROUPS: readonly NavigationGroup[] = [
         label: "Supplier Intelligence",
         icon: Users,
         path: "/suppliers",
+        available: true,
+      },
+      {
+        label: "Procurement Officers",
+        icon: UserSearch,
+        path: "/procurement-officers",
         available: true,
       },
       { label: "Buyer Intelligence", icon: Landmark, available: false },

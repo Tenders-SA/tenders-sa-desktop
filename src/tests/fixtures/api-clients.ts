@@ -99,6 +99,13 @@ export function stubApiClients(
       getShowcaseEntry: idle(),
       searchForensicSuppliers: idle(),
     },
+    procurementOfficers: {
+      search: idle(),
+      get: idle(),
+      getTenders: idle(),
+      sync: idle(),
+      submitCorrection: idle(),
+    },
   } as unknown as ApiClients;
 
   return { ...clients, ...overrides };

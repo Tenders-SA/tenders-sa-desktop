@@ -109,3 +109,62 @@ export interface ResponseDocVersionRow {
   source: ResponseDocVersionSource;
   created_at: string;
 }
+
+/** Procurement Officer Directory (TASK-1.3) — row shapes for 0005 DDL. */
+
+export interface ProcurementOfficerRow {
+  owner_id: string;
+  id: string;
+  canonical_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  current_title: string | null;
+  current_organisation_id: string | null;
+  province: string | null;
+  kind: string;
+  status: string;
+  confidence_score: number | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  verified_at: string | null;
+  suppressed: 0 | 1;
+  updated_at: string;
+}
+
+export interface OfficerContactPointRow {
+  owner_id: string;
+  officer_id: string;
+  id: string;
+  type: string;
+  value: string;
+  is_role_based: 0 | 1;
+  is_official: 0 | 1;
+  verification_status: string;
+}
+
+export interface OfficerAssignmentRow {
+  owner_id: string;
+  officer_id: string;
+  id: string;
+  organisation_id: string | null;
+  organisation_name: string | null;
+  title: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  is_current: 0 | 1;
+  confidence_score: number | null;
+}
+
+export interface OfficerTenderLinkRow {
+  owner_id: string;
+  officer_id: string;
+  tender_id: string;
+  source_field: string | null;
+  observed_at: string | null;
+}
+
+export interface OfficerSyncStateRow {
+  owner_id: string;
+  cursor: string | null;
+  last_sync_at: string | null;
+}

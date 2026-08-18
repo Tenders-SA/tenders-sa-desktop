@@ -23,7 +23,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   compile date the platform had already gathered, and — on an active
   subscription — the published risk indicator, B-BBEE level, enterprise type
   and restricted-supplier counts.
-
+- The Procurement Officers directory now shows its feature state honestly: a
+  banner when the officer index is not included in your plan (search still
+  works against the server), an offline notice with the last sync time when a
+  refresh fails, and a "Saved only" toggle that filters results to officers you
+  have saved — with a dedicated empty state.
+- A "Report incorrect information" flow on officer details: choose the
+  disputed field (email, telephone, mobile, title, organisation or name),
+  explain the problem, and file it with the platform. On success the field
+  stays hidden on your device — marked as pending review — until a later
+  sync no longer carries the disputed value; rejections (404/400) are shown
+  with an explicit message and never mark the field.
+- Clicking a Procurement Officers search result opens a detail panel with the
+  officer's current assignment (never a stale one), organisation name and
+  physical address, official contact points, and related tenders — with
+  actions to copy an email or telephone number, open the email client, save or
+  unsave the officer, keep private notes, and jump to the tender list. Server
+  contact values that arrive masked are labelled "masked — sync to reveal",
+  and a failed refresh keeps the local record visible with an honest notice.
+- A Procurement Officers directory in the sidebar that keeps a local index of
+  published procurement contacts, syncs it in the background, and searches it
+  instantly as you type — with province, kind, status, organisation and role
+  filters, data-quality labels (verified / recently observed / historical /
+  unverified), recent search chips, and results that refresh from the server
+  when the query settles.
 - Previously opened tenders, Radar matches, applications, analysis and tender
   documents now remain available in an account-isolated local workspace. Saved
   results appear immediately while updates run in the background, response
@@ -140,6 +163,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Links to a B-BBEE certificate, profile document, completion certificate,
   reference letter or CV are now shown as their address rather than as a link
   that could not open anything in the desktop app.
+- The Procurement Officers search now smooths typing into both the query box
+  and the organisation/role filter boxes, so a single server refresh happens
+  after you stop typing instead of one per keystroke. Searches containing FTS
+  punctuation (quotes, asterisks, dashes, brackets and similar) no longer
+  fail — they are matched as plain text — and a failed local index lookup no
+  longer reports a server problem. "Saved only" with an empty search box now
+  lists your saved officers instead of the start screen.
 - The Opportunities screen now opens and lists your shortlisted tenders
   instead of reporting that they could not be loaded. It also states plainly
   that it holds tenders awaiting a bid decision, rather than implying it shows
