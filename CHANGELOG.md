@@ -8,6 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Signed automatic updates. The application now checks for a newer release
+  when it starts and every six hours while it stays open, and shows a
+  "Update & Restart" banner in the corner when one exists. Nothing downloads
+  until you choose to — the update only proceeds after your click, and if
+  the check or the download fails (offline, service unreachable) the
+  application simply behaves as before, with no error and no interruption.
+  Updates are verified against a signing key before they install; the
+  private key never leaves GitHub's secret store.
 - A Supplier Profile screen, opened by selecting a company on Supplier
   Intelligence. It gathers what the platform already records about a potential
   partner into one place: registration details, contact details, operating
