@@ -59,9 +59,10 @@ The workflow references these by name:
 | `TAURI_SIGNING_PRIVATE_KEY` | Private key for signing updater metadata |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password for that key |
 
-The corresponding **public** key is non-secret and belongs in
-configuration (`VITE_UPDATE_PUBLIC_KEY`), where the client uses it to
-verify signed update metadata.
+The corresponding **public** key is non-secret and lives in
+`src-tauri/tauri.conf.json` under `plugins.updater.pubkey`, where the client
+uses it to verify signed update metadata. There is deliberately no
+`VITE_*` updater configuration.
 
 When `sign` is not selected, these resolve to empty and Tauri produces
 unsigned artifacts — the correct default for a test package. Do not
