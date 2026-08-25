@@ -195,6 +195,32 @@ describe("ProcurementOfficerDirectory shell", () => {
     expect(screen.queryByText("Sync now")).not.toBeNull();
   });
 
+  it("confirms a manual recheck while the feature stays off", async () => {
+    const db = new FakeSqlExecutor();
+    db.selectResults = [[]];
+    const feed = new FakeFeed();
+    feed.pages = [
+      new ApiError({ kind: "not-found", status: 404, message: "Not found" }),
+      new ApiError({ kind: "not-found", status: 404, message: "Not found" }),
+    ];
+
+    const user = userEvent.setup();
+    render(
+      <ProcurementOfficerDirectory feed={feed} executor={db} ownerId={owner} />,
+    );
+
+    expect(await screen.findByText("Directory not enabled")).toBeVisible();
+    expect(screen.queryByText(/Rechecked just now/)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Sync now" }));
+
+    expect(
+      await screen.findByText(
+        "Rechecked just now — the directory is still not enabled.",
+      ),
+    ).toBeVisible();
+  });
+
   it("renders the entitlement-missing state when the feed 403s", async () => {
     const db = new FakeSqlExecutor();
     db.selectResults = [[]];

@@ -53,6 +53,7 @@ export function ProcurementOfficerDirectory({
   const sync = useOfficerSync(feed, executor, ownerId);
   const search = useOfficerSearch(feed, executor, ownerId);
   const [refreshing, setRefreshing] = useState(false);
+  const [offRecheckAt, setOffRecheckAt] = useState<string | null>(null);
   const [selectedOfficerId, setSelectedOfficerId] = useState<string | null>(
     null,
   );
@@ -89,7 +90,12 @@ export function ProcurementOfficerDirectory({
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await sync.refresh();
+      const outcome = await sync.refresh();
+      if (outcome.featureState === "off") {
+        setOffRecheckAt(new Date().toISOString());
+      } else {
+        setOffRecheckAt(null);
+      }
     } finally {
       setRefreshing(false);
     }
@@ -115,20 +121,25 @@ export function ProcurementOfficerDirectory({
           onRefresh={() => void handleRefresh()}
           refreshing={refreshing || sync.phase === "syncing"}
         />
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm">
-          <p className="font-medium">Directory not enabled</p>
+        <div className="rounded-md border border-warning/40 bg-warning/10 p-4 text-sm">
+          <p className="font-medium text-warning">Directory not enabled</p>
           <p className="mt-1 text-foreground/70">
             The Procurement Officers directory is not enabled for your workspace
             yet. Check back later.
           </p>
+          {offRecheckAt && (
+            <p className="mt-2 text-xs text-muted-foreground" role="status">
+              Rechecked just now — the directory is still not enabled.
+            </p>
+          )}
         </div>
       </section>
     );
   }
 
   const entitlementBanner = sync.featureState === "entitlement-missing" && (
-    <div className="mb-4 rounded-md border border-orange-300 bg-orange-50 p-4 text-sm">
-      <p className="font-medium">Not included in your plan</p>
+    <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 p-4 text-sm">
+      <p className="font-medium text-warning">Not included in your plan</p>
       <p className="mt-1 text-foreground/70">
         Procurement officer data is not part of your current plan. Your last
         synced directory remains available in read-only form — search still
