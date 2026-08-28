@@ -154,7 +154,7 @@ export class OfficerSyncRunner {
   }
 }
 
-/** Feed rows map 1:1 onto the repository ingest; the feed carries no tender links. */
+/** Feed rows map 1:1 onto the repository ingest, including evidence links. */
 export function toOfficerIngest(row: OfficerSyncRow): OfficerIngest {
   return {
     id: row.id,
@@ -190,6 +190,10 @@ export function toOfficerIngest(row: OfficerSyncRow): OfficerIngest {
       isCurrent: assignment.isCurrent,
       confidenceScore: assignment.confidenceScore,
     })),
-    tenderLinks: [],
+    tenderLinks: row.tenderLinks.map((link) => ({
+      tenderId: link.tenderId,
+      sourceField: link.sourceField,
+      observedAt: link.observedAt,
+    })),
   };
 }

@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Procurement Officer detail views now retain related tender links from the
+  directory sync, so those links remain available when the desktop app is
+  offline.
+
 ### Added
 
 - Signed automatic updates. The application now checks for a newer release

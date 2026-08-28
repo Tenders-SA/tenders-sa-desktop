@@ -79,6 +79,13 @@ const syncRow = {
       confidenceScore: 0.85,
     },
   ],
+  tenderLinks: [
+    {
+      tenderId: "tender-1",
+      sourceField: "tender.contact",
+      observedAt: "2025-06-01T00:00:00.000Z",
+    },
+  ],
 };
 
 /** A tombstone: identity + flag only, disputed facts never exported. */
@@ -100,6 +107,7 @@ const tombstoneRow = {
   updatedAt: "2025-06-02T00:00:00.000Z",
   contactPoints: [],
   assignments: [],
+  tenderLinks: [],
 };
 
 const syncBody = {
@@ -279,11 +287,30 @@ describe("procurement officer sync feed", () => {
     const officer = result.rows[0];
     expect(officer.contactPoints[0].value).toBe("thabo.mokoena@dwa.gov.za");
     expect(officer.contactPoints[1].value).toBe("0123456789");
+    expect(officer.tenderLinks).toEqual([
+      {
+        tenderId: "tender-1",
+        sourceField: "tender.contact",
+        observedAt: "2025-06-01T00:00:00.000Z",
+      },
+    ]);
 
     const tombstone = result.rows[1];
     expect(tombstone.suppressed).toBe(true);
     expect(tombstone.contactPoints).toEqual([]);
     expect(tombstone.assignments).toEqual([]);
+    expect(tombstone.tenderLinks).toEqual([]);
+  });
+
+  it("defaults tender links when connected to an older parent deployment", async () => {
+    const legacyBody = structuredClone(syncBody);
+    delete (legacyBody.data.rows[0] as { tenderLinks?: unknown }).tenderLinks;
+    delete (legacyBody.data.rows[1] as { tenderLinks?: unknown }).tenderLinks;
+    const { endpoint } = makeEndpoint(async () => jsonResponse(legacyBody));
+
+    const result = await endpoint.sync();
+
+    expect(result.rows.map((row) => row.tenderLinks)).toEqual([[], []]);
   });
 
   it("sends cursor and explicit page bounds (PERF-3)", async () => {

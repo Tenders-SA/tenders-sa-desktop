@@ -64,7 +64,7 @@ export interface OfficerIngest {
   updatedAt: string;
   contactPoints: OfficerContactPointIngest[];
   assignments: OfficerAssignmentIngest[];
-  /** Populated when the feed starts carrying tender references; empty today. */
+  /** Evidence links from the parent sync feed, retained for offline detail. */
   tenderLinks?: OfficerTenderLinkIngest[];
 }
 
