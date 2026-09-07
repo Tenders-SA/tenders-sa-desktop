@@ -8,6 +8,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Generating a cover letter, methodology, or other response document now keeps
+  waiting for the secure generation start instead of incorrectly reporting
+  that Tenders-SA could not be reached after a short delay.
 - Procurement Officer detail views now retain related tender links from the
   directory sync, so those links remain available when the desktop app is
   offline.

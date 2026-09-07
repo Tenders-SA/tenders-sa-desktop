@@ -2520,6 +2520,40 @@ describe("applications endpoint — response document authoring", () => {
     expect(calls).toBe(1);
   });
 
+  it("outlives the default timeout while the parent acknowledges generation", async () => {
+    const fetchImpl = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("aborted", "AbortError"));
+          });
+          setTimeout(
+            () =>
+              resolve(
+                jsonResponse(
+                  { key: "cover_letter", status: "generating" },
+                  202,
+                ),
+              ),
+            10,
+          );
+        }),
+    ) as unknown as typeof fetch;
+    const endpoint = new ApplicationsEndpoint({
+      transport: new ApiTransport({
+        baseUrl: "http://localhost:3000",
+        fetchImpl,
+        defaultPolicy: { timeoutMs: 5 },
+        sleep: async () => {},
+      }),
+      getToken: async () => "tok",
+    });
+
+    await expect(
+      endpoint.generateResponseDocument("a1", "cover_letter"),
+    ).resolves.toMatchObject({ key: "cover_letter", status: "generating" });
+  });
+
   it("PUTs the edited content with the exact body and method", async () => {
     const { endpoint, fetchImpl } = harness(ApplicationsEndpoint, () =>
       jsonResponse({ ok: true, key: "cover_letter" }),
