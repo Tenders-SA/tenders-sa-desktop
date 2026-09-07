@@ -93,7 +93,7 @@ export function CorrectionDialog({
 
         {phase === "submitted" ? (
           <div className="mt-4">
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+            <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-foreground">
               <p className="font-medium">
                 Correction filed — status: {status ?? "pending"}.
               </p>
@@ -124,7 +124,7 @@ export function CorrectionDialog({
               id="correction-field"
               value={field}
               onChange={(event) => setField(event.target.value)}
-              className="mt-1 w-full rounded-md border px-3 py-1.5 text-sm"
+              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
             >
               {fields.map((f) => (
                 <option key={f.field} value={f.field}>
@@ -145,7 +145,7 @@ export function CorrectionDialog({
               onChange={(event) => setReason(event.target.value)}
               rows={3}
               placeholder="Explain what is incorrect…"
-              className="mt-1 w-full rounded-md border px-3 py-1.5 text-sm"
+              className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
             />
 
             {errorMessage && (

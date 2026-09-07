@@ -1120,7 +1120,8 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
    * subscription) and 409 `PRECONDITIONS_NOT_MET` (unfilled required
    * additional info). A mutation that starts a server-side AI job — the
    * transport must never auto-retry it (R-A-6); the parent's 202-idempotency
-   * covers a double press.
+   * covers a double press. Its acknowledged start can outlive the transport's
+   * 10-second default, so it shares the AI timeout used by `enrichBlueprint`.
    */
   async generateResponseDocument(
     id: string,
@@ -1136,7 +1137,7 @@ export class ApplicationsEndpoint extends AuthenticatedEndpoint {
       schema: generateResponseDocSchema,
       headers: await this.authHeaders(),
       body,
-      policy: { retry: "never" },
+      policy: { retry: "never", timeoutMs: 120_000 },
       signal,
     });
   }

@@ -63,7 +63,7 @@ export function OfficerActions({
         <button
           type="button"
           onClick={() => void handleCopy("email", emailContact.value)}
-          className="rounded-md border px-3 py-1.5 text-sm"
+          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10"
         >
           {copied === "email" ? "Copied" : "Copy email"}
         </button>
@@ -72,7 +72,7 @@ export function OfficerActions({
         <button
           type="button"
           onClick={() => void handleCopy("telephone", telephoneContact.value)}
-          className="rounded-md border px-3 py-1.5 text-sm"
+          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10"
         >
           {copied === "telephone" ? "Copied" : "Copy telephone"}
         </button>
@@ -80,7 +80,7 @@ export function OfficerActions({
       {emailContact && (
         <a
           href={`mailto:${emailContact.value}`}
-          className="rounded-md border px-3 py-1.5 text-sm"
+          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10"
         >
           Email officer
         </a>
@@ -88,14 +88,14 @@ export function OfficerActions({
       <button
         type="button"
         onClick={onToggleSaved}
-        className="rounded-md border px-3 py-1.5 text-sm"
+        className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10"
       >
         {saved ? "Unsave officer" : "Save officer"}
       </button>
       {organisationLink && (
         <Link
           to={organisationLink}
-          className="rounded-md border px-3 py-1.5 text-sm"
+          className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10"
         >
           Organisation profile
         </Link>
@@ -103,31 +103,31 @@ export function OfficerActions({
       <button
         type="button"
         onClick={onViewTenders}
-        className="rounded-md border px-3 py-1.5 text-sm"
+        className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
       >
         View tenders
       </button>
 
-      <div className="flex w-full flex-col gap-1.5">
+      <div className="mt-2 flex w-full flex-col gap-1.5 border-t border-border pt-4">
         <textarea
           aria-label="Private notes"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           rows={2}
           placeholder="Private notes for this officer…"
-          className="rounded-md border px-3 py-1.5 text-sm"
+          className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
         />
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => void handleSaveNote()}
             disabled={savingNote}
-            className="rounded-md border px-3 py-1 text-sm"
+            className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10"
           >
             {savingNote ? "Saving…" : "Save note"}
           </button>
           {noteSaved && (
-            <span className="text-xs text-emerald-700">Note saved</span>
+            <span className="text-xs font-medium text-success">Note saved</span>
           )}
         </div>
       </div>

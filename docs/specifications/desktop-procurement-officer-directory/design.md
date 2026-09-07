@@ -142,6 +142,16 @@ Pure functions over `SqlExecutor`, matching `cache-entries.ts`/`sync-operations.
 
 ## UI (`src/features/procurement-officers/`)
 
+### Theme alignment addendum (2026-09-07)
+
+The directory uses the desktop application's existing dark semantic-token system,
+not a page-specific palette. Its hierarchy follows `TenderList` and Tender Radar:
+an accented record header, `bg-card` rounded-xl search and record surfaces, semantic
+input boundaries, and restrained primary hover/focus states. Result rows are separate
+scan-friendly cards rather than a dense divider list; the filter labels remain visible
+on every breakpoint. All existing local-first, POPIA, entitlement, offline and
+correction states keep their behaviour and wording.
+
 - `ProcurementOfficerDirectory.tsx` — route component: search bar, filter row, result
   list, detail panel; assembles local + server results (`useOfficerSearch`).
 - `use-officer-search.ts` — 150–250 ms debounce; local FTS5 query first; server refresh

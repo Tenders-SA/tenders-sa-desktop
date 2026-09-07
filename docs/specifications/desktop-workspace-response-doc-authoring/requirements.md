@@ -120,6 +120,11 @@ Both mutations use `policy: { retry: "never" }` (R-W-7, mirroring
 `saveAdditionalInfo`): the transport must not auto-retry a body-carrying
 mutation, and a 409/402 must surface, not silently retry.
 
+### R-A-7 — Generation-start timeout
+`POST generate-response-doc` retains `retry: "never"` but uses a 120-second
+timeout. Its authenticated AI-job start can exceed the generic 10-second
+budget; expiry must not be presented as “Could not reach Tenders-SA”.
+
 ## Non-functional
 
 - Same transport/error/redaction rules as the rest of the desktop (REQ-5,

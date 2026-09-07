@@ -53,6 +53,13 @@ function syncRow(overrides: Partial<OfficerSyncRow> = {}): OfficerSyncRow {
         confidenceScore: 0.9,
       },
     ],
+    tenderLinks: [
+      {
+        tenderId: "tender-1",
+        sourceField: "tender.contact",
+        observedAt: "2025-06-01T00:00:00.000Z",
+      },
+    ],
     ...overrides,
   };
 }
@@ -145,6 +152,17 @@ describe("OfficerSyncRunner", () => {
       "2025-06-01T00:00:00.000Z",
     ]);
     expect(rowInsertCalls(db)).toBe(2);
+    const tenderLinkInserts = db.calls.filter((call) =>
+      call.sql.includes("INSERT INTO officer_tender_links"),
+    );
+    expect(tenderLinkInserts).toHaveLength(2);
+    expect(tenderLinkInserts[0].params).toEqual([
+      owner,
+      "officer-1",
+      "tender-1",
+      "tender.contact",
+      "2025-06-01T00:00:00.000Z",
+    ]);
   });
 
   it("starts without a cursor on a fresh account", async () => {
@@ -309,12 +327,18 @@ describe("OfficerSyncRunner", () => {
 });
 
 describe("toOfficerIngest", () => {
-  it("maps feed rows onto the repository ingest with no tender links", () => {
+  it("maps feed rows onto the repository ingest with evidence tender links", () => {
     const ingest = toOfficerIngest(syncRow());
     expect(ingest.id).toBe("officer-1");
     expect(ingest.contactPoints[0].value).toBe("thabo.mokoena@dwa.gov.za");
     expect(ingest.assignments[0].isCurrent).toBe(true);
-    expect(ingest.tenderLinks).toEqual([]);
+    expect(ingest.tenderLinks).toEqual([
+      {
+        tenderId: "tender-1",
+        sourceField: "tender.contact",
+        observedAt: "2025-06-01T00:00:00.000Z",
+      },
+    ]);
     expect(ingest.suppressed).toBe(false);
   });
 });

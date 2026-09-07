@@ -75,3 +75,16 @@ reference requirements R-A-1..R-A-6 and the live-verified contracts in `design.m
 - T3: DONE — fixtures + parity literals pinned; full suite 599/599,
   tsc/lint/prettier clean.
 - T4: DONE (2026-08-09) — user confirmed the entire live-verification task passes.
+
+## T5 — Generation timeout regression
+
+- **Pre-check**: R-A-7 and the `enrichBlueprint` extended-timeout pattern reviewed.
+- **Files**: `src/services/api/endpoints/applications.ts`,
+  `src/tests/module-endpoints.test.ts`.
+- **Work**: retain `retry: "never"`, set `timeoutMs: 120_000` on document
+  generation, and test a delayed 202 against a deliberately tiny default.
+- **Verification**: `pnpm exec vitest run src/tests/module-endpoints.test.ts`,
+  typecheck and lint.
+
+- **Status**: DONE (2026-09-07) — delayed-202 regression passes with the
+  120-second generation budget.

@@ -5,10 +5,10 @@
 import { officerQuality, type OfficerQualityTone } from "./officer-quality";
 
 const TONE_CLASSES: Record<OfficerQualityTone, string> = {
-  verified: "bg-emerald-100 text-emerald-800",
-  recent: "bg-sky-100 text-sky-800",
-  historical: "bg-amber-100 text-amber-800",
-  unverified: "bg-neutral-100 text-neutral-600",
+  verified: "bg-success/15 text-success",
+  recent: "bg-info/15 text-info",
+  historical: "bg-warning/15 text-warning",
+  unverified: "bg-muted text-muted-foreground",
 };
 
 export function QualityLabel({
@@ -21,7 +21,7 @@ export function QualityLabel({
   const quality = officerQuality(status, lastSeenAt);
   return (
     <span
-      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${TONE_CLASSES[quality.tone]}`}
+      className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${TONE_CLASSES[quality.tone]}`}
     >
       {quality.label}
     </span>

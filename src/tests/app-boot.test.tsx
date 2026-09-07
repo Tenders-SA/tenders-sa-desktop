@@ -22,6 +22,16 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(async () => null) }));
 vi.mock("@tauri-apps/plugin-sql", () => ({
   default: { load: vi.fn(async () => ({ execute: vi.fn(), select: vi.fn() })) },
 }));
+// The updater's `Update` class extends `Resource` from @tauri-apps/api/core,
+// which the mock above does not export -- so the real plugin module cannot
+// even evaluate in jsdom. check() resolving null keeps the banner hidden,
+// exactly the no-update state the start-up smoke test wants.
+vi.mock("@tauri-apps/plugin-updater", () => ({
+  check: vi.fn(async () => null),
+}));
+vi.mock("@tauri-apps/plugin-process", () => ({
+  relaunch: vi.fn(async () => {}),
+}));
 
 describe("application start-up", () => {
   it("mounts and shows the shell with no VITE_ configuration", async () => {

@@ -57,7 +57,8 @@ mod tests {
     const MIGRATION_0001: &str = include_str!("../../migrations/0001_init.sql");
     const MIGRATION_0002: &str = include_str!("../../migrations/0002_add_lookup_indexes.sql");
     const MIGRATION_0003: &str = include_str!("../../migrations/0003_response_doc_drafts.sql");
-    const MIGRATION_0004: &str = include_str!("../../migrations/0004_local_workspace_ownership.sql");
+    const MIGRATION_0004: &str =
+        include_str!("../../migrations/0004_local_workspace_ownership.sql");
     const MIGRATION_0005: &str = include_str!("../../migrations/0005_procurement_officers.sql");
 
     fn apply_all(conn: &rusqlite::Connection) {
@@ -218,9 +219,11 @@ mod tests {
         apply_all(&conn);
 
         let fts5: i64 = conn
-            .query_row("SELECT sqlite_compileoption_used('ENABLE_FTS5')", [], |row| {
-                row.get(0)
-            })
+            .query_row(
+                "SELECT sqlite_compileoption_used('ENABLE_FTS5')",
+                [],
+                |row| row.get(0),
+            )
             .unwrap();
         assert_eq!(fts5, 1, "bundled SQLite must compile FTS5");
 

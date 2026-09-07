@@ -151,3 +151,10 @@ already flows from the same `ApplicationsEndpoint` instance).
 | `src/tests/module-screens.test.tsx` | +screen tests |
 | `src/tests/fixtures/api-clients.ts` | +stub methods |
 | `src/tests/endpoint-parity.test.ts` | +route literals |
+
+## Regression correction — generation start timeout (R-A-7)
+
+`generateResponseDocument` keeps its no-retry mutation policy and adds
+`timeoutMs: 120_000`, matching the existing `enrichBlueprint` AI budget. Its
+endpoint test supplies a 5 ms default and a delayed 202, proving this request
+does not inherit the generic 10-second timeout.

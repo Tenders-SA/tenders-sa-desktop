@@ -47,6 +47,15 @@ tauri-plugin-http = { version = "2", default-features = false, features = ["rust
 # at runtime to exactly the user-picked path, so no static fs scope is granted.
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+# Update transport (desktop-app-updater R-U1). Default features are
+# rustls-tls + zip: the rustls TLS backend matches tauri-plugin-http's
+# choice above, and zip is what installs the downloaded NSIS/MSI package.
+# No feature flags are set deliberately -- the defaults are the ones we want.
+tauri-plugin-updater = "2.10.1"
+# Relaunch after a successful update install (desktop-app-updater R-U7).
+# Least privilege: only `process:allow-restart` is granted in
+# capabilities/default.json -- no other process command is exposed.
+tauri-plugin-process = "2.3.1"
 # Slice 8 opens only downloaded temp copies; capability scope is pinned to
 # `$TEMP/tenders-sa/**` and URL opening is never granted.
 

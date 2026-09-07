@@ -11,6 +11,7 @@
 | Full suite + static gates | T3 | `vitest` (all) 599/599, `tsc --noEmit`, `eslint .`, `prettier --check .` — 0 errors | 2026-08-08 |
 | Capability/parity | T3 | `vitest capability-scope endpoint-parity` — both literals pinned | 2026-08-08 |
 | Live human verification | T4 | User confirmed Generate → Saved, Edit → Save persistence, no loading flash, and the 402/409 copy all work. | 2026-08-09 |
+| Generation timeout regression | T5 | `vitest src/tests/module-endpoints.test.ts` 128/128; delayed 202 completes despite a 5 ms transport default because generation sets its 120 s AI budget. | 2026-09-07 |
 
 ## Live contract evidence (2026-08-08)
 

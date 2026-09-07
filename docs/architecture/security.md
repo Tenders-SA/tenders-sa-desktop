@@ -109,11 +109,16 @@ never a wildcard.
 
 ## Updater (SEC-4)
 
-No updater plugin is wired up yet — there is no signing key to verify
-against. `src/app/config/schema.ts` (TASK-0.3) already reserves an
-`update.channel` / `update.publicKey` placeholder for when this is
-implemented; the private signing key remains CI-only per SEC-4 and is
-never referenced from this repository.
+Signed automatic updates are wired (spec:
+`docs/specifications/desktop-app-updater/`). The public key lives in
+`src-tauri/tauri.conf.json → plugins.updater.pubkey` — the only key
+location in the repository — and verifies every downloaded payload; the
+private signing key exists only in the GitHub secrets
+(`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) and
+is never referenced outside the release workflows, by name only. Update
+checks and downloads run in the Rust plugin's own HTTP client, so the
+webview CSP and the `http:` capability allow-list are unchanged: nothing
+in the pinned boundary moved for the updater to exist.
 
 ## Deferred to later tasks
 

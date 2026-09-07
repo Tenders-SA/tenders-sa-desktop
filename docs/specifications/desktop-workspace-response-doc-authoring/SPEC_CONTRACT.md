@@ -18,6 +18,7 @@
 | C6 | Wiring + coverage | panel already mounted; row extracted to `ResponseBlueprintDocRow.tsx`; fixtures gain both methods; parity pins both literals |
 | C7 | Verification gates | `vitest` full suite, `tsc --noEmit`, `eslint .`, `prettier --check .` — zero errors |
 | C8 | Human verification | user live-verifies Generate → Saved flow, Edit → Save persistence, no loading flash, and the 402/409 copy; recorded in `INTEGRATION_EVAL.md` |
+| C9 | Generation timeout | `generateResponseDocument` keeps `retry: "never"`, uses `timeoutMs: 120_000`, and has a delayed-202 regression test (R-A-7) |
 
 ## Explicitly out of contract
 
