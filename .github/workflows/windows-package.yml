@@ -19,6 +19,15 @@ on:
         description: "Sign the updater artifacts (requires signing secrets to be configured)"
         type: boolean
         default: false
+      publishRelease:
+        description: "Publish the generated installers as GitHub Release assets"
+        type: boolean
+        default: false
+      releaseTag:
+        description: "Existing tag that points to this exact commit (required when publishing)"
+        type: string
+        required: false
+        default: ""
       apiBaseUrl:
         description: "API origin to build against. Leave blank for the production default (https://www.tenders-sa.org). Any value here must already appear in src-tauri/capabilities/default.json, or the plugin will deny every request at runtime."
         type: string
@@ -26,7 +35,10 @@ on:
         default: ""
 
 permissions:
-  contents: read
+  # The release step only runs when publishRelease is explicitly selected.
+  # It needs this scope to create/update the requested GitHub Release and
+  # attach the installers that this job just built.
+  contents: write
 
 jobs:
   package:
@@ -68,11 +80,40 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ inputs.sign && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ inputs.sign && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
 
+      - name: Verify release tag
+        if: inputs.publishRelease
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.releaseTag }}
+        run: |
+          test -n "$RELEASE_TAG" || { echo "releaseTag is required when publishRelease is true"; exit 1; }
+          git fetch --tags --force
+          test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA" || {
+            echo "Release tag $RELEASE_TAG must point to the packaged commit $GITHUB_SHA"
+            exit 1
+          }
+
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
           name: tenders-sa-desktop-windows
           if-no-files-found: error
           path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+
+      - name: Publish GitHub Release
+        if: inputs.publishRelease
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.releaseTag }}
+          name: Tenders-SA Desktop ${{ inputs.releaseTag }}
+          body: |
+            Download the Windows x64 NSIS installer (`*-setup.exe`) or MSI (`*.msi`).
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
