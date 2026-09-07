@@ -100,9 +100,9 @@ describe("eligibility check", () => {
       jsonResponse(ELIGIBILITY_BODY),
     );
     await endpoint.check("t1");
-    expect((initOf(fetchImpl).headers as Record<string, string>).Authorization).toBe(
-      "Bearer tok",
-    );
+    expect(
+      (initOf(fetchImpl).headers as Record<string, string>).Authorization,
+    ).toBe("Bearer tok");
   });
 
   it("parses the three-way verdict without collapsing partial", async () => {

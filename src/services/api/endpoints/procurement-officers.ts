@@ -195,13 +195,15 @@ const officerSyncRowSchema = z.object({
   assignments: z.array(officerAssignmentSchema),
   // Additive parent contract. Default keeps desktop releases compatible with
   // a parent deployment that has not started exporting evidence links yet.
-  tenderLinks: z.array(
-    z.object({
-      tenderId: z.string(),
-      sourceField: z.string().nullable(),
-      observedAt: z.string().nullable(),
-    }),
-  ).default([]),
+  tenderLinks: z
+    .array(
+      z.object({
+        tenderId: z.string(),
+        sourceField: z.string().nullable(),
+        observedAt: z.string().nullable(),
+      }),
+    )
+    .default([]),
 });
 
 export type OfficerSyncRow = z.infer<typeof officerSyncRowSchema>;

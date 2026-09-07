@@ -24,7 +24,7 @@ pub fn run() {
         // Save-dialog path for exports (Slice 6, R-Ex-3). The dialog plugin
         // extends the fs scope at runtime to exactly the path the user picks,
         // so no broad fs scope is granted in capabilities/default.json.
-.plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         // Signed auto-updates (desktop-app-updater R-U3). The updater fetches
         // manifests and payloads in Rust with its own HTTP client, so no CSP
