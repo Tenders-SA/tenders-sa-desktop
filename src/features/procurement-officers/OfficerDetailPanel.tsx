@@ -37,7 +37,7 @@ export function OfficerDetailPanel({
     return (
       <section
         aria-label="Officer details"
-        className="rounded-md border p-6 text-center text-sm text-foreground/60"
+        className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground"
       >
         {view.phase === "loading-local"
           ? "Loading officer details…"
@@ -45,7 +45,7 @@ export function OfficerDetailPanel({
         <button
           type="button"
           onClick={onClose}
-          className="mt-3 rounded-md border px-3 py-1.5 text-sm"
+          className="mt-3 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground"
         >
           Back to results
         </button>
@@ -90,19 +90,22 @@ export function OfficerDetailPanel({
   return (
     <section
       aria-label={`Details for ${data.canonicalName}`}
-      className="rounded-md border"
+      className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
     >
-      <header className="flex items-start justify-between gap-4 border-b p-4">
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-primary/20 bg-primary/5 p-5">
         <div>
-          <h2 className="text-lg font-semibold">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Officer record
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-card-foreground">
             {nameSuppressed ? "Name under review" : data.canonicalName}
           </h2>
-          <p className="text-sm text-foreground/60">
+          <p className="mt-1 text-sm text-muted-foreground">
             {[data.currentTitle, data.province].filter(Boolean).join(" · ") ||
               "Details pending"}
           </p>
           {view.phase === "error" && (
-            <p className="mt-1 text-sm text-amber-700" role="alert">
+            <p className="mt-2 text-sm text-warning" role="alert">
               Server refresh failed — showing the local record.
             </p>
           )}
@@ -112,14 +115,14 @@ export function OfficerDetailPanel({
           <button
             type="button"
             onClick={() => report("officer", "Name", data.canonicalName)}
-            className="rounded-md border px-3 py-1 text-sm"
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground hover:border-primary/50"
           >
             Report incorrect
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border px-3 py-1 text-sm"
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground hover:border-primary/50"
           >
             Back
           </button>
@@ -127,16 +130,16 @@ export function OfficerDetailPanel({
       </header>
 
       {headline && (
-        <div className="border-b p-4">
+        <div className="border-b border-border p-5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Current assignment
             </p>
             {!titleSuppressed && headline.title && (
               <button
                 type="button"
                 onClick={() => report("title", "Current title", headline.title)}
-                className="rounded-md border px-2 py-0.5 text-xs"
+                className="rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
               >
                 Report
               </button>
@@ -146,19 +149,19 @@ export function OfficerDetailPanel({
             <p className="mt-1 font-medium">
               {headline.title ?? "Procurement role"}
               {headline.isCurrent && (
-                <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                <span className="ml-2 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
                   Current
                 </span>
               )}
             </p>
           )}
           {!organisationSuppressed && headline.organisationName && (
-            <p className="text-sm text-foreground/70">
+            <p className="text-sm text-muted-foreground">
               {headline.organisationName}
             </p>
           )}
           {headline.validFrom && (
-            <p className="mt-1 text-xs text-foreground/50">
+            <p className="mt-1 text-xs text-muted-foreground">
               Since {formatDate(headline.validFrom)}
               {headline.validTo
                 ? ` — until ${formatDate(headline.validTo)}`
@@ -170,9 +173,9 @@ export function OfficerDetailPanel({
 
       {!organisationSuppressed &&
         (data.organisationName || data.organisationAddress) && (
-          <div className="border-b p-4">
+          <div className="border-b border-border p-5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Organisation
               </p>
               {data.organisationName && (
@@ -185,7 +188,7 @@ export function OfficerDetailPanel({
                       data.organisationName,
                     )
                   }
-                  className="rounded-md border px-2 py-0.5 text-xs"
+                  className="rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
                 >
                   Report
                 </button>
@@ -193,27 +196,27 @@ export function OfficerDetailPanel({
             </div>
             <p className="mt-1 text-sm font-medium">{data.organisationName}</p>
             {data.organisationAddress && (
-              <p className="mt-0.5 whitespace-pre-line text-sm text-foreground/70">
+              <p className="mt-0.5 whitespace-pre-line text-sm text-muted-foreground">
                 {data.organisationAddress}
               </p>
             )}
           </div>
         )}
 
-      <div className="border-b p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+      <div className="border-b border-border p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Official contacts
         </p>
         {contacts.length === 0 ? (
-          <p className="mt-1 text-sm text-foreground/60">
+          <p className="mt-2 text-sm text-muted-foreground">
             No official contacts recorded.
           </p>
         ) : (
-          <ul className="mt-1 space-y-1.5">
+          <ul className="mt-3 space-y-2">
             {contacts.map((contact) => (
               <li
                 key={contact.id}
-                className="flex items-center justify-between gap-3 text-sm"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background/40 px-3 py-2 text-sm"
               >
                 <span>
                   <span className="capitalize text-foreground/70">
@@ -221,7 +224,7 @@ export function OfficerDetailPanel({
                   </span>{" "}
                   {contact.value}
                   {contact.masked && (
-                    <span className="ml-1.5 rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">
+                    <span className="ml-1.5 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                       masked — sync to reveal
                     </span>
                   )}
@@ -229,7 +232,7 @@ export function OfficerDetailPanel({
                 {contact.type === "email" ? (
                   <a
                     href={`mailto:${contact.value}`}
-                    className="shrink-0 rounded-md border px-2 py-1 text-xs"
+                    className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-foreground hover:border-primary/50"
                   >
                     Email
                   </a>
@@ -237,7 +240,7 @@ export function OfficerDetailPanel({
                   <button
                     type="button"
                     onClick={() => void view.copyValue(contact.value)}
-                    className="shrink-0 rounded-md border px-2 py-1 text-xs"
+                    className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-foreground hover:border-primary/50"
                   >
                     Copy
                   </button>
@@ -247,7 +250,7 @@ export function OfficerDetailPanel({
                   onClick={() =>
                     report(contact.type, contact.type, contact.value)
                   }
-                  className="shrink-0 rounded-md border px-2 py-1 text-xs"
+                  className="shrink-0 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
                 >
                   Report
                 </button>
@@ -257,8 +260,8 @@ export function OfficerDetailPanel({
         )}
       </div>
 
-      <div className="border-b p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+      <div className="border-b border-border p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Actions
         </p>
         <div className="mt-2">
@@ -276,25 +279,28 @@ export function OfficerDetailPanel({
         </div>
       </div>
 
-      <div id="officer-related-tenders" className="p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+      <div id="officer-related-tenders" className="p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Related tenders
         </p>
         {data.tenders.length === 0 ? (
-          <p className="mt-1 text-sm text-foreground/60">
+          <p className="mt-2 text-sm text-muted-foreground">
             No related tenders recorded.
           </p>
         ) : (
-          <ul className="mt-1 divide-y">
+          <ul className="mt-3 space-y-2">
             {data.tenders.map((tender) => (
-              <li key={tender.tenderId} className="py-2">
+              <li
+                key={tender.tenderId}
+                className="rounded-lg border border-border bg-background/40 px-3 py-2.5"
+              >
                 <Link
                   to={`/tenders/${encodeURIComponent(tender.tenderId)}`}
-                  className="text-sm font-medium hover:underline"
+                  className="text-sm font-medium text-foreground hover:text-primary hover:underline"
                 >
                   {tender.title ?? `Tender ${tender.tenderId}`}
                 </Link>
-                <p className="text-xs text-foreground/60">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {[
                     tender.referenceNumber,
                     tender.province,

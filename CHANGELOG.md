@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Procurement Officers now uses the same surfaced, dark-theme layout as the
+  rest of the desktop workspace. Search and filters are easier to scan,
+  officer records are grouped into clear cards, and contact, correction and
+  saved-state controls retain a consistent visual hierarchy.
 - Generating a cover letter, methodology, or other response document now keeps
   waiting for the secure generation start instead of incorrectly reporting
   that Tenders-SA could not be reached after a short delay.
